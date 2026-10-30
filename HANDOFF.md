@@ -15,6 +15,11 @@
 - **脚本坑：** 不要用 `Select-Object -First` 接 `check.ps1` 的输出，管道提前结束会中止脚本，后面的截图复制不会执行。
 - **`master` 的小问题：** 砂岩相关素材提交时没有 `.meta`，Unity 打开时会生成，切分支前要清掉。
 
+- **开局与表现（后续新增）：** 解锁自动钻探前全靠点击（`GameSim.AutoDrillUnlocked`，根节点第 1 级）。打击感在 `FxView`、`SoundBank`、`GameSettings`，色板公式同时存在于 `draw_world_art.lua` 和 `Palette.cs`，改一边要改另一边。
+- **没用 URP：** 光照是贴图叠加（`HudView.BuildDarkness`、`WorldView` 的钻头光晕），不是 2D Light；像素对齐靠 320×180 的 RenderTexture，没有 Pixel Perfect Camera。要换 URP 需要改渲染管线和所有材质。
+- **清单里没做的：** 背景音乐和狂热提速（项目里还没有 BGM）、合成时两台钻头飞到一起的动画（现在是闪光加火花）、技能节点“充能填满”（现在是弹跳加光点）、每种岩块 3–4 个变体（现在是地面 3 个变体加贴花）、爆炸照亮周围（现在是白闪）。
+- **待查：** `v2_layer_03.png` 里隧道背景偏棕，不是该层的紫色；那张图处于狂热状态，原因没查清。
+
 **Windows 打包（第 7 步）未解决，原因已基本定位：** 卡住的 `cmd.exe` 主线程状态是 `Suspended`（1 线程、3 句柄、CPU 0、无子进程），进程启动后就被冻结。这台电脑装有 Avast 和 Reason Cybersecurity，高度怀疑是它们拦截，比第 4 节的“令牌过期”更可信，但还没用排除规则验证过。下一步：让用户把 `C:\GAME\DeepDril` 和 `C:\Program Files\Unity\Hub\Editor\6000.0.85f1` 加入杀毒软件排除项，再点 DeepDrill > Build Windows。
 
 写于 2026-10-30。工程在 `C:\GAME\DeepDril`（文件夹名就是一个 l，已确认不改）。

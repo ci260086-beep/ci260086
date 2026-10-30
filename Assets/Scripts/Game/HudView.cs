@@ -34,6 +34,7 @@ namespace DeepDrill.Game
         private const float ZoomStep = 0.1f;
         private const int GalleryColumns = 22;
         private const int ComboFlashStep = 10;
+        private const float MaxDarkness = 0.4f;
         private const int SpeedLines = 14;
         private const float BannerSeconds = 2.2f;
         private const float BannerBarHeight = 34f;
@@ -166,7 +167,7 @@ namespace DeepDrill.Game
         private Image frenzyButtonImage;
         private Text frenzyButtonLabel;
         private Image dragGhost;
-        private Image frenzyGlow, bannerTop, bannerBottom;
+        private Image frenzyGlow, bannerTop, bannerBottom, darkness;
         private Text bannerLabel;
         private float bannerTime;
         private HangarCell dragSource;
@@ -222,6 +223,7 @@ namespace DeepDrill.Game
             stageImage.raycastTarget = false;
             Ui.TopLeft(stageImage.rectTransform, 0, 0, Stage.Width, Stage.Height);
 
+            BuildDarkness();
             BuildFrenzyOverlay();
             BuildDigOverlay();
             BuildFrenzyMeter();
@@ -327,6 +329,24 @@ namespace DeepDrill.Game
 
             versionLabel = Floating("", 3, 171, 90, 8, 6, TextAnchor.MiddleLeft);
             versionLabel.color = SoftText;
+        }
+
+        // The deeper the layer the darker the view, with a soft shadow round the edge of the dig area.
+        private void BuildDarkness()
+        {
+            darkness = Ui.Panel(stageRoot, "Darkness", 0, 0, Stage.DigWidth, Stage.Height, Color.clear);
+            darkness.raycastTarget = false;
+            var edge = Ui.Panel(stageRoot, "Vignette", 0, 0, Stage.DigWidth, Stage.Height, new Color(0.05f, 0.03f, 0.08f, 0.55f));
+            edge.sprite = art.Get("fx_vignette");
+            edge.raycastTarget = false;
+        }
+
+        private void UpdateDarkness()
+        {
+            int layer = GameData.LayerOfRow(sim.State.depth);
+            Color tint = Palette.Dark(layer);
+            tint.a = Mathf.Lerp(0f, MaxDarkness, layer / (GameData.Layers.Count - 1f));
+            darkness.color = tint;
         }
 
         // Glowing edges and streaks of speed while frenzy runs.
@@ -811,6 +831,7 @@ namespace DeepDrill.Game
             UpdateMeter();
             UpdateToast(dt);
             UpdateGuide();
+            UpdateDarkness();
             UpdateFrenzyOverlay();
             UpdateBanner(dt);
             UpdateTreePulses(dt);

@@ -26,6 +26,7 @@ namespace DeepDrill.Game
         private const int MaxFlyers = 40;
         private const int MaxFloaters = 24;
         private const int AnimCount = 40;
+        private const float AmbientPerSecond = 16f;
 
         public enum Text3 { Normal, Crit, Ore, Boss }
 
@@ -38,6 +39,7 @@ namespace DeepDrill.Game
             public float Floor;
             public bool Bounced;
             public bool Streak;
+            public bool Drift;
         }
 
         private sealed class Anim
@@ -79,6 +81,7 @@ namespace DeepDrill.Game
         private readonly List<Floater> floaterPool = new List<Floater>();
 
         private int nextBit;
+        private float ambientClock;
         private RectTransform layer;
         private Font font;
         private Sprite whitePixel;
@@ -155,6 +158,47 @@ namespace DeepDrill.Game
             }
         }
 
+        /// <summary>Environment motes for the layer on screen: dust, sand, embers, drips or glints.</summary>
+        public void Ambient(int layer, Vector2 camera, float dt)
+        {
+            ambientClock += dt * AmbientPerSecond * GameSettings.ParticleScale;
+            while (ambientClock >= 1)
+            {
+                ambientClock -= 1;
+                var bit = bits[nextBit];
+                nextBit = (nextBit + 1) % bits.Count;
+                Vector2 at = camera + new Vector2(UnityEngine.Random.Range(-10f, 4f), UnityEngine.Random.Range(-5.5f, 5.5f));
+                bit.Sprite.enabled = true;
+                bit.Sprite.color = Palette.Bright(layer, 0.55f);
+                bit.Sprite.transform.position = at;
+                bit.Sprite.transform.rotation = Quaternion.identity;
+                bit.Sprite.transform.localScale = Vector3.one;
+                bit.Velocity = AmbientVelocity(layer);
+                bit.MaxLife = bit.Life = UnityEngine.Random.Range(1.5f, 3.5f);
+                bit.Floor = float.MinValue;
+                bit.Bounced = true;
+                bit.Streak = false;
+                bit.Drift = true;
+            }
+        }
+
+        private static Vector2 AmbientVelocity(int layer)
+        {
+            float x = UnityEngine.Random.Range(-0.3f, 0.3f);
+            switch (layer)
+            {
+                case 1: return new Vector2(x, -2.2f);                 // falling sand
+                case 3: return new Vector2(0, -3.5f);                 // drips
+                case 6: case 7: case 9: return new Vector2(x, 1.6f);  // rising embers
+                case 10: return new Vector2(2f, x);                   // molten metal flowing past
+                case 11: return new Vector2(x, 0.8f);                 // heat shimmer
+                default: return new Vector2(x, UnityEngine.Random.Range(-0.3f, 0.3f)); // drifting dust and glints
+            }
+        }
+
+        /// <summary>One bright frame of light on a gem.</summary>
+        public void Twinkle(Vector2 world) => Play(flashFrames, world, 0.25f, 0.5f, 0.1f, 0f, true);
+
         public void Debris(Vector2 world, Color color, int count) => Spray(world, color, count, false);
 
         /// <summary>Yellow-white streaks for rock that fights back.</summary>
@@ -180,6 +224,7 @@ namespace DeepDrill.Game
                 bit.Floor = world.y - 0.5f;
                 bit.Bounced = false;
                 bit.Streak = streak;
+                bit.Drift = false;
             }
         }
 
@@ -261,7 +306,7 @@ namespace DeepDrill.Game
                     bit.Sprite.enabled = false;
                     continue;
                 }
-                bit.Velocity.y -= Gravity * dt;
+                if (!bit.Drift) bit.Velocity.y -= Gravity * dt;
                 var t = bit.Sprite.transform;
                 t.position += (Vector3)(bit.Velocity * dt);
                 if (!bit.Bounced && t.position.y < bit.Floor)

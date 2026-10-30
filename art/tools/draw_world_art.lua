@@ -49,21 +49,59 @@ local function outline(g, ink)
   for _, p in ipairs(out) do g:set(p[1], p[2], ink) end
 end
 
--- ink, dark, shade, base, light, bright, texture; colours follow the layer table in the design data
-local LAYERS = {
-  { "1a1210", "4a3122", "6b4630", "8c5f3f", "a87a52", "c49a6c", "speck" }, -- 表土 棕
-  { "2a1e14", "4a3520", "94703c", "b8904c", "d4ae62", "e8cc84", "band" },  -- 砂岩 土黄
-  { "1c1430", "3a2a5e", "54408a", "6e58a8", "8e7cc8", "b8a8e8", "crack" }, -- 溶洞 紫蓝
-  { "0a1428", "142a50", "1e4070", "2a5a90", "4078b0", "70a8d8", "band" },  -- 暗河 深蓝
-  { "241e14", "5a5040", "8a7c5c", "a8986c", "c8b478", "e8d490", "speck" }, -- 遗迹 金灰
-  { "201c22", "4e4850", "7e7480", "a0949c", "c0aeb4", "dccad0", "speck" }, -- 花岗岩 灰粉
-  { "0e0a0c", "2a1218", "4a1a20", "68242a", "8a3234", "b04a44", "crack" }, -- 莫霍 黑暗红
-  { "10180a", "2a3a14", "46581e", "62782a", "82983a", "a8b858", "speck" }, -- 上地幔 橄榄绿
-  { "08201e", "124a44", "1e6e64", "2e9484", "50b8a4", "88dcc8", "band" },  -- 过渡带 蓝绿
-  { "200806", "561410", "8e2412", "bc3a14", "e06220", "f8983c", "crack" }, -- 下地幔 深红橙
-  { "2c1c04", "7a5410", "b88a1c", "e0b43a", "f4d870", "fff4c0", "band" },  -- 外核 金白
-  { "3a3448", "787088", "a8a2b8", "d0ccdc", "ece8f0", "ffffff", "speck" }, -- 内核 白金
+-- Colour ramps with hue shifting: shadows lean towards blue-violet, lights towards warm yellow,
+-- and saturation peaks in the mid tones. The same formula lives in Palette.cs for the back wall.
+local function hsv(h, s, v)
+  local c, x = v * s, v * s * (1 - math.abs((h / 60) % 2 - 1))
+  local m = v - c
+  local r, g, b
+  if h < 60 then r, g, b = c, x, 0 elseif h < 120 then r, g, b = x, c, 0
+  elseif h < 180 then r, g, b = 0, c, x elseif h < 240 then r, g, b = 0, x, c
+  elseif h < 300 then r, g, b = x, 0, c else r, g, b = c, 0, x end
+  return string.format("%02x%02x%02x", math.floor((r + m) * 255 + 0.5),
+    math.floor((g + m) * 255 + 0.5), math.floor((b + m) * 255 + 0.5))
+end
+
+local function towards(h, target, amount)
+  local d = (target - h + 540) % 360 - 180
+  return (h + d * amount) % 360
+end
+
+local RAMP_V = { 0.14, 0.30, 0.46, 0.62, 0.78, 0.92 }
+local RAMP_S = { 0.60, 0.68, 0.80, 0.70, 0.52, 0.34 }
+local RAMP_DARK = { 0.45, 0.30, 0.14, 0, 0, 0 }
+local RAMP_WARM = { 0, 0, 0, 0, 0.14, 0.28 }
+
+local function ramp(hue, sat)
+  local out = {}
+  for i = 1, 6 do
+    local h = towards(towards(hue, 250, RAMP_DARK[i]), 55, RAMP_WARM[i])
+    out[i] = hsv(h, RAMP_S[i] * sat, RAMP_V[i])
+  end
+  return out
+end
+
+-- hue, saturation scale, texture; colours follow the layer table in the design data
+local LAYER_HUES = {
+  { 24, 0.75, "speck" },  -- 表土 棕
+  { 38, 0.70, "band" },   -- 砂岩 土黄
+  { 262, 0.65, "crack" }, -- 溶洞 紫蓝
+  { 212, 0.85, "band" },  -- 暗河 深蓝
+  { 42, 0.45, "speck" },  -- 遗迹 金灰
+  { 345, 0.22, "speck" }, -- 花岗岩 灰粉
+  { 356, 0.70, "crack" }, -- 莫霍 黑暗红
+  { 74, 0.70, "speck" },  -- 上地幔 橄榄绿
+  { 168, 0.75, "band" },  -- 过渡带 蓝绿
+  { 16, 1.0, "crack" },   -- 下地幔 深红橙
+  { 44, 0.85, "band" },   -- 外核 金白
+  { 280, 0.18, "speck" }, -- 内核 白金
 }
+
+local LAYERS = {}
+for i, v in ipairs(LAYER_HUES) do
+  local r = ramp(v[1], v[2])
+  LAYERS[i] = { r[1], r[2], r[3], r[4], r[5], r[6], v[3] }
+end
 
 local function ground(p, style, n)
   local g = canvas(16, 16)
@@ -143,7 +181,7 @@ for i, c in ipairs(ORES) do
     g:set(x, y, hi) g:set(x + 1, y, hi) g:set(x, y + 1, hi)
     g:set(x + s - 1, y + s - 1, lo)
   end
-  outline(g, INK)
+  outline(g, hex(c[3]))
   save(g, "Layers/ore_" .. (i - 1))
 
   local icon = canvas(8, 8)
@@ -301,7 +339,7 @@ local function drillFrame(family, m, f)
       end
     end
   end
-  outline(g, INK)
+  outline(g, hex(m[3]))
   return g
 end
 
@@ -452,6 +490,58 @@ for y = 0, 89 do
   end
 end
 save(vignette, "Items/fx_vignette")
+
+-- parallax backdrops, 64x64 and seamless: far rock, a mid feature for the layer, near hanging things
+local function backdrop(dark, mid, kind, hanging)
+  local g = canvas(64, 64)
+  if kind == "far" then
+    g:rect(0, 0, 63, 63, dark)
+    for _ = 1, 26 do
+      local cx, cy, r = rnd(64), rnd(64), 2 + rnd(5)
+      for y = -r, r do
+        for x = -r, r do
+          if x * x + y * y <= r * r then g:set((cx + x) % 64, (cy + y) % 64, mid) end
+        end
+      end
+    end
+    return g
+  end
+  for n = 0, 3 do
+    local cx, tall = 8 + n * 16 + rnd(5), 14 + rnd(hanging and 12 or 26)
+    for y = 0, tall do
+      local half = math.max(0, math.floor((tall - y) * (kind == "column" and 0.12 or 0.28)) + (kind == "column" and 2 or 0))
+      for x = cx - half, cx + half do
+        local row = hanging and y or (63 - y)
+        g:set(x % 64, row, (x + y) % 5 == 0 and mid or dark)
+      end
+    end
+  end
+  return g
+end
+
+local MID_KINDS = { "spike", "spike", "spike", "spike", "column", "spike", "spike", "column", "spike", "spike", "spike", "column" }
+for i, v in ipairs(LAYERS) do
+  local dark, shade = hex(v[1]), hex(v[2])
+  save(backdrop(hex(v[1]), hex(v[2]), "far", false), "Layers/parallax_" .. (i - 1) .. "_far")
+  save(backdrop(dark, shade, MID_KINDS[i], false), "Layers/parallax_" .. (i - 1) .. "_mid")
+  save(backdrop(dark, shade, "spike", true), "Layers/parallax_" .. (i - 1) .. "_near")
+end
+
+-- small decals that break up plain ground: pebbles, a bone, a root, a crack of quartz
+local DECAL = { "6a6a78", "e0d8c8", "6b4630", "c8d0e0" }
+for d = 1, 4 do
+  local g = canvas(16, 16)
+  local c = hex(DECAL[d])
+  if d == 1 then g:rect(4, 9, 6, 10, c) g:rect(10, 5, 11, 6, c) g:set(8, 12, c)
+  elseif d == 2 then g:rect(4, 8, 11, 8, c) g:rect(3, 7, 4, 9, c) g:rect(11, 7, 12, 9, c)
+  elseif d == 3 then for i = 0, 8 do g:set(3 + i, 4 + i // 2 + (i % 3 == 0 and 1 or 0), c) end
+  else for i = 0, 5 do g:set(5 + i, 11 - i, c) end g:set(9, 9, c) end
+  save(g, "Layers/decal_" .. (d - 1))
+end
+
+local plain = canvas(16, 16)
+plain:rect(0, 0, 15, 15, hex("ffffff"))
+save(plain, "Layers/plain_tile")
 
 -- achievement badge: the page tints it, and shows a black silhouette until earned
 local badge = canvas(16, 16)

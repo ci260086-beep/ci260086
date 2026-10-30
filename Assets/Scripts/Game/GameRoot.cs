@@ -119,6 +119,9 @@ namespace DeepDrill.Game
 
             DrainEvents();
 
+            fx.Ambient(GameData.LayerOfRow(sim.State.depth), world.CameraPosition, Time.unscaledDeltaTime);
+            if (world.TryTwinkle(Time.unscaledDeltaTime, out Vector2 glint)) fx.Twinkle(glint);
+
             autosave += Time.unscaledDeltaTime;
             if (autosave >= AutosaveSeconds)
             {
