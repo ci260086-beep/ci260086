@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 
 namespace DeepDrill.Core
@@ -8,6 +8,14 @@ namespace DeepDrill.Core
     {
         public string id;
         public int level;
+    }
+
+    /// <summary>The holes dug in one chunk of ground, run-length coded then base64.</summary>
+    [Serializable]
+    public sealed class DugChunk
+    {
+        public long key;
+        public string holes;
     }
 
     [Serializable]
@@ -21,7 +29,7 @@ namespace DeepDrill.Core
     [Serializable]
     public sealed class GameState
     {
-        public const int CurrentVersion = 4;
+        public const int CurrentVersion = 5;
 
         public int version = CurrentVersion;
         public int seed = 1;
@@ -40,6 +48,7 @@ namespace DeepDrill.Core
         public List<SkillLevel> skills = new List<SkillLevel>();
         public List<int> drills = new List<int>();  // one DrillCode per owned drill
         public List<int> bought = new List<int>();  // per family, drives the price
+        public List<DugChunk> dug = new List<DugChunk>();
 
         // lifetime records: these survive a rebirth
         public int maxDepthEver;

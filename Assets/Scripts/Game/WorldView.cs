@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using DeepDrill.Core;
 using UnityEngine;
 
@@ -17,6 +17,7 @@ namespace DeepDrill.Game
         private const float DrillPivotBelowCenter = 0.33f; // sprites turn about a point near the tip
         private const float DrillPivotY = 1f / 12f;
         private const int DrillPool = 400;
+        private const int RepaintsPerFrame = 4;
         private const int GlowCount = 60;
         private const float ParallaxTileUnits = 4f; // 64 pixels
         private const float MaxShakePixels = 6f;
@@ -55,10 +56,12 @@ namespace DeepDrill.Game
         private SpriteRenderer[] parallax;
         private Sprite[][] parallaxSprites;
         private float followX;
+        private int repaintBudget;
         private float drillClock;
         private float trauma;
 
         public Vector2 CameraPosition { get; private set; }
+        public float MaxDrawMs { get; set; }
 
         public void Init(GameSim simulation, ArtLibrary art, Camera camera)
         {
@@ -170,7 +173,9 @@ namespace DeepDrill.Game
             drillClock += dt * DrillFramesPerSecond * (sim.InFrenzy ? 2f : 1f);
             DrawDrills(target);
             DrawParallax(target);
+            var timer = System.Diagnostics.Stopwatch.StartNew();
             DrawChunks(target);
+            MaxDrawMs = Mathf.Max(MaxDrawMs, (float)timer.Elapsed.TotalMilliseconds);
 
             sky.transform.position = new Vector3(target.x, 15f - 0.5f, 0);
 
@@ -193,6 +198,7 @@ namespace DeepDrill.Game
 
             foreach (var slot in slots) slot.Renderer.enabled = false;
             int used = 0;
+            repaintBudget = RepaintsPerFrame;
             for (int cy = Mathf.Max(0, firstRow); cy < firstRow + ChunkRows; cy++)
             {
                 for (int cx = Mathf.Max(0, firstCol); cx < firstCol + ChunkCols; cx++)
@@ -242,7 +248,8 @@ namespace DeepDrill.Game
         {
             slot.Renderer.enabled = true;
             var chunk = sim.World.ChunkAt(cx, cy);
-            if (!chunk.Dirty) return;
+            if (!chunk.Dirty || repaintBudget <= 0) return; // the rest wait their turn next frame
+            repaintBudget--;
             PixelPainter.Paint(sim.World, cx, cy, chunk, slot.Pixels, sim.State.seed, chunk.MinX, chunk.MinY, chunk.MaxX, chunk.MaxY);
             chunk.Dirty = false;
             slot.Texture.SetPixels32(slot.Pixels);

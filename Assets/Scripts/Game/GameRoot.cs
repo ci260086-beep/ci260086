@@ -47,10 +47,21 @@ namespace DeepDrill.Game
         private float hitstopCooldown;
 
         public GameSim Sim => sim;
+        public float MaxTickMs { get; set; }
+        public float MaxDrawMs => world.MaxDrawMs;
+        public void ResetTimers()
+        {
+            MaxTickMs = 0;
+            world.MaxDrawMs = 0;
+        }
         public SaveService Saves => saves;
         public HudView Hud => hud;
 
-        public void SaveNow() => saves.Save(sim.State);
+        public void SaveNow()
+        {
+            sim.PackHoles();
+            saves.Save(sim.State);
+        }
 
         public void SnapCamera() => world.SnapToDrill();
 
@@ -112,8 +123,10 @@ namespace DeepDrill.Game
             slowMotion -= Time.unscaledDeltaTime;
             float simStep = Time.deltaTime * (slowMotion > 0 ? SlowMotionRate : 1f);
             fx.Density = GameSettings.ParticleScale * (sim.Units.Count > BusySwarm ? 1f / 3f : 1f);
+            var timer = System.Diagnostics.Stopwatch.StartNew();
             if (hitstop > 0) hitstop--;
             else sim.Tick(simStep);
+            MaxTickMs = Mathf.Max(MaxTickMs, (float)timer.Elapsed.TotalMilliseconds);
 
             if (Input.GetMouseButtonDown(0)) HandleClick(Input.mousePosition);
             if (Input.GetKeyDown(KeyCode.Space)) sim.StartFrenzy();
@@ -127,11 +140,11 @@ namespace DeepDrill.Game
             if (autosave >= AutosaveSeconds)
             {
                 autosave = 0;
-                saves.Save(sim.State);
+                SaveNow();
             }
         }
 
-        private void OnApplicationQuit() => saves.Save(sim.State);
+        private void OnApplicationQuit() => SaveNow();
 
         /// <summary>Taps inside the dig area only; the bars and panels swallow their own clicks.</summary>
         public void HandleClick(Vector2 screen)

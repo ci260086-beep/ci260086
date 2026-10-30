@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace DeepDrill.Core
 {
@@ -27,6 +29,7 @@ namespace DeepDrill.Core
         public readonly float[] Hp = new float[Size * Size];
         public bool Dirty = true;
         public bool SandAwake;
+        public bool Dug; // something was removed, so a save has to remember this chunk
         public int MinX = 0, MinY = 0, MaxX = Size - 1, MaxY = Size - 1;
 
         /// <summary>Grows the repaint rectangle, with a pixel of margin for the neighbours' outlines.</summary>
@@ -62,6 +65,12 @@ namespace DeepDrill.Core
         private const int PixelsPerTile = TileSize * TileSize;
 
         private readonly Dictionary<long, PixelChunk> chunks = new Dictionary<long, PixelChunk>();
+        private readonly ConcurrentDictionary<long, PixelChunk> ready = new ConcurrentDictionary<long, PixelChunk>();
+        private readonly HashSet<long> queued = new HashSet<long>();
+        private readonly Dictionary<long, byte[]> dugArchive = new Dictionary<long, byte[]>();
+        private readonly object tileLock = new object();
+        private long lastKey = long.MinValue;
+        private PixelChunk lastChunk;
         private readonly Dictionary<long, Block> tiles = new Dictionary<long, Block>();
         private readonly HashSet<long> spentCharges = new HashSet<long>();
         private readonly List<long> scratch = new List<long>();
@@ -87,10 +96,103 @@ namespace DeepDrill.Core
         public PixelChunk ChunkAt(int cx, int cy)
         {
             long key = ChunkKey(cx, cy);
-            if (chunks.TryGetValue(key, out var chunk)) return chunk;
-            chunk = Generate(cx, cy);
-            chunks[key] = chunk;
+            if (key == lastKey) return lastChunk; // pixel loops stay in one chunk for long stretches
+            if (!chunks.TryGetValue(key, out var chunk))
+            {
+                if (!ready.TryRemove(key, out chunk)) chunk = Generate(cx, cy);
+                queued.Remove(key);
+                chunks[key] = chunk;
+                if (dugArchive.TryGetValue(key, out byte[] holes)) ApplyHoles(chunk, holes);
+            }
+            lastKey = key;
+            lastChunk = chunk;
             return chunk;
+        }
+
+        /// <summary>Builds a chunk on a worker thread, so reaching it later costs no frame time.</summary>
+        public void Prepare(int cx, int cy)
+        {
+            if (cy < 0 || cx < 0 || cx * PixelChunk.Size >= Width) return;
+            long key = ChunkKey(cx, cy);
+            if (chunks.ContainsKey(key) || !queued.Add(key)) return;
+            Task.Run(() => ready[key] = Generate(cx, cy));
+        }
+
+        /// <summary>Queues the rows of chunks just below a row of tiles.</summary>
+        public void PrepareBelow(int row)
+        {
+            int cy = row * TileSize / PixelChunk.Size;
+            for (int ahead = 1; ahead <= 2; ahead++)
+                for (int cx = 0; cx * PixelChunk.Size < Width; cx++)
+                    Prepare(cx, cy + ahead);
+        }
+
+        /// <summary>The holes in every chunk dug so far, as (chunk key, run-length mask) pairs.</summary>
+        public IEnumerable<KeyValuePair<long, byte[]>> ExportHoles()
+        {
+            foreach (var pair in chunks)
+                if (pair.Value.Dug) dugArchive[pair.Key] = EncodeHoles(pair.Value);
+            return dugArchive;
+        }
+
+        public void ImportHoles(long key, byte[] holes) => dugArchive[key] = holes;
+
+        // Alternating run lengths of solid and air, each stored in one or two bytes.
+        private static byte[] EncodeHoles(PixelChunk chunk)
+        {
+            var bytes = new List<byte>();
+            bool air = false;
+            int run = 0;
+            foreach (byte mat in chunk.Mats)
+            {
+                bool isAir = mat == Mat.Air;
+                if (isAir == air)
+                {
+                    run++;
+                    continue;
+                }
+                WriteRun(bytes, run);
+                air = isAir;
+                run = 1;
+            }
+            WriteRun(bytes, run);
+            return bytes.ToArray();
+        }
+
+        private static void WriteRun(List<byte> bytes, int run)
+        {
+            if (run < 128)
+            {
+                bytes.Add((byte)run);
+                return;
+            }
+            bytes.Add((byte)(128 | (run >> 8)));
+            bytes.Add((byte)(run & 255));
+        }
+
+        private static void ApplyHoles(PixelChunk chunk, byte[] holes)
+        {
+            int i = 0, at = 0;
+            bool air = false;
+            while (i < holes.Length && at < chunk.Mats.Length)
+            {
+                int run = holes[i++];
+                if (run >= 128) run = ((run & 127) << 8) | holes[i++];
+                if (air)
+                {
+                    for (int n = 0; n < run; n++)
+                    {
+                        chunk.Mats[at + n] = Mat.Air;
+                        chunk.Hp[at + n] = 0;
+                    }
+                }
+                at += run;
+                air = !air;
+            }
+            chunk.Dug = true;
+            chunk.Dirty = true;
+            chunk.MinX = chunk.MinY = 0;
+            chunk.MaxX = chunk.MaxY = PixelChunk.Size - 1;
         }
 
         public byte Get(int x, int y)
@@ -113,6 +215,7 @@ namespace DeepDrill.Core
         {
             if (y < 0 || x < 0 || x >= Width) return;
             Put(x, y, Mat.Air, 0);
+            ChunkAt(x / PixelChunk.Size, y / PixelChunk.Size).Dug = true;
             WakeSandAround(x, y);
         }
 
@@ -156,7 +259,12 @@ namespace DeepDrill.Core
             scratch.Clear();
             foreach (var pair in chunks)
                 if (pair.Key / 4096 < limit) scratch.Add(pair.Key);
-            foreach (long key in scratch) chunks.Remove(key);
+            lastKey = long.MinValue;
+            foreach (long key in scratch)
+            {
+                if (chunks[key].Dug) dugArchive[key] = EncodeHoles(chunks[key]);
+                chunks.Remove(key);
+            }
         }
 
         /// <summary>Turns a beaten guardian's band back into ordinary ground.</summary>
@@ -250,12 +358,15 @@ namespace DeepDrill.Core
         private Block TileAt(int row, int col)
         {
             long key = row * 64L + col;
-            if (tiles.TryGetValue(key, out var block)) return block;
-            block = new Block();
-            WorldGen.Fill(block, seed, row, col, tntChance, chestChance);
-            if (tiles.Count > 40000) tiles.Clear();
-            tiles[key] = block;
-            return block;
+            lock (tileLock)
+            {
+                if (tiles.TryGetValue(key, out var block)) return block;
+                block = new Block();
+                WorldGen.Fill(block, seed, row, col, tntChance, chestChance);
+                if (tiles.Count > 40000) tiles.Clear();
+                tiles[key] = block;
+                return block;
+            }
         }
 
         private void PixelFor(int x, int y, out byte mat, out float hp)

@@ -122,6 +122,8 @@ namespace DeepDrill.Game
             float start = Time.realtimeSinceStartup;
             int frames = 0;
             float worst = 0;
+            root.ResetTimers();
+            int gcBefore = System.GC.CollectionCount(0);
             while (Time.realtimeSinceStartup - start < 3f)
             {
                 frames++;
@@ -129,7 +131,8 @@ namespace DeepDrill.Game
                 yield return null;
             }
             Debug.Log($"[demo] swarm units={root.Sim.Units.Count} owned={root.Sim.State.drills.Count} " +
-                $"depth={root.Sim.State.depth} fps={frames / 3f:0} worstFrameMs={worst * 1000:0}");
+                $"depth={root.Sim.State.depth} fps={frames / 3f:0} worstFrameMs={worst * 1000:0} " +
+                $"worstTickMs={root.MaxTickMs:0.0} worstPaintMs={root.MaxDrawMs:0.0} gen0={System.GC.CollectionCount(0) - gcBefore}");
         }
 
         private IEnumerator Shot(string name)

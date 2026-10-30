@@ -33,6 +33,16 @@ namespace DeepDrill.Core
             world = new PixelWorld(State.seed, TntChance, ChestChance, IsBossRow);
             orePixels.Clear();
             comboPixels = chestPixels = 0;
+            foreach (var chunk in State.dug) world.ImportHoles(chunk.key, Convert.FromBase64String(chunk.holes));
+            world.PrepareBelow(State.depth);
+        }
+
+        /// <summary>Copies the dug-out ground into the state, ready to be written to the save.</summary>
+        public void PackHoles()
+        {
+            State.dug.Clear();
+            foreach (var pair in world.ExportHoles())
+                State.dug.Add(new DugChunk { key = pair.Key, holes = Convert.ToBase64String(pair.Value) });
         }
 
         private static int ToPixel(double tiles) => (int)Math.Floor((tiles + 0.5) * Tile);

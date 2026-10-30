@@ -236,6 +236,44 @@ namespace DeepDrill.Tests
         }
 
         [Test]
+        public void SavedHoles_ComeBackAfterReload()
+        {
+            var sim = NewSim();
+            sim.World.CarveCircle(100, 200, 9);
+            sim.PackHoles();
+            Assert.Greater(sim.State.dug.Count, 0);
+            int bytes = sim.State.dug.Sum(d => d.holes.Length);
+            Console.WriteLine($"save holes bytes={bytes}");
+            Assert.Less(bytes, 2000, "run-length coding keeps saves small");
+
+            string json = sim.State.dug[0].holes;
+            var reloaded = new GameSim(sim.State);
+            Assert.IsFalse(reloaded.World.Solid(100, 200));
+            Assert.IsTrue(reloaded.World.Solid(100, 250));
+            Assert.IsNotEmpty(json);
+        }
+
+        [Test]
+        public void HolesSurvive_ChunksBeingDropped()
+        {
+            var sim = NewSim();
+            sim.World.CarveCircle(100, 200, 9);
+            sim.World.DropAbove(200);
+            Assert.IsFalse(sim.World.Solid(100, 200), "rebuilt with the hole in it");
+        }
+
+        [Test]
+        public void PreparedChunks_MatchOnesBuiltOnDemand()
+        {
+            EnsureData();
+            var a = new PixelWorld(8, 0.02, 0.005, r => false);
+            var b = new PixelWorld(8, 0.02, 0.005, r => false);
+            a.PrepareBelow(20);
+            System.Threading.Thread.Sleep(300);
+            for (int x = 0; x < 300; x += 7) Assert.AreEqual(b.Get(x, 200), a.Get(x, 200));
+        }
+
+        [Test]
         public void Rebirth_ClearsTheRun()
         {
             var sim = NewSim();

@@ -68,6 +68,7 @@ namespace DeepDrill.Core
         private const int MaxSpawnRowsUp = 60;
         private const int SpawnDropRows = 6;
         private const int SlideSearchColumns = 8;
+        private const int MaxRejoinsPerCheck = 5;
         private const int MaxBoostChain = 400;
         public const string RootSkill = "root";
         private const int SwiftFamily = 1;
@@ -402,6 +403,7 @@ namespace DeepDrill.Core
             if (keepAutoDrill) State.SetLevel(RootSkill, 1);
             State.drills.Clear();
             State.bought.Clear();
+            State.dug.Clear();
             State.bossesDefeated = 0;
             State.seed = random.Next(1, int.MaxValue);
             State.drillX = Balance.StartColumn;
@@ -574,6 +576,7 @@ namespace DeepDrill.Core
             int feet = Lead.Body.FeetRow;
             if (feet <= State.depth) return;
             world.DropAbove(feet);
+            world.PrepareBelow(feet);
             int layer = GameData.LayerOfRow(feet);
             bool entered = layer != GameData.LayerOfRow(State.depth);
             State.depth = feet;
@@ -599,15 +602,15 @@ namespace DeepDrill.Core
         private void BringBackStragglers()
         {
             occupied.Clear();
+            int moved = 0;
             foreach (var unit in Units)
             {
-                long cell = CellKey(unit.Body.BodyRow, unit.Body.Column);
-                bool sharing = occupied.ContainsKey(cell);
-                if (!sharing) occupied[cell] = unit;
                 if (unit == Lead) continue;
                 bool behind = Lead.Body.Y - unit.Body.Y > Balance.StragglerRows;
                 bool away = Math.Abs(Lead.Body.X - unit.Body.X) > Balance.StragglerColumns;
-                if (behind || away || sharing) SpawnNearLead(unit);
+                if (!behind && !away) continue;
+                SpawnNearLead(unit);
+                if (++moved >= MaxRejoinsPerCheck) break; // a mass rejoin in one tick would hitch
             }
         }
 

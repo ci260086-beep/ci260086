@@ -34,6 +34,7 @@ namespace DeepDrill.Game
         private const float ZoomStep = 0.1f;
         private const int GalleryColumns = 22;
         private const int ComboFlashStep = 10;
+        private const float TextSeconds = 0.1f;
         private const float MaxDarkness = 0.4f;
         private const int SpeedLines = 14;
         private const float BannerSeconds = 2.2f;
@@ -178,6 +179,7 @@ namespace DeepDrill.Game
         private float treeZoom = 1f;
         private float coinPulse;
         private float comboFlash;
+        private float textClock;
         private int lastComboTier;
         private int comboStep;
         private int currentPage;
@@ -816,17 +818,27 @@ namespace DeepDrill.Game
             if (!Mathf.Approximately(scaler.scaleFactor, scale)) scaler.scaleFactor = scale;
 
             var s = sim.State;
-            coinsLabel.text = NumberFormat.Short(s.coins - coinsInFlight);
-            incomeLabel.text = $"{NumberFormat.Short(s.incomePerSecond)} 每秒金币";
-            oresLabel.text = NumberFormat.Short(s.ores - oresInFlight);
-            drillsLabel.text = $"钻头 {NumberFormat.Short(s.drills.Count)}";
-            depthLabel.text = $"{GameData.Layers[GameData.LayerOfRow(s.depth)].Name} {GameData.FormatDepth(s.depth)}";
-
             float dt = Time.unscaledDeltaTime;
             if (dt > 0) fpsAverage = Mathf.Lerp(fpsAverage, 1f / dt, 0.05f);
-            versionLabel.text = $"v{Application.version}  {fpsAverage:0} FPS";
 
-            UpdateCombo();
+            // numbers refresh ten times a second: strings every frame are the main source of garbage
+            textClock += dt;
+            if (textClock >= TextSeconds)
+            {
+                textClock = 0;
+                coinsLabel.text = NumberFormat.Short(s.coins - coinsInFlight);
+                incomeLabel.text = $"{NumberFormat.Short(s.incomePerSecond)} 每秒金币";
+                oresLabel.text = NumberFormat.Short(s.ores - oresInFlight);
+                drillsLabel.text = $"钻头 {NumberFormat.Short(s.drills.Count)}";
+                depthLabel.text = $"{GameData.Layers[GameData.LayerOfRow(s.depth)].Name} {GameData.FormatDepth(s.depth)}";
+                versionLabel.text = $"v{Application.version}  {fpsAverage:0} FPS";
+                UpdateCombo();
+                if (currentPage == PageHangar) UpdateHangar();
+                if (currentPage == PageTree) UpdateTree();
+                if (currentPage == PageGallery) UpdateGallery();
+                if (currentPage == PageStats) UpdateStats();
+            }
+
             UpdateCoinPulse();
             UpdateMeter();
             UpdateToast(dt);
@@ -838,10 +850,6 @@ namespace DeepDrill.Game
             UpdateBoss();
             UpdateRebirth(dt);
 
-            if (currentPage == PageHangar) UpdateHangar();
-            if (currentPage == PageTree) UpdateTree();
-            if (currentPage == PageGallery) UpdateGallery();
-            if (currentPage == PageStats) UpdateStats();
         }
 
         // The opening: tap the drill, then spend the first coins on auto drilling.

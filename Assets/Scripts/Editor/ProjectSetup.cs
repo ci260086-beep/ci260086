@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -38,6 +38,7 @@ namespace DeepDrill.Editor
             PlayerSettings.resizableWindow = true;
             PlayerSettings.runInBackground = true;
             PlayerSettings.usePlayerLog = true;
+            PlayerSettings.gcIncremental = true;
 
             AssetDatabase.SaveAssets();
             Debug.Log("DeepDrill setup finished");
