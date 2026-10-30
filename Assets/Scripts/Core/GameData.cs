@@ -88,6 +88,16 @@ namespace DeepDrill.Core
         public string Bonus;
     }
 
+    public enum MilestoneKind { damage, speed, crit, trait }
+
+    /// <summary>What a family earns for owning a given number of drills.</summary>
+    public sealed class MilestoneDef
+    {
+        public MilestoneKind Kind;
+        public double Amount;
+        public string Desc;
+    }
+
     /// <summary>
     /// The numbers from tools/Design/gen_design_data.py. The reader callback fetches a file by
     /// name, so Unity and the tests can supply the JSON their own way.
@@ -105,6 +115,11 @@ namespace DeepDrill.Core
         public static List<AchievementDef> Achievements;
         public static List<RareDef> Rares;
         public static int OreCount;
+        public static List<int> MilestoneCounts;
+        public static List<List<MilestoneDef>> Milestones; // per family, one reward per count
+        public static List<double> MasteryBlocks;          // blocks dug in a layer for each level
+        public static double MasteryDamagePct;
+        public static double MasteryValuePct;
 
         private static Dictionary<string, SkillDef> skillsById;
 
@@ -120,6 +135,7 @@ namespace DeepDrill.Core
             LoadSkills(read("skills"));
             LoadAchievements(read("achievements"));
             LoadRares(read("rare_items"));
+            LoadMilestones(read("milestones"));
         }
 
         public static SkillDef Skill(string id) => skillsById.TryGetValue(id, out var s) ? s : null;
@@ -274,6 +290,37 @@ namespace DeepDrill.Core
                     Id = Str(o, "id"), Name = Str(o, "name"), Cond = Str(o, "cond"), Reward = Str(o, "reward"),
                 });
             }
+        }
+
+        private static void LoadMilestones(string json)
+        {
+            var root = Obj(MiniJson.Parse(json));
+            MilestoneCounts = new List<int>();
+            foreach (var count in Arr(root["familyCounts"])) MilestoneCounts.Add((int)(double)count);
+
+            Milestones = new List<List<MilestoneDef>>();
+            foreach (var family in Families) Milestones.Add(new List<MilestoneDef>());
+            foreach (var item in Arr(root["families"]))
+            {
+                var o = Obj(item);
+                var rewards = Milestones[Families.FindIndex(f => f.Id == Str(o, "id"))];
+                foreach (var rewardItem in Arr(o["rewards"]))
+                {
+                    var reward = Obj(rewardItem);
+                    rewards.Add(new MilestoneDef
+                    {
+                        Kind = (MilestoneKind)Enum.Parse(typeof(MilestoneKind), Str(reward, "kind")),
+                        Amount = Num(reward, "amount"),
+                        Desc = Str(reward, "desc"),
+                    });
+                }
+            }
+
+            var mastery = Obj(root["mastery"]);
+            MasteryBlocks = new List<double>();
+            foreach (var blocks in Arr(mastery["blocks"])) MasteryBlocks.Add((double)blocks);
+            MasteryDamagePct = Num(mastery, "damagePct");
+            MasteryValuePct = Num(mastery, "valuePct");
         }
 
         private static void LoadRares(string json)

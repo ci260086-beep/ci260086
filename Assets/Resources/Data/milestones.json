@@ -1,0 +1,177 @@
+{
+ "familyCounts": [
+  10,
+  25,
+  50,
+  100,
+  200
+ ],
+ "families": [
+  {
+   "id": "std",
+   "rewards": [
+    {
+     "kind": "damage",
+     "amount": 15,
+     "desc": "标准钻伤害 +15%"
+    },
+    {
+     "kind": "speed",
+     "amount": 10,
+     "desc": "标准钻攻速 +10%"
+    },
+    {
+     "kind": "crit",
+     "amount": 2,
+     "desc": "全部钻头暴击率 +2%"
+    },
+    {
+     "kind": "damage",
+     "amount": 30,
+     "desc": "标准钻伤害 +30%"
+    },
+    {
+     "kind": "damage",
+     "amount": 100,
+     "desc": "标准钻伤害 +100%"
+    }
+   ]
+  },
+  {
+   "id": "swift",
+   "rewards": [
+    {
+     "kind": "speed",
+     "amount": 10,
+     "desc": "疾风钻攻速 +10%"
+    },
+    {
+     "kind": "damage",
+     "amount": 15,
+     "desc": "疾风钻伤害 +15%"
+    },
+    {
+     "kind": "crit",
+     "amount": 2,
+     "desc": "全部钻头暴击率 +2%"
+    },
+    {
+     "kind": "speed",
+     "amount": 20,
+     "desc": "疾风钻攻速 +20%"
+    },
+    {
+     "kind": "trait",
+     "amount": 2,
+     "desc": "特性翻倍：连击积累 ×4"
+    }
+   ]
+  },
+  {
+   "id": "heavy",
+   "rewards": [
+    {
+     "kind": "damage",
+     "amount": 15,
+     "desc": "重型钻伤害 +15%"
+    },
+    {
+     "kind": "speed",
+     "amount": 10,
+     "desc": "重型钻攻速 +10%"
+    },
+    {
+     "kind": "crit",
+     "amount": 2,
+     "desc": "全部钻头暴击率 +2%"
+    },
+    {
+     "kind": "damage",
+     "amount": 30,
+     "desc": "重型钻伤害 +30%"
+    },
+    {
+     "kind": "trait",
+     "amount": 2,
+     "desc": "特性翻倍：对硬岩 ×6，对 Boss ×3"
+    }
+   ]
+  },
+  {
+   "id": "blast",
+   "rewards": [
+    {
+     "kind": "damage",
+     "amount": 15,
+     "desc": "爆破钻伤害 +15%"
+    },
+    {
+     "kind": "speed",
+     "amount": 10,
+     "desc": "爆破钻攻速 +10%"
+    },
+    {
+     "kind": "crit",
+     "amount": 2,
+     "desc": "全部钻头暴击率 +2%"
+    },
+    {
+     "kind": "damage",
+     "amount": 30,
+     "desc": "爆破钻伤害 +30%"
+    },
+    {
+     "kind": "trait",
+     "amount": 2,
+     "desc": "特性翻倍：爆炸溅射 100% 伤害"
+    }
+   ]
+  },
+  {
+   "id": "magnet",
+   "rewards": [
+    {
+     "kind": "damage",
+     "amount": 15,
+     "desc": "磁力钻伤害 +15%"
+    },
+    {
+     "kind": "speed",
+     "amount": 10,
+     "desc": "磁力钻攻速 +10%"
+    },
+    {
+     "kind": "crit",
+     "amount": 2,
+     "desc": "全部钻头暴击率 +2%"
+    },
+    {
+     "kind": "damage",
+     "amount": 30,
+     "desc": "磁力钻伤害 +30%"
+    },
+    {
+     "kind": "trait",
+     "amount": 2,
+     "desc": "特性翻倍：矿物价值 ×4"
+    }
+   ]
+  }
+ ],
+ "mastery": {
+  "blocks": [
+   150,
+   400,
+   900,
+   1800,
+   3500,
+   6500,
+   12000,
+   22000,
+   40000,
+   70000
+  ],
+  "damagePct": 5,
+  "valuePct": 5
+ }
+}

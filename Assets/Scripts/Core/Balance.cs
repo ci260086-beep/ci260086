@@ -11,11 +11,16 @@ namespace DeepDrill.Core
         public const double HpBase = 10;
         public const double HpGrowth = 1.03;
         public const double ValueGrowth = 1.028;
+        public const double HpGrowthDeep = 1.012;
+        public const int HpDeepRow = 1050;  // below the crust the ground hardens more slowly, or the last layers cannot be reached
+        public const double HpRamp = 4;     // the ground toughens this many times over the first rows, on top of the growth
+        public const double HpRampRows = 100;
 
-        public const double ShardBonus = 0.02;
+        public const double ShardBonus = 0.15;
         public const double HardRockHpMultiplier = 3;
         public const double LooseHpMultiplier = 0.5;
         public const double DirtValue = 0.5;
+        public const double OreValuePower = 0.7; // ore tiers multiply on top of depth, so left whole they outrun every price
         public const double ChestValue = 25;
 
         public const double ChestChance = 0.005;
@@ -40,6 +45,10 @@ namespace DeepDrill.Core
         public const double TntChance = 0.02;
         public const int BaseBlastRadius = 1;
         public const int BaseChainLimit = 2;
+        public const int LinkedChainLimit = 24;
+        public const int ChainReachRows = 24; // a chain stops here, or one spark runs through the whole planet in a frame
+        public const double BlastSwings = 30;
+        public const double BlastFloorTiles = 8; // however weak the drills, a charge still clears a small hole
         public const double BlastDrillSplash = 0.5;
 
         public const double SandPixelStepSeconds = 1.0 / 30;
@@ -51,11 +60,12 @@ namespace DeepDrill.Core
         public const double StragglerColumns = 11;
 
         public const int BossRows = 2;
+        public const double BossHpScale = 0.05;
         public const double BossArmorRatio = 0.25;
         public const double BossArmorDamageRatio = 0.5;
         public const double BossRewardValue = 400;
         public const int BossBreachHalfWidth = 3;
-        public const double BossChipShare = 0.3; // hitting a guardian pays like digging dirt, so a stalled fight still funds upgrades
+        public const double BossChipShare = 2; // hitting a guardian pays like digging dirt, so a stalled fight still funds upgrades
 
         public const int RareMaxDupes = 10;
         public const double RareDupeBonus = 0.5;
@@ -101,8 +111,10 @@ namespace DeepDrill.Core
         public const double StartGold = 50;
         public const double RebirthRateMinSeconds = 60;
         public const double RebirthAdviceRatio = 0.85;
+        public const double RebirthAdviceMinSeconds = 900;
 
-        public static double BlockHp(int row) => HpBase * Math.Pow(HpGrowth, row);
+        public static double BlockHp(int row) =>
+            HpBase * Math.Pow(HpGrowth, Math.Min(row, HpDeepRow)) * Math.Pow(HpGrowthDeep, Math.Max(0, row - HpDeepRow)) * (1 + (HpRamp - 1) * Math.Min(1, Math.Max(0, row) / HpRampRows));
 
         public static double OreValue(int row, double multiplier) => Math.Pow(ValueGrowth, row) * multiplier;
 

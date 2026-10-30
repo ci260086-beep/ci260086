@@ -276,6 +276,14 @@ namespace DeepDrill.Game
                     hud.ShowToast($"成就：{GameData.Achievements[(int)e.Amount].Name}", 3f);
                     break;
 
+                case SimEventKind.MilestoneReached:
+                    hud.ShowToast($"里程碑：{GameData.Milestones[(int)e.Amount][e.Row].Desc}", 3f);
+                    break;
+
+                case SimEventKind.MasteryUp:
+                    hud.ShowToast($"{GameData.Layers[(int)e.Amount].Name}精通升到 {e.Row} 级", 3f);
+                    break;
+
                 case SimEventKind.Rebirth:
                     hud.ClearInFlight();
                     hud.ShowToast($"地核重铸：获得 {NumberFormat.Short(e.Amount)} 星核碎片", 4f);

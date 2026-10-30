@@ -29,7 +29,7 @@ namespace DeepDrill.Core
     [Serializable]
     public sealed class GameState
     {
-        public const int CurrentVersion = 5;
+        public const int CurrentVersion = 6;
 
         public int version = CurrentVersion;
         public int seed = 1;
@@ -62,6 +62,8 @@ namespace DeepDrill.Core
         public int rebirths;
         public List<RareCount> rares = new List<RareCount>();
         public List<string> achievements = new List<string>();
+        public List<int> familyBest = new List<int>();     // most of a family bought in one run
+        public List<double> layerPixels = new List<double>(); // pixels ever dug per layer
 
         public bool AnyBossDown => bossesDefeated > 0;
 
@@ -71,6 +73,18 @@ namespace DeepDrill.Core
         {
             while (bought.Count <= family) bought.Add(0);
             bought[family]++;
+            while (familyBest.Count <= family) familyBest.Add(0);
+            familyBest[family] = Math.Max(familyBest[family], bought[family]);
+        }
+
+        public int FamilyBestOf(int family) => family < familyBest.Count ? familyBest[family] : 0;
+
+        public double LayerPixelsOf(int layer) => layer < layerPixels.Count ? layerPixels[layer] : 0;
+
+        public void AddLayerPixel(int layer)
+        {
+            while (layerPixels.Count <= layer) layerPixels.Add(0);
+            layerPixels[layer]++;
         }
 
         public int RareCountOf(string id)
@@ -102,6 +116,7 @@ namespace DeepDrill.Core
                 drillPlaced = false;
                 bossesDefeated = 0;
             }
+            if (version < 6) familyBest = new List<int>(bought);
             version = CurrentVersion;
         }
 

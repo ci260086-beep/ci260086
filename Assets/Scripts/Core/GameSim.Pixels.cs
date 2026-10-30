@@ -29,6 +29,7 @@ namespace DeepDrill.Core
         private double convectionClock;
         private bool reflecting;
         private bool washed;
+        private bool splashing;
         private DrillUnit stepper;
         private readonly Func<double, double, bool> solidForStepper;
         private readonly Queue<(int x, int y, int radius, double time)> refills = new Queue<(int, int, int, double)>();
@@ -88,6 +89,7 @@ namespace DeepDrill.Core
             double budget = damage * (crit ? CritMultiplier : 1);
             if (GameData.LayerOfRow(cy / Tile) == Balance.CoreLayer && !InFrenzy) budget *= Balance.HeatDamageRatio;
             double dealt = budget;
+            double trait = familyTrait[by.Family];
             bool heavy = by.Family == HeavyFamily;
             int removed = 0, row = cy / Tile, col = cx / Tile;
             byte lastMat = Mat.Dirt;
@@ -101,14 +103,14 @@ namespace DeepDrill.Core
 
                 if (mat == Mat.Boss)
                 {
-                    HitBoss(y / Tile, x / Tile, budget * (heavy ? 1.5 : 1), fromClick, crit);
+                    HitBoss(y / Tile, x / Tile, budget * (heavy ? 1.5 * trait : 1), fromClick, crit);
                     budget = 0;
                     break;
                 }
 
                 double rate = 1;
-                if (mat == Mat.Hard) rate = (1 + Effect(SkillEffect.hard_pct) / 100) * (heavy ? 3 : 1);
-                if (mat == Mat.SuperHard) rate = (1 + Effect(SkillEffect.hard_pct) / 100) * (heavy ? 3 : Balance.SuperHardWeakDamage);
+                if (mat == Mat.Hard) rate = (1 + Effect(SkillEffect.hard_pct) / 100) * (heavy ? 3 * trait : 1);
+                if (mat == Mat.SuperHard) rate = (1 + Effect(SkillEffect.hard_pct) / 100) * (heavy ? 3 * trait : Balance.SuperHardWeakDamage);
                 double cost = world.HpAt(x, y) / rate;
                 if (cost > budget)
                 {
@@ -140,6 +142,13 @@ namespace DeepDrill.Core
             }
 
             PassOverflow(cx, cy, budget, by);
+            if (removed > 0 && by.Family == BlastFamily && !splashing)
+            {
+                // a blast drill's break throws part of its swing a tile further out
+                splashing = true;
+                Dig(cx, cy, radius + Tile, dealt * Balance.BlastDrillSplash * trait, false, false, by);
+                splashing = false;
+            }
             RunBlasts();
             return removed;
         }
@@ -189,16 +198,17 @@ namespace DeepDrill.Core
         {
             world.Clear(x, y);
             int row = y / Tile, col = x / Tile;
+            State.AddLayerPixel(GameData.LayerOfRow(row));
 
             if (Mat.IsOre(mat)) CountOre(row, col, mat, byBlast, by);
             else if (mat == Mat.Chest) CountChest(row, col);
             else
             {
-                double value = Balance.OreValue(row, Balance.DirtValue) / PixelsPerTile * ComboMultiplier * IncomeMultiplier;
+                double value = Balance.OreValue(row, Balance.DirtValue) / PixelsPerTile * ComboMultiplier * IncomeMultiplier * MasteryMultiplier(row);
                 Earn(value);
             }
 
-            if (mat == Mat.Tnt && world.ClaimCharge(row, col) && blastsThisChain < ChainLimit)
+            if (mat == Mat.Tnt && row < State.depth + Balance.ChainReachRows && world.ClaimCharge(row, col) && blastsThisChain < ChainLimit)
             {
                 blastsThisChain++;
                 State.bestChain = Math.Max(State.bestChain, blastsThisChain);
@@ -211,7 +221,7 @@ namespace DeepDrill.Core
             }
             if (mat == Mat.Water) washed = true;
 
-            comboPixels += by.Family == SwiftFamily ? 2 : 1;
+            comboPixels += by.Family == SwiftFamily ? (int)(2 * familyTrait[SwiftFamily]) : 1;
             if (comboPixels < ComboPixels) return;
             comboPixels -= ComboPixels;
             Combo++;
@@ -223,6 +233,8 @@ namespace DeepDrill.Core
                 FrenzyEnergy = Math.Min(1, FrenzyEnergy + charge);
             }
         }
+
+        private double MasteryMultiplier(int row) => 1 + MasteryValue(GameData.LayerOfRow(row)) / 100;
 
         private void Earn(double value)
         {
@@ -244,9 +256,9 @@ namespace DeepDrill.Core
             orePixels[ore] = 0;
 
             double value = Balance.OreValue(row, OreMultiplier(ore)) * ComboMultiplier * IncomeMultiplier
-                * (1 + Effect(SkillEffect.ore_pct) / 100) * (1 + RareBonus(1, 3) / 100);
+                * (1 + Effect(SkillEffect.ore_pct) / 100) * (1 + RareBonus(1, 3) / 100) * MasteryMultiplier(row);
             if (byBlast) value *= 1 + Effect(SkillEffect.blast_ore) / 100;
-            if (by.Family == MagnetFamily) value *= 2;
+            if (by.Family == MagnetFamily) value *= 2 * familyTrait[MagnetFamily];
             State.ores += 1;
             Earn(value);
             Events.Add(new SimEvent
@@ -285,7 +297,7 @@ namespace DeepDrill.Core
         {
             foreach (var layer in GameData.Layers)
                 foreach (var def in layer.Ores)
-                    if (def.Index == ore) return def.ValueMult;
+                    if (def.Index == ore) return Math.Pow(def.ValueMult, Balance.OreValuePower);
             return 1;
         }
 
@@ -294,7 +306,7 @@ namespace DeepDrill.Core
             if (++chestPixels < ChestPixels) return;
             chestPixels = 0;
             double value = Balance.OreValue(row, Balance.ChestValue) * ComboMultiplier * IncomeMultiplier
-                * (1 + Effect(SkillEffect.chest_gold) / 100);
+                * (1 + Effect(SkillEffect.chest_gold) / 100) * MasteryMultiplier(row);
             Earn(value);
             RollRareDrop(row);
             Events.Add(new SimEvent { Kind = SimEventKind.BlockBroken, Row = row, Col = col, Block = BlockType.Chest, Amount = value });
@@ -508,17 +520,21 @@ namespace DeepDrill.Core
         {
             Events.Add(new SimEvent { Kind = SimEventKind.Explosion, Row = row, Col = col, Amount = radius });
             int cx = col * Tile + Tile / 2, cy = row * Tile + Tile / 2;
-            int r = radius * Tile + Tile / 2;
-            for (int y = cy - r; y <= cy + r; y++)
+            double budget = BlastDamage(row);
+            foreach (var (dx, dy) in ShapeFor(radius * Tile + Tile / 2))
             {
-                for (int x = cx - r; x <= cx + r; x++)
+                int x = cx + dx, y = cy + dy;
+                if (y < 0 || x < 0 || x >= PixelWorld.Width) continue;
+                byte mat = world.Get(x, y);
+                if (mat == Mat.Air || mat == Mat.Boss) continue;
+                double hp = world.HpAt(x, y);
+                if (hp > budget)
                 {
-                    if ((x - cx) * (x - cx) + (y - cy) * (y - cy) > r * r) continue;
-                    if (y < 0 || x < 0 || x >= PixelWorld.Width) continue;
-                    byte mat = world.Get(x, y);
-                    if (mat == Mat.Air || mat == Mat.Boss) continue;
-                    RemovePixel(x, y, mat, true, Lead);
+                    world.SetHp(x, y, (float)(hp - budget));
+                    return;
                 }
+                budget -= hp;
+                RemovePixel(x, y, mat, true, Lead);
             }
         }
 

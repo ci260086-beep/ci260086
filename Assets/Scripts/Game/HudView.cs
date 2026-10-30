@@ -574,27 +574,28 @@ namespace DeepDrill.Game
             var page = Ui.Panel(stageRoot, "GalleryPage", 0, 0, Stage.Width, Stage.Height, PanelColor);
             pages[PageGallery] = page.gameObject;
 
-            galleryCount = Ui.Label(page.transform, Font, "", 6, 2, 200, 12, 8, TextAnchor.MiddleLeft);
+            galleryCount = Ui.Label(page.transform, Font, "", 6, 2, 122, 12, 7, TextAnchor.MiddleLeft);
             galleryCount.fontStyle = FontStyle.Bold;
 
             var close = Ui.Button(page.transform, Font, "关闭", Stage.Width - 34, 2, 30, 12, 7, CardBright, out _);
             close.onClick.AddListener(() => ShowPage(PageHangar));
 
+            var collection = NewGalleryTab(page.transform, "收藏");
             for (int i = 0; i < GameData.Achievements.Count; i++)
             {
                 var a = GameData.Achievements[i];
-                var icon = GalleryCellAt(page.transform, i, 16, art.Get("badge"),
+                var icon = GalleryCellAt(collection, i, 16, art.Get("badge"),
                     () => galleryInfo.text = $"{a.Name}  条件：{a.Cond}  奖励：{a.Reward}");
                 achievementIcons.Add(icon);
             }
 
             int rareTop = 18 + (GameData.Achievements.Count + GalleryColumns - 1) / GalleryColumns * 14;
-            Ui.Label(page.transform, Font, "稀有物品", 6, rareTop, 100, 10, 7, TextAnchor.MiddleLeft).color = SoftText;
+            Ui.Label(collection, Font, "稀有物品", 6, rareTop, 100, 10, 7, TextAnchor.MiddleLeft).color = SoftText;
             for (int i = 0; i < GameData.Rares.Count; i++)
             {
                 var r = GameData.Rares[i];
                 string file = "rare_" + r.Id.Substring("rare_".Length);
-                var icon = GalleryCellAt(page.transform, i, rareTop + 10, art.Get(file), () => DescribeRare(r));
+                var icon = GalleryCellAt(collection, i, rareTop + 10, art.Get(file), () => DescribeRare(r));
                 rareIcons.Add(icon);
                 var count = Ui.Label(icon.transform.parent, Font, "", 0, 9, 13, 5, 4, TextAnchor.MiddleRight);
                 rareCounts.Add(count);
@@ -602,6 +603,10 @@ namespace DeepDrill.Game
 
             galleryInfo = Ui.Label(page.transform, Font, "", 6, 164, Stage.Width - 12, 14, 7, TextAnchor.MiddleLeft);
             galleryInfo.color = SoftText;
+
+            BuildMilestoneTab(page.transform);
+            BuildMasteryTab(page.transform);
+            ShowGalleryTab(0);
         }
 
         private Image GalleryCellAt(Transform parent, int index, int top, Sprite sprite, Action hover)
@@ -842,6 +847,7 @@ namespace DeepDrill.Game
             for (int i = 0; i < achievementIcons.Count; i++)
                 achievementIcons[i].color = s.achievements.Contains(GameData.Achievements[i].Id) ? Color.white : SilhouetteColor;
             galleryCount.text = $"成就 {s.achievements.Count}/{GameData.Achievements.Count}   稀有物品 {rares}/{GameData.Rares.Count}";
+            UpdateGalleryTabs();
         }
 
         private void UpdateStats()

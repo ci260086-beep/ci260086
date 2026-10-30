@@ -39,7 +39,7 @@ for i, (name, d0, d1, rows, color, ores, mech, boss) in enumerate(LAYERS_RAW):
 TOTAL_ROWS = row
 
 MATERIALS = ["木", "石", "铜", "铁", "钢", "银", "金", "水晶", "钻石", "秘银", "黑曜", "星核"]
-TIER_DMG_MULT = 3.0
+TIER_DMG_MULT = 2.0
 FAMILIES = [
     ("std",   "标准钻", 1.0, 3.0, "均衡，没有特殊效果", 1, 10),
     ("swift", "疾风钻", 0.45, 8.0, "攻速快，连击积累 ×2", 2, 2.0e3),
@@ -47,7 +47,7 @@ FAMILIES = [
     ("blast", "爆破钻", 0.9, 3.0, "击碎岩块时爆炸，对周围 1 格造成 50% 伤害", 4, 1.5e6),
     ("magnet", "磁力钻", 0.7, 3.0, "它击碎的矿物价值 ×2，并吸取 3 格内掉落", 5, 4.0e7),
 ]
-BUY_GROWTH = 1.045
+BUY_GROWTH = 1.08
 
 drills = {"materials": MATERIALS, "tierDamageMult": TIER_DMG_MULT, "buyPriceGrowth": BUY_GROWTH,
           "mergeRule": "两台同家族、同材质的钻头合成一台高一级材质；星核级不能再合成", "families": [], "kinds": []}
@@ -147,7 +147,7 @@ BRANCHES = [
 RING_ROW = {k: int(TOTAL_ROWS * (k - 1) / 10) for k in range(1, 11)}
 def ring_base_cost(k):
     r = RING_ROW[k]
-    return 60.0 if k == 1 else 60 * val(r) * (2.0 ** (k - 1))
+    return 60.0 if k == 1 else 60 * val(r) * (6.0 ** (k - 1))
 
 skills = []
 skills.append({"id": "root", "name": "深渊钻头", "branch": "core", "effect": "dmg_pct", "perLevel": 5, "maxLevel": 10,
@@ -168,7 +168,7 @@ for b, (bid, bname, nodes) in enumerate(BRANCHES):
         if off == 0 and ring not in trunk:
             trunk[ring] = nid
         placed[nid] = (ring, off)
-        growth = 1.18 if mx >= 15 else 1.28 if mx >= 8 else 1.6 if mx > 1 else 1.0
+        growth = 1.33 if mx >= 15 else 1.43 if mx >= 8 else 1.75 if mx > 1 else 1.0
         layer_req = min(12, 1 + (ring - 1) * 11 // 9)
         node = {"id": nid, "name": name, "branch": bid, "effect": eff, "perLevel": per, "maxLevel": mx,
                 "baseCost": float(f"{ring_base_cost(ring) * (1.0 if off == 0 else 0.7):.3g}"),
@@ -208,7 +208,7 @@ for n in (50, 200, 500):
     ach.append({"id": f"combo_{n}", "name": f"{n} 连击", "cond": f"达成 {n} 连击", "reward": "连击上限 +10%"})
 for n in (1, 5, 25, 100):
     ach.append({"id": f"rebirth_{n}", "name": f"重铸 {n} 次", "cond": f"完成 {n} 次地核重铸", "reward": "碎片 +5%"})
-for n in (10, 100, 1000):
+for n in (10, 16, 24):
     ach.append({"id": f"chain_{n}", "name": f"连锁 {n}", "cond": f"一次连锁引爆 {n} 个炸药块", "reward": "爆炸伤害 +10%"})
 ach.append({"id": "center", "name": "地心旅行", "cond": "到达 6371 千米的地心", "reward": "解锁星系跃迁"})
 
@@ -225,8 +225,29 @@ for i, names in enumerate(RARES):
                            "dropChance": [0.02, 0.006, 0.0015][j], "bonus": ["全部伤害 +1%", "矿物价值 +3%", "全部收入 +5%"][j],
                            "dupeBonus": "重复获得时该加成再 +50%（最多 10 次）"})
 
+def milestone(kind, amount, desc):
+    return {"kind": kind, "amount": amount, "desc": desc}
+
+def plain_rewards(name):
+    return [milestone("damage", 15, f"{name}伤害 +15%"), milestone("speed", 10, f"{name}攻速 +10%"),
+            milestone("crit", 2, "全部钻头暴击率 +2%"), milestone("damage", 30, f"{name}伤害 +30%")]
+
+milestones = {
+    "familyCounts": [10, 25, 50, 100, 200],
+    "families": [
+        {"id": "std", "rewards": plain_rewards("标准钻") + [milestone("damage", 100, "标准钻伤害 +100%")]},
+        {"id": "swift", "rewards": [milestone("speed", 10, "疾风钻攻速 +10%"), milestone("damage", 15, "疾风钻伤害 +15%"),
+                                    milestone("crit", 2, "全部钻头暴击率 +2%"), milestone("speed", 20, "疾风钻攻速 +20%"),
+                                    milestone("trait", 2, "特性翻倍：连击积累 ×4")]},
+        {"id": "heavy", "rewards": plain_rewards("重型钻") + [milestone("trait", 2, "特性翻倍：对硬岩 ×6，对 Boss ×3")]},
+        {"id": "blast", "rewards": plain_rewards("爆破钻") + [milestone("trait", 2, "特性翻倍：爆炸溅射 100% 伤害")]},
+        {"id": "magnet", "rewards": plain_rewards("磁力钻") + [milestone("trait", 2, "特性翻倍：矿物价值 ×4")]},
+    ],
+    "mastery": {"blocks": [150, 400, 900, 1800, 3500, 6500, 12000, 22000, 40000, 70000], "damagePct": 5, "valuePct": 5},
+}
+
 for name, data in (("layers", layers), ("drills", drills), ("skills", skills),
-                   ("achievements", ach), ("rare_items", rare_items)):
+                   ("achievements", ach), ("rare_items", rare_items), ("milestones", milestones)):
     with open(os.path.join(OUT, f"{name}.json"), "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=1)
 

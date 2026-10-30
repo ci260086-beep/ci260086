@@ -3,10 +3,10 @@ using System.Diagnostics;
 using System.IO;
 using DeepDrill.Core;
 
-// Usage: Pace <data folder> [simulated hours] [real seconds allowed]
+// Usage: Pace <data folder> [simulated hours] [real seconds allowed] [seed]
 public static class Pace
 {
-    private const double Step = 0.05;
+    private const double Step = 0.1;
     private const double DecideSeconds = 1;
     private const int TapsPerSecond = 4;
     private const double DrillBudget = 0.5;
@@ -14,17 +14,17 @@ public static class Pace
     public static int Main(string[] args)
     {
         string data = args[0];
-        double hours = args.Length > 1 ? double.Parse(args[1]) : 6;
+        double hours = args.Length > 1 ? double.Parse(args[1]) : 12;
         double budget = args.Length > 2 ? double.Parse(args[2]) : 240;
+        int seed = args.Length > 3 ? int.Parse(args[3]) : 7;
         GameData.Load(name => File.ReadAllText(Path.Combine(data, name + ".json")));
 
-        var sim = new GameSim(new GameState { seed = 7 });
+        var sim = new GameSim(new GameState { seed = seed });
         var clock = Stopwatch.StartNew();
-        double t = 0, decide = 0, tap = 0, runStart = 0, lastDepthAt = 0;
-        int layerSeen = 0, bossSeen = 0, depthSeen = 0, rebirths = 0;
-        bool autoSeen = false, canSeen = false;
+        double t = 0, decide = 0, tap = 0, runStart = 0, layerEnteredAt = 0;
+        int runLayer = 0, frontier = 0, rebirths = 0;
 
-        while (t < hours * 3600 && clock.Elapsed.TotalSeconds < budget)
+        while (t < hours * 3600 && clock.Elapsed.TotalSeconds < budget && sim.State.maxDepthEver < GameData.TotalRows)
         {
             sim.Tick(Step);
             t += Step;
@@ -45,44 +45,30 @@ public static class Pace
                 sim.StartFrenzy();
             }
 
-            if (sim.State.maxDepth > depthSeen)
-            {
-                depthSeen = sim.State.maxDepth;
-                lastDepthAt = t;
-            }
-            if (!autoSeen && sim.AutoDrillUnlocked)
-            {
-                autoSeen = true;
-                Report(t, "auto drill unlocked");
-            }
             int layer = GameData.LayerOfRow(sim.State.maxDepth);
-            if (layer > layerSeen)
+            if (layer > runLayer)
             {
-                layerSeen = layer;
-                Report(t, $"run {rebirths} layer {layer + 1} ({GameData.Layers[layer].Name}), run time {Minutes(t - runStart)}");
+                // only a layer nobody has seen yet counts towards the time per layer
+                if (layer > frontier)
+                {
+                    frontier = layer;
+                    Report(t, $"layer {layer + 1} first reached in run {rebirths + 1}, after {Minutes(t - layerEnteredAt)} in layer {runLayer + 1}, run time {Minutes(t - runStart)}, dps {sim.TotalDps:0.##e0}");
+                }
+                runLayer = layer;
+                layerEnteredAt = t;
             }
-            if (sim.State.bossesDefeated > bossSeen)
-            {
-                bossSeen = sim.State.bossesDefeated;
-                Report(t, $"run {rebirths} boss {bossSeen} down, drills {sim.State.drills.Count}");
-            }
-            if (!canSeen && sim.CanRebirth)
-            {
-                canSeen = true;
-                Report(t, $"run {rebirths} can rebirth for {sim.ShardsOnRebirth}");
-            }
-            if (sim.RebirthAdvised)
-            {
-                Report(t, $"run {rebirths} rebirth +{sim.ShardsOnRebirth} depth {sim.State.maxDepth} drills {sim.State.drills.Count} run time {Minutes(t - runStart)}");
-                sim.Rebirth();
-                rebirths++;
-                runStart = lastDepthAt = t;
-                layerSeen = bossSeen = depthSeen = 0;
-                canSeen = false;
-            }
+
+            if (!sim.RebirthAdvised) continue;
+            int gained = sim.ShardsOnRebirth;
+            sim.Rebirth();
+            rebirths++;
+            Report(t, $"run {rebirths} ends after {Minutes(t - runStart)}: layer {runLayer + 1}, +{gained} shards, {sim.State.shards} in all");
+            runStart = layerEnteredAt = t;
+            runLayer = 0;
         }
 
-        Report(t, $"end: rebirths {rebirths} shards {sim.State.shards} depth {sim.State.maxDepth} best {sim.State.maxDepthEver} drills {sim.State.drills.Count} coins {sim.State.coins:0.##e0} stalled {Minutes(t - lastDepthAt)}, real {clock.Elapsed.TotalSeconds:0}s");
+        string centre = sim.State.maxDepthEver >= GameData.TotalRows ? "centre reached" : "centre not reached";
+        Report(t, $"{centre} in run {rebirths + 1}, best layer {frontier + 1}, depth {sim.State.maxDepthEver}, shards {sim.State.shards}, real {clock.Elapsed.TotalSeconds:0}s");
         return 0;
     }
 
@@ -108,8 +94,7 @@ public static class Pace
             if (cheapest >= 0 && sim.DrillPrice(cheapest) <= sim.State.coins * DrillBudget) bought = sim.BuyDrill(cheapest);
         }
 
-        for (int i = 0; i < sim.State.drills.Count; i++)
-            if (sim.CanMerge(sim.State.drills[i]) && sim.Merge(sim.State.drills[i])) i = -1;
+        while (sim.MergeAll()) { }
     }
 
     private static string Minutes(double seconds) => $"{seconds / 60:0.0}m";

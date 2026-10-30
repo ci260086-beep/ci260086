@@ -26,6 +26,8 @@ namespace DeepDrill.Core
         Overheated,
         PixelsDug,
         DrillBoosted,
+        MilestoneReached,
+        MasteryUp,
     }
 
     public struct SimEvent
@@ -101,6 +103,12 @@ namespace DeepDrill.Core
         private readonly double[] incomeBuckets = new double[IncomeWindowSeconds];
         private readonly double[] effects = new double[Enum.GetValues(typeof(SkillEffect)).Length];
         private readonly double[] layerBonus;
+        private readonly double[] familyDamage;
+        private readonly double[] familySpeed;
+        private readonly double[] familyTrait;
+        private readonly int[] familyMilestones;
+        private readonly int[] masteryLevels;
+        private double milestoneCrit;
         private readonly Random random;
         private int incomeIndex;
         private double incomeClock;
@@ -123,6 +131,12 @@ namespace DeepDrill.Core
             solidAt = SolidAtTiles;
             solidForStepper = SolidForStepper;
             layerBonus = new double[GameData.Layers.Count];
+            familyDamage = new double[GameData.Families.Count];
+            familySpeed = new double[GameData.Families.Count];
+            familyTrait = new double[GameData.Families.Count];
+            familyMilestones = new int[GameData.Families.Count];
+            masteryLevels = new int[GameData.Layers.Count];
+            for (int i = 0; i < masteryLevels.Length; i++) masteryLevels[i] = MasteryLevelFor(i);
             RefreshEffects();
             ResetWorld();
 
@@ -149,7 +163,7 @@ namespace DeepDrill.Core
         /// <summary>The layer whose guardian is next, or null once all of them are down.</summary>
         public LayerDef CurrentBoss =>
             State.bossesDefeated < GameData.Layers.Count ? GameData.Layers[State.bossesDefeated] : null;
-        public double BossMaxHp => CurrentBoss == null ? 0 : Balance.BlockHp(CurrentBoss.RowEnd) * CurrentBoss.BossHpMult;
+        public double BossMaxHp => CurrentBoss == null ? 0 : Balance.BlockHp(CurrentBoss.RowEnd) * CurrentBoss.BossHpMult * Balance.BossHpScale;
         public double BossMaxArmor => CurrentBoss == null || CurrentBoss.Index == 0 ? 0 : BossMaxHp * Balance.BossArmorRatio;
         public double BossDuration => CurrentBoss?.BossSeconds ?? 0;
 
@@ -167,9 +181,11 @@ namespace DeepDrill.Core
                     * (1 + (Effect(SkillEffect.shard_pct) + 5 * AchievementCount("rebirth_")) / 100)
                     / (State.runSeconds / 60);
 
-        /// <summary>True once the run's rate has slipped well below its best, the moment a rebirth pays most.</summary>
+        /// <summary>True once a run of some length has slipped well below its best rate, the moment a rebirth pays most.</summary>
         public bool RebirthAdvised =>
-            CanRebirth && ShardsPerMinute < State.peakShardRate * Balance.RebirthAdviceRatio;
+            CanRebirth
+            && State.runSeconds >= Balance.RebirthAdviceMinSeconds
+            && ShardsPerMinute < State.peakShardRate * Balance.RebirthAdviceRatio;
 
         public int Combo { get; private set; }
         public double FrenzyEnergy { get; private set; }
@@ -222,6 +238,7 @@ namespace DeepDrill.Core
                 return (1 + Effect(SkillEffect.dmg_pct) / 100)
                     * (1 + Effect(SkillEffect.swarm_pct) / 100 * (State.drills.Count / SwarmPerDrills))
                     * (1 + layerBonus[layer] / 100)
+                    * (1 + MasteryDamage(layer) / 100)
                     * (1 + Balance.ShardBonus * State.shards)
                     * drillBonus
                     * ComboMultiplier
@@ -236,7 +253,8 @@ namespace DeepDrill.Core
         }
 
         /// <summary>What one swing of this kind of drill does right now, swarm share included.</summary>
-        public double DamageOf(int code) => KindDamage(code) * GlobalDamageMultiplier * swarmMultiplier;
+        public double DamageOf(int code) =>
+            KindDamage(code) * familyDamage[DrillCode.Family(code)] * GlobalDamageMultiplier * swarmMultiplier;
 
         public double ClickDamage => DamageOf(Lead.Code) * (1 + Effect(SkillEffect.click_pct) / 100);
 
@@ -248,7 +266,7 @@ namespace DeepDrill.Core
         public bool Overheating => overheatLeft > 0 && !InFrenzy;
 
         public double HitsPerSecond(int code) =>
-            GameData.Families[DrillCode.Family(code)].HitsPerSecond * SpeedMultiplier;
+            GameData.Families[DrillCode.Family(code)].HitsPerSecond * familySpeed[DrillCode.Family(code)] * SpeedMultiplier;
 
         /// <summary>Combined damage per second of every owned drill.</summary>
         public double TotalDps
@@ -256,7 +274,7 @@ namespace DeepDrill.Core
             get
             {
                 double sum = 0;
-                foreach (int code in State.drills) sum += KindDamage(code) * HitsPerSecond(code);
+                foreach (int code in State.drills) sum += KindDamage(code) * familyDamage[DrillCode.Family(code)] * HitsPerSecond(code);
                 return sum * GlobalDamageMultiplier;
             }
         }
@@ -265,9 +283,13 @@ namespace DeepDrill.Core
 
         private double TntChance => Balance.TntChance * (1 + Effect(SkillEffect.tnt_rate) / 100);
         private double ChestChance => Balance.ChestChance * (1 + Effect(SkillEffect.chest_pct) / 100);
-        private int ChainLimit => Balance.BaseChainLimit + (Effect(SkillEffect.chain) > 0 ? int.MaxValue / 2 : 0);
-        private double CritChance => Balance.CritChance + Effect(SkillEffect.crit_chance) / 100;
+        private int ChainLimit => Effect(SkillEffect.chain) > 0 ? Balance.LinkedChainLimit : Balance.BaseChainLimit;
+        private double CritChance => Balance.CritChance + (Effect(SkillEffect.crit_chance) + milestoneCrit) / 100;
         private double CritMultiplier => Balance.CritMultiplier + Effect(SkillEffect.crit_mult) / 100;
+
+        private double BlastDamage(int row) => Math.Max(
+            Balance.BlockHp(row) * Balance.BlastFloorTiles,
+            DamageOf(Lead.Code) * Balance.BlastSwings * (1 + (Effect(SkillEffect.blast_dmg) + 10 * AchievementCount("chain_")) / 100));
 
         private double IncomeMultiplier =>
             (1 + Effect(SkillEffect.gold_pct) / 100)
@@ -351,6 +373,32 @@ namespace DeepDrill.Core
             State.mergesEver++;
             State.bestTier = Math.Max(State.bestTier, tier + 1);
             Events.Add(new SimEvent { Kind = SimEventKind.DrillMerged, Amount = DrillCode.Make(DrillCode.Family(code), tier) });
+        }
+
+        /// <summary>Merges every pair that exists right now, one step up; true if any did.</summary>
+        public bool MergeAll()
+        {
+            bool merged = MergePairs();
+            if (merged) RebuildUnits();
+            return merged;
+        }
+
+        private bool MergePairs()
+        {
+            var counts = new Dictionary<int, int>();
+            foreach (int code in State.drills)
+                counts[code] = counts.TryGetValue(code, out int n) ? n + 1 : 1;
+            bool merged = false;
+            foreach (var pair in counts)
+            {
+                if (DrillCode.Tier(pair.Key) + 1 >= GameData.Tiers) continue;
+                for (int i = 0; i < pair.Value / 2; i++)
+                {
+                    MergeOnce(pair.Key);
+                    merged = true;
+                }
+            }
+            return merged;
         }
 
         /// <summary>Brings the bodies on the field in line with the owned list.</summary>
@@ -499,6 +547,21 @@ namespace DeepDrill.Core
         {
             drillBonus = (1 + (3 * AchievementCount("boss_") + 2 * AchievementCount("merge_")) / 100.0)
                 * (1 + RareBonus(0, 1) / 100);
+
+            milestoneCrit = 0;
+            for (int f = 0; f < familyDamage.Length; f++)
+            {
+                familyDamage[f] = familySpeed[f] = familyTrait[f] = 1;
+                familyMilestones[f] = MilestonesOf(f);
+                for (int i = 0; i < familyMilestones[f]; i++)
+                {
+                    var reward = GameData.Milestones[f][i];
+                    if (reward.Kind == MilestoneKind.damage) familyDamage[f] += reward.Amount / 100;
+                    if (reward.Kind == MilestoneKind.speed) familySpeed[f] += reward.Amount / 100;
+                    if (reward.Kind == MilestoneKind.crit) milestoneCrit += reward.Amount;
+                    if (reward.Kind == MilestoneKind.trait) familyTrait[f] = reward.Amount;
+                }
+            }
         }
 
         // Keeps the bodies in step with the owned list, strongest first, without moving drills
@@ -646,6 +709,8 @@ namespace DeepDrill.Core
             BringBackStragglers();
             AutoHangar();
             CheckAchievements();
+            CheckMilestones();
+            CheckMastery();
         }
 
         // Drills that fall behind or wander off screen rejoin the lead, so the view stays busy.
@@ -667,22 +732,7 @@ namespace DeepDrill.Core
         private void AutoHangar()
         {
             if (!AutoDrillUnlocked) return;
-            bool changed = false;
-            if (Effect(SkillEffect.auto_merge) > 0)
-            {
-                var counts = new Dictionary<int, int>();
-                foreach (int code in State.drills)
-                    counts[code] = counts.TryGetValue(code, out int n) ? n + 1 : 1;
-                foreach (var pair in counts)
-                {
-                    if (DrillCode.Tier(pair.Key) + 1 >= GameData.Tiers) continue;
-                    for (int i = 0; i < pair.Value / 2; i++)
-                    {
-                        MergeOnce(pair.Key);
-                        changed = true;
-                    }
-                }
-            }
+            bool changed = Effect(SkillEffect.auto_merge) > 0 && MergePairs();
 
             if (Effect(SkillEffect.auto_buy) > 0)
             {
@@ -699,6 +749,54 @@ namespace DeepDrill.Core
                 }
             }
             if (changed) RebuildUnits();
+        }
+
+        /// <summary>How many of a family's milestones have been earned; a rebirth does not take them back.</summary>
+        public int MilestonesOf(int family)
+        {
+            int best = State.FamilyBestOf(family), reached = 0;
+            while (reached < GameData.MilestoneCounts.Count && best >= GameData.MilestoneCounts[reached]) reached++;
+            return reached;
+        }
+
+        /// <summary>A layer's mastery level, from every block ever dug out of it.</summary>
+        public int MasteryOf(int layer) => masteryLevels[layer];
+
+        public double MasteryBlocksDug(int layer) => State.LayerPixelsOf(layer) / PixelsPerTile;
+
+        public double MasteryDamage(int layer) => masteryLevels[layer] * GameData.MasteryDamagePct;
+
+        public double MasteryValue(int layer) => masteryLevels[layer] * GameData.MasteryValuePct;
+
+        private int MasteryLevelFor(int layer)
+        {
+            double blocks = MasteryBlocksDug(layer);
+            int level = 0;
+            while (level < GameData.MasteryBlocks.Count && blocks >= GameData.MasteryBlocks[level]) level++;
+            return level;
+        }
+
+        private void CheckMilestones()
+        {
+            for (int f = 0; f < familyMilestones.Length; f++)
+            {
+                int was = familyMilestones[f], now = MilestonesOf(f);
+                if (now == was) continue;
+                RefreshBonuses();
+                for (int i = was; i < now; i++)
+                    Events.Add(new SimEvent { Kind = SimEventKind.MilestoneReached, Row = i, Amount = f });
+            }
+        }
+
+        private void CheckMastery()
+        {
+            for (int layer = 0; layer < masteryLevels.Length; layer++)
+            {
+                int now = MasteryLevelFor(layer);
+                if (now == masteryLevels[layer]) continue;
+                masteryLevels[layer] = now;
+                Events.Add(new SimEvent { Kind = SimEventKind.MasteryUp, Row = now, Amount = layer });
+            }
         }
 
         /// <summary>The condition for an achievement, decoded from its id in the design data.</summary>

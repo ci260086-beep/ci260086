@@ -133,6 +133,10 @@ namespace DeepDrill.Core
                 double feet = Y + step + HalfHeight;
                 if (solid(X, feet) || solid(X - FootSpread, feet) || solid(X + FootSpread, feet))
                 {
+                    // close the last sliver, or the body hovers: too far up to feel the ground, too close to step
+                    for (double s = step / 2; s >= FootProbe / 2; s /= 2)
+                        if (!solid(X, Y + s + HalfHeight) && !solid(X - FootSpread, Y + s + HalfHeight) && !solid(X + FootSpread, Y + s + HalfHeight))
+                            Y += s;
                     double impact = VelocityY;
                     VelocityY = 0;
                     return impact;

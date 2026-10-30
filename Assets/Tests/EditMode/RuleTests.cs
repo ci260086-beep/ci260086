@@ -124,10 +124,11 @@ namespace DeepDrill.Tests
         public void Formulas_MatchTheBrief()
         {
             Assert.AreEqual(10, Balance.BlockHp(0), 1e-9);
-            Assert.AreEqual(10 * Math.Pow(1.03, 50), Balance.BlockHp(50), 1e-9);
+            Assert.AreEqual(10 * Math.Pow(1.03, 50) * (1 + (Balance.HpRamp - 1) / 2), Balance.BlockHp(50), 1e-9);
+            Assert.AreEqual(10 * Math.Pow(1.03, 1050) * Math.Pow(Balance.HpGrowthDeep, 10) * Balance.HpRamp, Balance.BlockHp(1060), 1e6);
             Assert.AreEqual(2 * Math.Pow(1.028, 10), Balance.OreValue(10, 2), 1e-9);
             EnsureData();
-            Assert.AreEqual(10 * Math.Pow(1.045, 3) * 0.9 * 9, Balance.DrillPrice(10, 3, 0.1, 2), 1e-6);
+            Assert.AreEqual(10 * Math.Pow(GameData.BuyGrowth, 3) * 0.9 * 9, Balance.DrillPrice(10, 3, 0.1, 2), 1e-6);
         }
 
         [Test]
@@ -199,7 +200,7 @@ namespace DeepDrill.Tests
             double first = sim.DrillPrice(0);
             Assert.AreEqual(10, first, 1e-9);
             Assert.IsTrue(sim.BuyDrill(0));
-            Assert.AreEqual(10 * 1.045, sim.DrillPrice(0), 1e-9);
+            Assert.AreEqual(10 * GameData.BuyGrowth, sim.DrillPrice(0), 1e-9);
             Assert.AreEqual(2, sim.Units.Count);
         }
 
@@ -214,7 +215,7 @@ namespace DeepDrill.Tests
         }
 
         [Test]
-        public void Merging_TwoMakeOneOfTheNextMaterialWithTripleDamage()
+        public void Merging_TwoMakeOneOfTheNextMaterial()
         {
             var sim = NewSim();
             int wood = DrillCode.Make(0, 0), stone = DrillCode.Make(0, 1);
@@ -222,7 +223,7 @@ namespace DeepDrill.Tests
             Assert.IsTrue(sim.Merge(wood));
             Assert.AreEqual(1, sim.State.drills.Count);
             Assert.AreEqual(stone, sim.State.drills[0]);
-            Assert.AreEqual(GameSim.KindDamage(wood) * 3, GameSim.KindDamage(stone), 1e-9);
+            Assert.AreEqual(GameSim.KindDamage(wood) * GameData.TierDamageMult, GameSim.KindDamage(stone), 1e-9);
             Assert.IsFalse(sim.Merge(stone), "needs two");
         }
 
