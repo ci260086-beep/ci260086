@@ -17,9 +17,14 @@ namespace DeepDrill.Core
         public const byte Chest = 6;
         public const byte Boss = 7;
         public const byte Wall = 8;
+        public const byte Water = 9;
+        public const byte Magma = 10;
+        public const byte SuperHard = 11;
         public const byte OreBase = 16;
 
         public static bool IsOre(byte m) => m >= OreBase;
+        public static bool IsLiquid(byte m) => m == Water || m == Magma;
+        public static bool Flows(byte m) => m == Sand || IsLiquid(m);
     }
 
     public sealed class PixelChunk
@@ -308,16 +313,25 @@ namespace DeepDrill.Core
                 for (int n = 0; n < PixelChunk.Size; n++)
                 {
                     int lx = leftFirst ? n : PixelChunk.Size - 1 - n;
-                    if (chunk.Mats[ly * PixelChunk.Size + lx] != Mat.Sand) continue;
+                    byte mat = chunk.Mats[ly * PixelChunk.Size + lx];
+                    if (!Mat.Flows(mat)) continue;
                     int x = cx * PixelChunk.Size + lx, y = cy * PixelChunk.Size + ly;
-                    int to = !Solid(x, y + 1) ? x
-                        : !Solid(x - 1, y + 1) ? x - 1
-                        : !Solid(x + 1, y + 1) ? x + 1 : int.MinValue;
+                    int toY = y + 1;
+                    int to = !Solid(x, toY) ? x
+                        : !Solid(x - 1, toY) ? x - 1
+                        : !Solid(x + 1, toY) ? x + 1 : int.MinValue;
+                    if (to == int.MinValue && Mat.IsLiquid(mat))
+                    {
+                        // liquids also spread sideways along whatever they rest on
+                        toY = y;
+                        to = !Solid(x + (leftFirst ? -1 : 1), y) ? x + (leftFirst ? -1 : 1)
+                            : !Solid(x + (leftFirst ? 1 : -1), y) ? x + (leftFirst ? 1 : -1) : int.MinValue;
+                    }
                     if (to == int.MinValue) continue;
                     float hp = chunk.Hp[ly * PixelChunk.Size + lx];
                     Put(x, y, Mat.Air, 0);
-                    Put(to, y + 1, Mat.Sand, hp);
-                    ChunkAt(to / PixelChunk.Size, (y + 1) / PixelChunk.Size).SandAwake = true;
+                    Put(to, toY, mat, hp);
+                    ChunkAt(to / PixelChunk.Size, toY / PixelChunk.Size).SandAwake = true;
                     moved++;
                 }
             }
@@ -335,7 +349,7 @@ namespace DeepDrill.Core
                     int i = ly * PixelChunk.Size + lx;
                     chunk.Mats[i] = mat;
                     chunk.Hp[i] = hp;
-                    if (mat == Mat.Sand) chunk.SandAwake = true;
+                    if (Mat.Flows(mat)) chunk.SandAwake = true;
                 }
             }
             return chunk;
@@ -412,6 +426,57 @@ namespace DeepDrill.Core
                 case BlockType.Tnt:
                     if (Math.Abs(dx) < 7 && Math.Abs(dy) < 7) mat = Mat.Tnt;
                     break;
+                case BlockType.Water:
+                    mat = Mat.Water;
+                    break;
+                case BlockType.Magma:
+                    if (dist < StoneRadius + 1) mat = Mat.Magma;
+                    break;
+                case BlockType.SuperHard:
+                    if (dist < StoneRadius + 1) { mat = Mat.SuperHard; hp *= (float)Balance.SuperHardHpMultiplier; }
+                    break;
+            }
+
+            if (WorldGen.LayerAt(seed, tileRow, col) == Balance.RuinsLayer && WorldGen.RoomAt(seed, tileRow, col, out bool treasure))
+            {
+                mat = treasure && Math.Abs(dx) < 6 && Math.Abs(dy) < 5 ? Mat.Chest : Mat.Air;
+                if (mat == Mat.Air) hp = 0;
+            }
+        }
+
+        /// <summary>Slides a band of rows sideways with wrap-around.</summary>
+        public void ShiftBand(int firstY, int lastY, int dx)
+        {
+            var mats = new byte[Width];
+            var hps = new float[Width];
+            for (int y = firstY; y <= lastY; y++)
+            {
+                for (int x = 0; x < Width; x++)
+                {
+                    mats[x] = Get(x, y);
+                    hps[x] = HpAt(x, y);
+                }
+                for (int x = 0; x < Width; x++)
+                {
+                    int from = (x - dx + Width) % Width;
+                    if (mats[from] == Mat.Boss) return;
+                    Put(x, y, mats[from], hps[from]);
+                }
+            }
+        }
+
+        /// <summary>Lets the ground flow back into a circle that was dug out.</summary>
+        public void Refill(int cx, int cy, int radius)
+        {
+            for (int y = cy - radius; y <= cy + radius; y++)
+            {
+                for (int x = cx - radius; x <= cx + radius; x++)
+                {
+                    if ((x - cx) * (x - cx) + (y - cy) * (y - cy) > radius * radius) continue;
+                    if (y < 0 || x < 0 || x >= Width || Solid(x, y)) continue;
+                    PixelFor(x, y, out byte mat, out float hp);
+                    if (mat != Mat.Air && mat != Mat.Tnt) Put(x, y, mat, hp);
+                }
             }
         }
     }

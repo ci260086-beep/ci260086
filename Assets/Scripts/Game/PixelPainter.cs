@@ -68,6 +68,12 @@ namespace DeepDrill.Game
                         : n % 7 == 0 ? new Color32(0xb4, 0xb4, 0xc2, 255) : new Color32(0x8a, 0x8a, 0x98, 255);
                 case Mat.Sand:
                     return n % 4 == 0 ? ramp[5] : ramp[4];
+                case Mat.Water:
+                    return (x + y / 2) % 7 == 0 ? new Color32(0x70, 0xb8, 0xe8, 255) : new Color32(0x2a, 0x6a, 0xb0, 255);
+                case Mat.Magma:
+                    return n % 3 == 0 ? new Color32(0xff, 0xc0, 0x50, 255) : new Color32(0xe0, 0x50, 0x20, 255);
+                case Mat.SuperHard:
+                    return n % 4 == 0 ? new Color32(0xa8, 0xa0, 0xc0, 255) : new Color32(0x4a, 0x46, 0x5a, 255);
                 case Mat.Tnt:
                     return (y / 3) % 2 == 0 ? new Color32(0xb8, 0x2c, 0x2c, 255) : new Color32(0x7c, 0x1a, 0x22, 255);
                 case Mat.Chest:
@@ -80,9 +86,33 @@ namespace DeepDrill.Game
                 var ore = ores[mat - Mat.OreBase];
                 return Mix(x / 2, y / 2) % 9 == 0 ? new Color32(255, 255, 255, 255) : ore;
             }
+            if (TryDecal(x, y, out Color32 decal)) return decal;
+
             // specks come in small clumps: single-pixel noise reads as static rather than earth
             int speck = (int)(Mix(x / SpeckSize, y / SpeckSize) % 14);
             return speck == 0 ? ramp[4] : speck <= 2 ? ramp[2] : ramp[3];
+        }
+
+        // One tile in nine carries a small buried thing: pebbles, a bone or a root.
+        private static bool TryDecal(int x, int y, out Color32 color)
+        {
+            color = default;
+            int tileX = x / PixelWorld.TileSize, tileY = y / PixelWorld.TileSize;
+            uint roll = Mix(tileX + 91, tileY + 37);
+            if (roll % 9 != 0) return false;
+            int lx = x - tileX * PixelWorld.TileSize, ly = y - tileY * PixelWorld.TileSize;
+            switch ((roll >> 8) % 3)
+            {
+                case 0:
+                    color = new Color32(0x6a, 0x6a, 0x78, 255);
+                    return (lx >= 4 && lx <= 6 && ly >= 9 && ly <= 10) || (lx >= 10 && lx <= 11 && ly >= 5 && ly <= 6);
+                case 1:
+                    color = new Color32(0xe0, 0xd8, 0xc8, 255);
+                    return (ly == 8 && lx >= 4 && lx <= 11) || ((lx == 3 || lx == 12) && ly >= 7 && ly <= 9);
+                default:
+                    color = new Color32(0x4a, 0x31, 0x22, 255);
+                    return ly == 4 + lx / 2 && lx >= 2 && lx <= 12;
+            }
         }
 
         /// <summary>Repaints part of a chunk into its colour buffer.</summary>

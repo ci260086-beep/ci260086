@@ -91,7 +91,7 @@ namespace DeepDrill.Core
         public const int PhaseBandRows = 30;
         public const double PhaseHardHigh = 0.30;
         public const double PhaseHardLow = 0.05;
-        public const double ConvectionSeconds = 2;
+        public const double ConvectionSeconds = 0.25;
         public const double RefillSeconds = 6;
         public const double HeatDamageRatio = 0.25;
 

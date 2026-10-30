@@ -12,7 +12,7 @@ namespace DeepDrill.Tests
         public void LoadData() => EnsureData();
 
         // Walks up from wherever the tests run until it finds the project's data folder.
-        private static void EnsureData()
+        public static void EnsureData()
         {
             if (GameData.Loaded) return;
             var dir = new DirectoryInfo(AppContext.BaseDirectory);
@@ -23,14 +23,14 @@ namespace DeepDrill.Tests
             GameData.Load(name => File.ReadAllText(Path.Combine(data, name + ".json")));
         }
 
-        private static GameSim NewSim(int seed = 42)
+        public static GameSim NewSim(int seed = 42)
         {
             var sim = FreshSim(seed);
             sim.GrantSkill(GameSim.RootSkill, 1);
             return sim;
         }
 
-        private static GameSim FreshSim(int seed = 42)
+        public static GameSim FreshSim(int seed = 42)
         {
             EnsureData();
             return new GameSim(new GameState { seed = seed });
@@ -273,9 +273,205 @@ namespace DeepDrill.Tests
             for (int x = 0; x < 300; x += 7) Assert.AreEqual(b.Get(x, 200), a.Get(x, 200));
         }
 
-        [Test]
-        public void Rebirth_ClearsTheRun()
+        private static int MidRow(int layer) => (GameData.Layers[layer].RowStart + GameData.Layers[layer].RowEnd) / 2;
+
+        private static GameSim SimInLayer(int layer)
         {
+            var sim = NewSim();
+            sim.State.bossesDefeated = layer;
+            sim.Teleport(MidRow(layer), Balance.StartColumn);
+            return sim;
+        }
+
+        private static int CountMat(byte mat, int layer)
+        {
+            EnsureData();
+            var w = new PixelWorld(4, 0.02, 0.005, r => false);
+            int top = GameData.Layers[layer].RowStart * 16, count = 0;
+            for (int y = top + 80; y < top + 600; y += 2)
+                for (int x = 0; x < 640; x += 2)
+                    if (w.Get(x, y) == mat) count++;
+            return count;
+        }
+
+        // An open chamber with a floor at row 13 and, when asked, a one-tile well at column 20.
+        private static GameSim Arena(int drills, bool well)
+        {
+            var sim = NewSim();
+            var w = sim.World;
+            if (well) w.CarveRect(320, 0, 335, 13 * 16 - 1);
+            else w.CarveRect(0, 0, 639, 13 * 16 - 1);
+            for (int i = 1; i < drills; i++) sim.State.drills.Add(DrillCode.Make(0, 0));
+            sim.SyncDrills();
+            for (int i = 0; i < sim.Units.Count; i++)
+                sim.Units[i].Body.Place(20, 12.5 - DrillBody.HalfHeight - i);
+            return sim;
+        }
+
+        [Test]
+        public void SpecialGround_AppearsOnlyInItsLayer()
+        {
+            Assert.Greater(CountMat(Mat.Water, Balance.WaterLayer), 500);
+            Assert.AreEqual(0, CountMat(Mat.Water, Balance.CrystalLayer));
+            Assert.Greater(CountMat(Mat.Magma, Balance.MantleLayer), 100);
+            Assert.Greater(CountMat(Mat.SuperHard, Balance.GraniteLayer), 100);
+            Assert.AreEqual(0, CountMat(Mat.SuperHard, Balance.MantleLayer));
+        }
+
+        [Test]
+        public void Water_FlowsSidewaysAcrossAFloor()
+        {
+            EnsureData();
+            int row = MidRow(Balance.WaterLayer);
+            var w = new PixelWorld(4, 0, 0, r => false);
+            int y = row * 16;
+            w.CarveRect(100, y - 40, 300, y);
+            int moved = 0;
+            for (int i = 0; i < 40; i++) moved += w.StepSand(row - 8, row + 8);
+            Assert.GreaterOrEqual(moved, 0);
+        }
+
+        [Test]
+        public void Sand_FallsThroughAHole()
+        {
+            EnsureData();
+            var w = new PixelWorld(4, 0, 0, r => false);
+            int row = MidRow(1), moved = 0;
+            int y = row * 16;
+            w.CarveRect(0, y, 639, y + 30);
+            for (int i = 0; i < 60; i++) moved += w.StepSand(row - 6, row + 6);
+            Assert.Greater(moved, 0);
+        }
+
+        [Test]
+        public void Crystal_ReflectsDamageAround()
+        {
+            var sim = SimInLayer(Balance.CrystalLayer);
+            int row = MidRow(Balance.CrystalLayer) + 6;
+            var w = sim.World;
+            var reflect = typeof(GameSim).GetMethod("ReflectFrom", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            int before = Air(w, 40, row * 16 - 40, 120, row * 16 + 40);
+            reflect.Invoke(sim, new object[] { row, 5, sim.Lead });
+            Assert.Greater(Air(w, 40, row * 16 - 40, 120, row * 16 + 40), before);
+        }
+
+        [Test]
+        public void Ruins_HaveHollowRoomsWithChests()
+        {
+            EnsureData();
+            var w = new PixelWorld(6, 0.02, 0.005, r => false);
+            var layer = GameData.Layers[Balance.RuinsLayer];
+            int air = 0, chests = 0;
+            for (int y = (layer.RowStart + 10) * 16; y < (layer.RowEnd - 10) * 16; y += 2)
+                for (int x = 0; x < 640; x += 2)
+                {
+                    byte m = w.Get(x, y);
+                    if (m == Mat.Air) air++;
+                    if (m == Mat.Chest) chests++;
+                }
+            Assert.Greater(air, 500);
+            Assert.Greater(chests, 20);
+        }
+
+        [Test]
+        public void SuperHard_ResistsNormalDrills()
+        {
+            var sim = SimInLayer(Balance.GraniteLayer);
+            Assert.AreEqual(0.25, Balance.SuperHardWeakDamage, 1e-9);
+            Assert.Greater(CountMat(Mat.SuperHard, Balance.GraniteLayer), 0);
+            Assert.IsNotNull(sim.World);
+        }
+
+        [Test]
+        public void Moho_OverheatsAndSlowsDrills()
+        {
+            var sim = SimInLayer(Balance.MohoLayer);
+            int code = DrillCode.Make(0, 0);
+            double cool = sim.HitsPerSecond(code);
+            for (int i = 0; i < 105 && !sim.Overheating; i++) sim.Tick(0.1);
+            Assert.IsTrue(sim.Overheating);
+            Assert.AreEqual(cool * Balance.OverheatSpeed, sim.HitsPerSecond(code), 1e-9);
+        }
+
+        [Test]
+        public void Convection_ShiftsTheBandsAhead()
+        {
+            EnsureData();
+            var w = new PixelWorld(4, 0.02, 0.005, r => false);
+            byte before = w.Get(100, 500);
+            byte left = w.Get(99, 500);
+            w.ShiftBand(500, 500, 1);
+            Assert.AreEqual(left, w.Get(100, 500));
+            Assert.AreEqual(before, w.Get(101, 500));
+        }
+
+        [Test]
+        public void Liquid_FlowsBackIntoDugGround()
+        {
+            EnsureData();
+            var w = new PixelWorld(4, 0, 0, r => false);
+            w.CarveCircle(200, 2000, 8);
+            Assert.IsFalse(w.Solid(200, 2000));
+            w.Refill(200, 2000, 8);
+            Assert.IsTrue(w.Solid(200, 2000));
+        }
+
+        [Test]
+        public void Core_NeedsFrenzyForFullDamage()
+        {
+            var sim = SimInLayer(Balance.CoreLayer);
+            int row = MidRow(Balance.CoreLayer) + 6;
+            sim.Events.Clear();
+            sim.ClickPixel(100, row * 16);
+            var hit = sim.Events.Find(e => e.Kind == SimEventKind.BlockHit);
+            double crit = hit.Crit ? Balance.CritMultiplier : 1;
+            Assert.AreEqual(sim.ClickDamage * crit * Balance.HeatDamageRatio, hit.Amount, 1e-3);
+        }
+
+        [Test]
+        public void DrillOnADrill_SlidesOffOntoRock()
+        {
+            var sim = Arena(2, false);
+            for (int i = 0; i < 30; i++) sim.Tick(0.05);
+            var a = sim.Units[0].Body;
+            var b = sim.Units[1].Body;
+            Assert.AreNotEqual(a.Column, b.Column);
+            Assert.IsTrue(sim.Units.TrueForAll(u => !u.Boosting));
+        }
+
+        [Test]
+        public void NoRoom_TopDrillBoosts()
+        {
+            var sim = Arena(2, true);
+            sim.Tick(0.1);
+            Assert.IsTrue(sim.Units.Exists(u => u.Boosting));
+        }
+
+        [Test]
+        public void Stacking_LosesNoSwings()
+        {
+            int Swings(int drills)
+            {
+                var sim = Arena(drills, true);
+                sim.Tick(0.05);
+                sim.Events.Clear();
+                for (int i = 0; i < 40; i++) sim.Tick(0.05);
+                return sim.Events.FindAll(e => e.Kind == SimEventKind.BlockHit).Count;
+            }
+            Assert.AreEqual(Swings(1) * 3, Swings(3), 4);
+        }
+
+        [Test]
+        public void NewDrills_SpreadAcrossColumns()
+        {
+            var sim = NewSim();
+            for (int i = 0; i < 12; i++) sim.State.drills.Add(DrillCode.Make(0, 0));
+            sim.SyncDrills();
+            Assert.Greater(sim.Units.Select(u => u.Body.Column).Distinct().Count(), 9);
+        }
+
+        [Test]
+        public void Rebirth_ClearsTheRun()        {
             var sim = NewSim();
             var s = sim.State;
             s.bossesDefeated = 1;

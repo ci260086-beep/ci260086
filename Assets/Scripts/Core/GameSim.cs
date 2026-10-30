@@ -25,6 +25,7 @@ namespace DeepDrill.Core
         AchievementUnlocked,
         Overheated,
         PixelsDug,
+        DrillBoosted,
     }
 
     public struct SimEvent
@@ -48,6 +49,10 @@ namespace DeepDrill.Core
         public double HitClock;
         public double LastSwing = -1;
         public bool PrefersLeft;
+
+        /// <summary>Stacked with nowhere to go: this drill hammers the one below instead.</summary>
+        public bool Boosting;
+        public DrillUnit Below;
 
 
         public int Family => DrillCode.Family(Code);
@@ -105,6 +110,7 @@ namespace DeepDrill.Core
             State = state;
             random = new Random(randomSeed ?? state.seed);
             solidAt = SolidAtTiles;
+            solidForStepper = SolidForStepper;
             layerBonus = new double[GameData.Layers.Count];
             RefreshEffects();
             ResetWorld();

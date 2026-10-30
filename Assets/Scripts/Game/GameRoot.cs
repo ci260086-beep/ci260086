@@ -15,6 +15,7 @@ namespace DeepDrill.Game
         private const float HitstopCooldown = 0.5f;
         private const int DepthMilestone = 50;
         private const int MaxBitsPerSwing = 4;
+        private const int GemProbes = 1;
         private const float SlowMotionSeconds = 0.5f;
         private const float SlowMotionRate = 0.25f;
         private const int LootFountain = 14;
@@ -134,7 +135,8 @@ namespace DeepDrill.Game
             DrainEvents();
 
             fx.Ambient(GameData.LayerOfRow(sim.State.depth), world.CameraPosition, Time.unscaledDeltaTime);
-            if (world.TryTwinkle(Time.unscaledDeltaTime, out Vector2 glint)) fx.Twinkle(glint);
+            for (int i = 0; i < GemProbes; i++)
+                if (world.TryFindGem(out Vector2 glint)) fx.Twinkle(glint);
 
             autosave += Time.unscaledDeltaTime;
             if (autosave >= AutosaveSeconds)
@@ -215,6 +217,10 @@ namespace DeepDrill.Game
                     world.Shake(0.3f, 4f);
                     break;
 
+                case SimEventKind.DrillBoosted:
+                    if (fx.Allow()) fx.Sparks(WorldView.CellCenter(e.Row, e.Col) + Vector2.down * 0.4f, 1);
+                    break;
+
                 case SimEventKind.PixelsDug:
                     OnPixelsDug(e);
                     break;
@@ -270,6 +276,7 @@ namespace DeepDrill.Game
         private void OnHit(in SimEvent e)
         {
             world.NoteHit(e.Row, e.Col);
+            if (e.FromClick) fx.Flash(WorldView.CellCenter(e.Row, e.Col), 1.2f); // the rock blinks white
             bool boss = e.Block == BlockType.BossRoot;
             if (e.FromClick)
             {

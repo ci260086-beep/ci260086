@@ -137,17 +137,21 @@ namespace DeepDrill.Game
 
         public void NoteHit(int row, int col) { }
 
+        /// <summary>A random spot in view that holds ore, for the odd glint of light.</summary>
+        public bool TryFindGem(out Vector2 at)
+        {
+            at = default;
+            int x = Mathf.FloorToInt((CameraPosition.x + 0.5f + Random.Range(-10f, 4f)) * Stage.PixelsPerUnit);
+            int y = Mathf.FloorToInt((-CameraPosition.y + 0.5f + Random.Range(-5.5f, 5.5f)) * Stage.PixelsPerUnit);
+            if (!Mat.IsOre(sim.World.Get(x, y))) return false;
+            at = new Vector2(x / Stage.PixelsPerUnit - 0.5f, -(y / Stage.PixelsPerUnit - 0.5f));
+            return true;
+        }
+
         /// <summary>Jumps the camera to the lead drill, for when it moves further than a pan should show.</summary>
         public void SnapToDrill() => followX = (float)sim.Lead.Body.X;
 
         public static Vector2 CellCenter(int row, int col) => new Vector2(col, -row);
-
-        /// <summary>Nothing to report in pixel ground yet; kept for the gem glints.</summary>
-        public bool TryTwinkle(float dt, out Vector2 at)
-        {
-            at = default;
-            return false;
-        }
 
         private void LateUpdate()
         {

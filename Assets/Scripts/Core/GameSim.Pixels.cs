@@ -16,6 +16,7 @@ namespace DeepDrill.Core
         private const int NearDrillPixels = 12;
         private const int BaseDigRadius = 7;
         private const int BodyClearance = 4;
+        private const int MaxRefills = 64;
 
         private static readonly Dictionary<int, (int dx, int dy)[]> DigShapes = new Dictionary<int, (int, int)[]>();
 
@@ -25,6 +26,12 @@ namespace DeepDrill.Core
         private int comboPixels;
         private int chestPixels;
         private double sandClock;
+        private double convectionClock;
+        private bool reflecting;
+        private bool washed;
+        private DrillUnit stepper;
+        private readonly Func<double, double, bool> solidForStepper;
+        private readonly Queue<(int x, int y, int radius, double time)> refills = new Queue<(int, int, int, double)>();
 
         public PixelWorld World => world;
 
@@ -99,7 +106,9 @@ namespace DeepDrill.Core
                     break;
                 }
 
-                double rate = mat == Mat.Hard ? (1 + Effect(SkillEffect.hard_pct) / 100) * (heavy ? 3 : 1) : 1;
+                double rate = 1;
+                if (mat == Mat.Hard) rate = (1 + Effect(SkillEffect.hard_pct) / 100) * (heavy ? 3 : 1);
+                if (mat == Mat.SuperHard) rate = (1 + Effect(SkillEffect.hard_pct) / 100) * (heavy ? 3 : Balance.SuperHardWeakDamage);
                 double cost = world.HpAt(x, y) / rate;
                 if (cost > budget)
                 {
@@ -121,6 +130,14 @@ namespace DeepDrill.Core
             });
             if (removed > 0)
                 Events.Add(new SimEvent { Kind = SimEventKind.PixelsDug, Row = cy, Col = cx, Amount = removed, Ore = lastMat });
+
+            if (removed > 0 && GameData.LayerOfRow(row) == Balance.LiquidLayer && refills.Count < MaxRefills)
+                refills.Enqueue((cx, cy, radius, simTime + Balance.RefillSeconds));
+            if (washed)
+            {
+                washed = false;
+                WashAround(cx, cy, by);
+            }
 
             PassOverflow(cx, cy, budget, by);
             RunBlasts();
@@ -161,6 +178,9 @@ namespace DeepDrill.Core
                 case Mat.Chest: return BlockType.Chest;
                 case Mat.Boss: return BlockType.BossRoot;
                 case Mat.Grass: return BlockType.Grass;
+                case Mat.Water: return BlockType.Water;
+                case Mat.Magma: return BlockType.Magma;
+                case Mat.SuperHard: return BlockType.SuperHard;
                 default: return BlockType.Dirt;
             }
         }
@@ -184,6 +204,12 @@ namespace DeepDrill.Core
                 State.bestChain = Math.Max(State.bestChain, blastsThisChain);
                 pendingBlasts.Enqueue((row, col));
             }
+            if (mat == Mat.Magma && world.ClaimCharge(row, col) && blastsThisChain < Balance.MagmaChainLimit)
+            {
+                blastsThisChain++;
+                pendingBlasts.Enqueue((row, col));
+            }
+            if (mat == Mat.Water) washed = true;
 
             comboPixels += by.Family == SwiftFamily ? 2 : 1;
             if (comboPixels < ComboPixels) return;
@@ -227,6 +253,32 @@ namespace DeepDrill.Core
             {
                 Kind = SimEventKind.BlockBroken, Row = row, Col = col, Block = BlockType.Ore, Ore = ore, Amount = value,
             });
+            if (GameData.LayerOfRow(row) == Balance.CrystalLayer) ReflectFrom(row, col, by);
+        }
+
+        // Crystal throws half a block's strength at everything within two tiles.
+        private void ReflectFrom(int row, int col, DrillUnit by)
+        {
+            if (reflecting) return;
+            reflecting = true;
+            double damage = Balance.BlockHp(row) * Balance.CrystalReflectRatio;
+            Dig(col * Tile + Tile / 2, row * Tile + Tile / 2, Balance.CrystalReflectRadius * Tile, damage, false, false, by);
+            reflecting = false;
+        }
+
+        // Burst water shoves nearby drills away and carries off loose sand.
+        private void WashAround(int cx, int cy, DrillUnit by)
+        {
+            int reach = Balance.WaterRadius * Tile;
+            foreach (var unit in Units)
+            {
+                double dx = ToPixel(unit.Body.X) - cx;
+                if (Math.Abs(dx) > reach || Math.Abs(ToPixel(unit.Body.Y) - cy) > reach) continue;
+                unit.Body.VelocityX += (dx >= 0 ? 1 : -1) * Balance.WaterPushSpeed;
+            }
+            for (int y = cy - reach; y <= cy + reach; y += 2)
+                for (int x = cx - reach; x <= cx + reach; x += 2)
+                    if (world.Get(x, y) == Mat.Sand) RemovePixel(x, y, Mat.Sand, true, by);
         }
 
         private static double OreMultiplier(int ore)
@@ -333,19 +385,20 @@ namespace DeepDrill.Core
             {
                 physicsClock -= DrillBody.StepSeconds;
                 occupied.Clear();
-                foreach (var unit in Units)
-                {
-                    long cell = CellKey(unit.Body.BodyRow, unit.Body.Column);
-                    unit.Body.Nudge = 0;
-                    if (occupied.ContainsKey(cell))
-                        unit.Body.Nudge = unit.PrefersLeft ? -1 : 1; // drills share rock but drift apart
-                    else
-                        occupied[cell] = unit;
-                }
+                foreach (var unit in Units) occupied[CellKey(unit.Body.BodyRow, unit.Body.Column)] = unit;
 
                 foreach (var unit in Units)
                 {
-                    double impact = unit.Body.Step(DrillBody.StepSeconds, solidAt);
+                    stepper = unit;
+                    UpdateFooting(unit);
+                    long before = CellKey(unit.Body.BodyRow, unit.Body.Column);
+                    double impact = unit.Body.Step(DrillBody.StepSeconds, solidForStepper);
+                    long after = CellKey(unit.Body.BodyRow, unit.Body.Column);
+                    if (before != after)
+                    {
+                        occupied.Remove(before);
+                        occupied[after] = unit;
+                    }
                     if (impact <= 0) continue;
                     Events.Add(new SimEvent
                     {
@@ -363,15 +416,71 @@ namespace DeepDrill.Core
             UpdateDepth();
         }
 
+        // Two drills never share a cell: to the one being stepped, the other is ground.
+        private bool SolidForStepper(double x, double y)
+        {
+            if (SolidAtTiles(x, y)) return true;
+            long cell = CellKey((int)Math.Floor(y + 0.5), (int)Math.Floor(x + 0.5));
+            return occupied.TryGetValue(cell, out var other) && other != stepper;
+        }
+
+        // A drill resting on a drill slides to the nearest column it can dig in. With nowhere to go
+        // it stays on top as a booster, so no drill is ever idle.
+        private void UpdateFooting(DrillUnit unit)
+        {
+            var body = unit.Body;
+            body.Nudge = 0;
+            unit.Boosting = false;
+            unit.Below = null;
+            int feet = body.FeetRow, col = body.Column;
+            if (!occupied.TryGetValue(CellKey(feet, col), out var below) || below == unit) return;
+
+            int side = OpenSide(body.BodyRow, feet, col, unit.PrefersLeft);
+            if (side != 0)
+            {
+                body.Nudge = side;
+                return;
+            }
+            unit.Boosting = true;
+            unit.Below = below;
+        }
+
+        private int OpenSide(int bodyRow, int feet, int col, bool prefersLeft)
+        {
+            bool leftClear = true, rightClear = true;
+            for (int d = 1; d <= SlideSearchColumns; d++)
+            {
+                leftClear = leftClear && Passable(bodyRow, col - d);
+                rightClear = rightClear && Passable(bodyRow, col + d);
+                bool left = leftClear && !occupied.ContainsKey(CellKey(feet, col - d));
+                bool right = rightClear && !occupied.ContainsKey(CellKey(feet, col + d));
+                if (left && right) return prefersLeft ? -1 : 1;
+                if (left) return -1;
+                if (right) return 1;
+                if (!leftClear && !rightClear) return 0;
+            }
+            return 0;
+        }
+
+        private bool Passable(int row, int col) =>
+            !SolidAtTiles(col, row) && !occupied.ContainsKey(CellKey(row, col));
+
         private void Swing(DrillUnit unit)
         {
             unit.LastSwing = simTime;
             bool crit = RollCrit();
             int radius = DigRadiusOf(unit);
             double damage = DamageOf(unit.Code);
-            if (Dig(ToPixel(unit.Body.TipX), ToPixel(unit.Body.TipY), radius, damage, false, crit, unit) > 0) return;
+
+            var digger = unit;
+            for (int hops = 0; digger.Boosting && digger.Below != null && hops < MaxBoostChain; hops++)
+                digger = digger.Below;
+            if (digger != unit)
+                Events.Add(new SimEvent { Kind = SimEventKind.DrillBoosted, Row = unit.Body.BodyRow, Col = unit.Body.Column });
+
+            if (Dig(ToPixel(digger.Body.TipX), ToPixel(digger.Body.TipY), radius, damage, false, crit, unit) > 0) return;
             // the nose found nothing: clear whatever is holding the body so no drill swings at air
-            Dig(ToPixel(unit.Body.X), ToPixel(unit.Body.Y), radius + BodyClearance, damage, false, crit, unit);
+            Dig(ToPixel(digger.Body.X), ToPixel(digger.Body.Y), radius + BodyClearance, damage, false, crit, unit);
         }
 
         private void RunBlasts()
@@ -418,6 +527,8 @@ namespace DeepDrill.Core
         private void AdvanceLayerMechanics(double dt)
         {
             simTime += dt;
+            AdvanceConvection(dt);
+            AdvanceRefill();
             if (overheatLeft > 0) overheatLeft -= dt;
             if (GameData.LayerOfRow(State.depth) != Balance.MohoLayer) return;
             heatClock += dt;
@@ -425,6 +536,35 @@ namespace DeepDrill.Core
             heatClock = 0;
             overheatLeft = Balance.OverheatSeconds;
             if (!InFrenzy) Events.Add(new SimEvent { Kind = SimEventKind.Overheated });
+        }
+
+        // The rows ahead of the drills creep sideways, alternate bands in opposite directions.
+        private void AdvanceConvection(double dt)
+        {
+            if (GameData.LayerOfRow(State.depth) != Balance.ConvectionLayer) return;
+            convectionClock += dt;
+            if (convectionClock < Balance.ConvectionSeconds) return;
+            convectionClock = 0;
+            for (int row = State.depth + 2; row <= State.depth + Balance.LooseWindowRows; row += 2)
+            {
+                if (IsBossRow(row)) continue;
+                world.ShiftBand(row * Tile, (row + 1) * Tile - 1, row / 2 % 2 == 0 ? 1 : -1);
+            }
+        }
+
+        private void AdvanceRefill()
+        {
+            while (refills.Count > 0 && refills.Peek().time <= simTime)
+            {
+                var (x, y, radius, _) = refills.Dequeue();
+                bool busy = false;
+                foreach (var unit in Units)
+                {
+                    int dx = ToPixel(unit.Body.X) - x, dy = ToPixel(unit.Body.Y) - y;
+                    if (dx * dx + dy * dy < (radius + 8) * (radius + 8)) busy = true;
+                }
+                if (!busy) world.Refill(x, y, radius);
+            }
         }
 
         private void DefeatBoss()
