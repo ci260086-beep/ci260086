@@ -303,6 +303,9 @@ namespace DeepDrill.Core
         private void HitBoss(int row, int col, double amount, bool fromClick, bool crit)
         {
             if (!BossActive) return;
+            // chips off the guardian pay like the dirt the swing would have dug; without this a drill
+            // that reaches a guardian too weak to beat it earns nothing and can never catch up
+            Earn(Balance.OreValue(row, Balance.DirtValue) * Balance.BossChipShare * amount / Balance.BlockHp(row) * IncomeMultiplier);
             amount *= 1 + Effect(SkillEffect.boss_pct) / 100;
             HitBossArmor(ref amount);
             BossHp -= amount;
@@ -321,8 +324,7 @@ namespace DeepDrill.Core
             if (unit != null)
             {
                 unit.LastSwing = simTime;
-                Dig(ToPixel(unit.Body.TipX), ToPixel(unit.Body.TipY), DigRadiusOf(unit),
-                    DamageOf(unit.Code) * (1 + Effect(SkillEffect.click_pct) / 100), true, RollCrit(), unit);
+                DigFor(unit, DigRadiusOf(unit), DamageOf(unit.Code) * (1 + Effect(SkillEffect.click_pct) / 100), true, RollCrit(), unit);
                 return true;
             }
             if (!AutoDrillUnlocked || !world.Solid(x, y) || x < 0 || x >= PixelWorld.Width) return false;
@@ -478,9 +480,15 @@ namespace DeepDrill.Core
             if (digger != unit)
                 Events.Add(new SimEvent { Kind = SimEventKind.DrillBoosted, Row = unit.Body.BodyRow, Col = unit.Body.Column });
 
-            if (Dig(ToPixel(digger.Body.TipX), ToPixel(digger.Body.TipY), radius, damage, false, crit, unit) > 0) return;
-            // the nose found nothing: clear whatever is holding the body so no drill swings at air
-            Dig(ToPixel(digger.Body.X), ToPixel(digger.Body.Y), radius + BodyClearance, damage, false, crit, unit);
+            DigFor(digger, radius, damage, false, crit, unit);
+        }
+
+        // Digs at the nose. If the nose finds nothing, or the body is wedged against rock it is trying
+        // to slide past, it clears around the body instead, so a drill never swings at air or stays stuck.
+        private void DigFor(DrillUnit digger, int radius, double damage, bool fromClick, bool crit, DrillUnit by)
+        {
+            if (!digger.Body.Blocked && Dig(ToPixel(digger.Body.TipX), ToPixel(digger.Body.TipY), radius, damage, fromClick, crit, by) > 0) return;
+            Dig(ToPixel(digger.Body.X), ToPixel(digger.Body.Y), radius + BodyClearance, damage, fromClick, crit, by);
         }
 
         private void RunBlasts()

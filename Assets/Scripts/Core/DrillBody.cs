@@ -39,6 +39,9 @@ namespace DeepDrill.Core
 
         public bool Grounded { get; private set; }
 
+        /// <summary>True when the last step tried to slide and rock stopped the body.</summary>
+        public bool Blocked { get; private set; }
+
         public double DirectionX => Math.Sin(Angle * Math.PI / 180);
         public double DirectionY => Math.Cos(Angle * Math.PI / 180);
         public double TipX => X + DirectionX * TipReach;
@@ -59,6 +62,7 @@ namespace DeepDrill.Core
         /// <summary>Advances one fixed step. Returns the landing speed, or 0 if it did not land.</summary>
         public double Step(double dt, Func<double, double, bool> solid)
         {
+            Blocked = false;
             StepOutOfGround(solid);
 
             double feet = Y + HalfHeight + FootProbe;
@@ -113,6 +117,7 @@ namespace DeepDrill.Core
             if (solid(edge, Y) || solid(edge, Y - HalfHeight * 0.6))
             {
                 VelocityX = 0;
+                Blocked = true;
                 return;
             }
             X = next;

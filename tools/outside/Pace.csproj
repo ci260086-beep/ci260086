@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Plays the game headless with a simple bot and prints when each milestone falls. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net$(BundledNETCoreAppTargetFrameworkVersion)</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <NoWarn>CS0649;CS0414</NoWarn>
+    <OutputPath>out\pace</OutputPath>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <RollForward>Major</RollForward>
+    <Project>$(MSBuildThisFileDirectory)..\..</Project>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="$(Project)\Assets\Scripts\Core\*.cs" />
+    <Compile Include="Pace.cs" />
+  </ItemGroup>
+</Project>

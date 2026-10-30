@@ -86,6 +86,7 @@ namespace DeepDrill.Game
 
             var stageTexture = new RenderTexture(Stage.Width, Stage.Height, 16) { filterMode = FilterMode.Point };
             var camera = BuildCamera(stageTexture);
+            BuildScreenCamera();
 
             hud = gameObject.AddComponent<HudView>();
             hud.Init(sim, art, stageTexture);
@@ -100,7 +101,7 @@ namespace DeepDrill.Game
             sound.Init();
 
             hud.SaveRequested += SaveNow;
-            if (offline > 0) hud.ShowToast($"离线收益 +{NumberFormat.Short(offline)}", 5f);
+            if (offline > 0) hud.ShowOffline(sim.LastOffline);
 
             string shots = CommandLine.Value("--shots");
             if (shots != null) gameObject.AddComponent<DemoDriver>().Init(this, shots);
@@ -116,6 +117,18 @@ namespace DeepDrill.Game
             camera.backgroundColor = new Color32(0x8f, 0xc9, 0xe6, 0xff);
             camera.targetTexture = target;
             return camera;
+        }
+
+        // The stage camera draws into a texture, so nothing would draw to the display itself and the
+        // editor would print "No cameras rendering" over the overlay UI. This one only clears it.
+        private static void BuildScreenCamera()
+        {
+            var camera = new GameObject("ScreenCamera").AddComponent<Camera>();
+            camera.cullingMask = 0;
+            camera.clearFlags = CameraClearFlags.SolidColor;
+            camera.backgroundColor = Color.black;
+            camera.depth = -100;
+            camera.useOcclusionCulling = false;
         }
 
         private void Update()

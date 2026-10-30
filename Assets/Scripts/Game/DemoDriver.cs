@@ -74,6 +74,10 @@ namespace DeepDrill.Game
             sim.Buy("blast_01");
             sim.State.maxDepthEver = 500;
             foreach (string id in new[] { "drill_02", "drill_03", "wealth_02", "hangar_01", "hangar_04", "frenzy_01", "strata_01", "blast_02" }) sim.Buy(id);
+            root.Hud.ShowOffline(new OfflineReport { SecondsAway = 11520, SecondsPaid = 7200, Rate = 0.5, Coins = 128000 });
+            yield return new WaitForSeconds(1f);
+            yield return Shot("offline");
+            root.Hud.CloseOffline();
             root.Hud.ShowTreePage();
             yield return new WaitForSeconds(0.6f);
             yield return Shot("tree");

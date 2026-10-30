@@ -120,6 +120,7 @@ namespace DeepDrill.Game
         private Text bossLabel;
         private Button rebirthButton;
         private Text rebirthLabel;
+        private bool rebirthHinted;
         private float rebirthArmed;
         private Button frenzyButton;
         private Image frenzyButtonImage;
@@ -202,6 +203,7 @@ namespace DeepDrill.Game
 
             toastLabel = Floating("", 0, 140, Stage.DigWidth, 18, 13, TextAnchor.MiddleCenter);
             toastLabel.color = CoinColor;
+            BuildOfflinePanel();
             guideLabel = Floating("", 0, 24, Stage.DigWidth, 18, 13, TextAnchor.MiddleCenter);
             guideLabel.fontStyle = FontStyle.Bold;
 
@@ -670,6 +672,7 @@ namespace DeepDrill.Game
             if (currentPage == PageTree) AnimateTree(dt);
             UpdateBoss();
             UpdateRebirth(dt);
+            UpdateOffline(dt);
 
         }
 
@@ -769,7 +772,11 @@ namespace DeepDrill.Game
             rebirthButton.gameObject.SetActive(can);
             if (rebirthArmed > 0) rebirthArmed -= dt;
             if (!can) return;
-            rebirthLabel.text = rebirthArmed > 0 ? "再点一次确认" : $"地核重铸 +{sim.ShardsOnRebirth}";
+            bool advised = sim.RebirthAdvised;
+            if (advised && !rebirthHinted) ShowToast("收益开始放缓，适合地核重铸", 3f);
+            rebirthHinted = advised;
+            string rate = advised ? "收益放缓，适合重铸" : $"每分钟 +{sim.ShardsPerMinute:0.0}";
+            rebirthLabel.text = rebirthArmed > 0 ? "再点一次确认" : $"地核重铸 +{sim.ShardsOnRebirth}\n{rate}";
         }
 
         private void UpdateHangar()

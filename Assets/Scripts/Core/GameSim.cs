@@ -63,6 +63,17 @@ namespace DeepDrill.Core
     /// The whole game rule set. Knows nothing about Unity: the presentation layer calls Tick and
     /// Click, then drains <see cref="Events"/> to draw what happened. Needs GameData loaded.
     /// </summary>
+    /// <summary>What happened while the game was closed, for the welcome back screen.</summary>
+    public struct OfflineReport
+    {
+        public double SecondsAway;
+        public double SecondsPaid;
+        public double Rate;
+        public double Coins;
+
+        public bool Capped => SecondsAway > SecondsPaid;
+    }
+
     public sealed partial class GameSim
     {
         private const int IncomeWindowSeconds = 10;
@@ -126,6 +137,8 @@ namespace DeepDrill.Core
         }
 
         public DrillUnit Lead { get; private set; }
+        public OfflineReport LastOffline { get; private set; }
+        private double runRateClock;
         public double Now => simTime;
 
         public bool BossActive { get; private set; }
@@ -146,6 +159,17 @@ namespace DeepDrill.Core
             (int)Math.Floor(Balance.ShardsForRebirth(State.maxDepth, State.totalIncome)
                 * (1 + (Effect(SkillEffect.shard_pct) + 5 * AchievementCount("rebirth_")) / 100));
         public bool CanRebirth => State.AnyBossDown && ShardsOnRebirth > 0;
+
+        /// <summary>Shards this run has earned per minute so far, zero until the run has settled.</summary>
+        public double ShardsPerMinute =>
+            State.runSeconds < Balance.RebirthRateMinSeconds ? 0
+                : Balance.ShardProgress(State.maxDepth, State.totalIncome)
+                    * (1 + (Effect(SkillEffect.shard_pct) + 5 * AchievementCount("rebirth_")) / 100)
+                    / (State.runSeconds / 60);
+
+        /// <summary>True once the run's rate has slipped well below its best, the moment a rebirth pays most.</summary>
+        public bool RebirthAdvised =>
+            CanRebirth && ShardsPerMinute < State.peakShardRate * Balance.RebirthAdviceRatio;
 
         public int Combo { get; private set; }
         public double FrenzyEnergy { get; private set; }
@@ -263,6 +287,7 @@ namespace DeepDrill.Core
 
         public void Tick(double dt)
         {
+            AdvanceRunClock(dt);
             AdvanceIncomeWindow(dt);
             AdvanceCombo(dt);
             AdvanceFrenzy(dt);
@@ -382,11 +407,29 @@ namespace DeepDrill.Core
         public double ApplyOffline(long nowUnixSeconds)
         {
             if (State.lastSaveUnixSeconds <= 0 || !AutoDrillUnlocked) return 0;
-            double earned = Balance.OfflineEarnings(State.incomePerSecond, nowUnixSeconds - State.lastSaveUnixSeconds,
-                Effect(SkillEffect.offline_pct) / 100, Effect(SkillEffect.offline_hours));
+            double away = nowUnixSeconds - State.lastSaveUnixSeconds;
+            double extraRate = Effect(SkillEffect.offline_pct) / 100, extraHours = Effect(SkillEffect.offline_hours);
+            double earned = Balance.OfflineEarnings(State.incomePerSecond, away, extraRate, extraHours);
             State.coins += earned;
             State.totalIncome += earned;
+            LastOffline = new OfflineReport
+            {
+                SecondsAway = away,
+                SecondsPaid = Balance.OfflineSecondsPaid(away, extraHours),
+                Rate = Balance.OfflineRate + extraRate,
+                Coins = earned,
+            };
             return earned;
+        }
+
+        // The run's clock and its best shard rate, sampled once a second.
+        private void AdvanceRunClock(double dt)
+        {
+            State.runSeconds += dt;
+            runRateClock += dt;
+            if (runRateClock < 1) return;
+            runRateClock = 0;
+            State.peakShardRate = Math.Max(State.peakShardRate, ShardsPerMinute);
         }
 
         /// <summary>Trades the run for star core shards. Shards and lifetime records are all that stay.</summary>
@@ -405,6 +448,7 @@ namespace DeepDrill.Core
             State.maxDepth = 0;
             State.totalIncome = 0;
             State.incomePerSecond = 0;
+            State.runSeconds = State.peakShardRate = 0;
             State.skills.Clear();
             if (keepAutoDrill) State.SetLevel(RootSkill, 1);
             State.drills.Clear();

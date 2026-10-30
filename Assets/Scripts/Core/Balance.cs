@@ -55,6 +55,7 @@ namespace DeepDrill.Core
         public const double BossArmorDamageRatio = 0.5;
         public const double BossRewardValue = 400;
         public const int BossBreachHalfWidth = 3;
+        public const double BossChipShare = 0.3; // hitting a guardian pays like digging dirt, so a stalled fight still funds upgrades
 
         public const int RareMaxDupes = 10;
         public const double RareDupeBonus = 0.5;
@@ -98,6 +99,8 @@ namespace DeepDrill.Core
         public const double OfflineRate = 0.5;
         public const double OfflineCapHours = 2;
         public const double StartGold = 50;
+        public const double RebirthRateMinSeconds = 60;
+        public const double RebirthAdviceRatio = 0.85;
 
         public static double BlockHp(int row) => HpBase * Math.Pow(HpGrowth, row);
 
@@ -110,15 +113,24 @@ namespace DeepDrill.Core
         public static double OfflineEarnings(double incomePerSecond, double secondsAway, double extraRate = 0, double extraHours = 0)
         {
             if (secondsAway <= 0 || incomePerSecond <= 0) return 0;
-            double cap = (OfflineCapHours + extraHours) * 3600;
-            return incomePerSecond * Math.Min(secondsAway, cap) * (OfflineRate + extraRate);
+            return incomePerSecond * OfflineSecondsPaid(secondsAway, extraHours) * (OfflineRate + extraRate);
         }
+
+        /// <summary>How much of an absence counts, after the cap.</summary>
+        public static double OfflineSecondsPaid(double secondsAway, double extraHours = 0) =>
+            Math.Min(Math.Max(0, secondsAway), (OfflineCapHours + extraHours) * 3600);
 
         /// <summary>The first-version shard formula, counted in rows of progress.</summary>
         public static int ShardsForRebirth(int maxRow, double totalIncome)
         {
+            return (int)Math.Floor(ShardProgress(maxRow, totalIncome));
+        }
+
+        /// <summary>The same formula before rounding, so a rate built on it moves smoothly.</summary>
+        public static double ShardProgress(int maxRow, double totalIncome)
+        {
             if (maxRow <= 0 || totalIncome <= 1) return 0;
-            return (int)Math.Floor(Math.Pow(maxRow / 100.0, 1.5) * Math.Log10(totalIncome));
+            return Math.Pow(maxRow / 100.0, 1.5) * Math.Log10(totalIncome);
         }
     }
 }

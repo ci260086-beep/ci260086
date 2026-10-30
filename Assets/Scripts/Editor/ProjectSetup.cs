@@ -44,6 +44,27 @@ namespace DeepDrill.Editor
             Debug.Log("DeepDrill setup finished");
         }
 
+        // Starts the next Play from a fresh game. The old save is renamed, not deleted, so it can be put back.
+        [MenuItem("DeepDrill/New Game (Reset Save)")]
+        public static void ResetSave()
+        {
+            if (EditorApplication.isPlaying)
+            {
+                EditorUtility.DisplayDialog("DeepDrill", "先停止 Play 再重置存档，否则退出时会把当前进度写回去。", "好");
+                return;
+            }
+            string path = Path.Combine(Application.persistentDataPath, "save.json");
+            if (!File.Exists(path))
+            {
+                EditorUtility.DisplayDialog("DeepDrill", "还没有存档，下次 Play 就是新游戏。", "好");
+                return;
+            }
+            string backup = path + ".old-" + System.DateTime.Now.ToString("yyyyMMdd-HHmmss");
+            File.Move(path, backup);
+            Debug.Log($"[DeepDrill] Save moved to {backup}. The next Play starts a new game.");
+            EditorUtility.DisplayDialog("DeepDrill", "存档已重置，下次 Play 从头开始。\n旧存档改名保存在：\n" + backup, "好");
+        }
+
         [MenuItem("DeepDrill/Build Windows")]
         public static void BuildWindows()
         {

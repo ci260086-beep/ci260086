@@ -39,6 +39,8 @@ namespace DeepDrill.Core
         public int maxDepth;
         public double totalIncome;
         public double incomePerSecond;
+        public double runSeconds;
+        public double peakShardRate;
         public int shards;
         public long lastSaveUnixSeconds;
         public int bossesDefeated;
