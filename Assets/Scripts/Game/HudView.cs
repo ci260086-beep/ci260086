@@ -8,14 +8,13 @@ using UnityEngine.UI;
 namespace DeepDrill.Game
 {
     /// <summary>
-    /// Builds the whole UI from code: floating resources over the dig area, the icon rail and the
-    /// card panel on the right.
+    /// Builds the whole UI from code: floating resources, the icon rail, the drill hangar on the
+    /// right, and the full-screen skill tree and collection pages.
     /// </summary>
     public sealed class HudView : MonoBehaviour
     {
-        private const int CardHeight = 25;
-        private const int CardWidth = Stage.PanelWidth - 4;
-        private const int SectionHeight = 10;
+        private const int HangarCardHeight = 29;
+        private const int CardWidth = Stage.PanelWidth - 6;
         private const int PanelTitleHeight = 15;
         private const int FooterHeight = 21;
         private const int RailButton = 18;
@@ -26,6 +25,17 @@ namespace DeepDrill.Game
         private const float ToastFadeSeconds = 0.6f;
         private const int BossBarWidth = 100;
         private const float RebirthConfirmSeconds = 4f;
+        private const int NodeSize = 18;
+        private const int TreeLeft = 28;
+        private const int TreeTop = 34;
+        private const int TreeColumnStep = 58;
+        private const int TreeRowStep = 22;
+
+        private const int PageHangar = 0;
+        private const int PageTree = 1;
+        private const int PageCollection = 2;
+        private const int PageStats = 3;
+        private const int PageSettings = 4;
 
         private static readonly Color PanelColor = new Color32(0x1a, 0x12, 0x10, 0xff);
         private static readonly Color RailColor = new Color32(0x2e, 0x1f, 0x17, 0xff);
@@ -37,55 +47,63 @@ namespace DeepDrill.Game
         private static readonly Color FrenzyColor = new Color32(0xe8, 0x40, 0x2e, 0xff);
         private static readonly Color ArmorColor = new Color32(0xc0, 0xc0, 0xcc, 0xff);
         private static readonly Color LockedColor = new Color32(0x3a, 0x3a, 0x44, 0xff);
+        private static readonly Color BuyColor = new Color32(0x4a, 0x7a, 0x2a, 0xff);
+        private static readonly Color MergeColor = new Color32(0xb8, 0x69, 0x3a, 0xff);
         private static readonly Color WarmText = new Color32(0xe0, 0x8a, 0x4a, 0xff);
         private static readonly Color SoftText = new Color32(0xc4, 0x9a, 0x6c, 0xff);
         private static readonly Color DimText = new Color32(0x8c, 0x5f, 0x3f, 0xff);
+        private static readonly Color LineOff = new Color32(0x4a, 0x31, 0x22, 0xff);
+        private static readonly Color LineOn = new Color32(0xe8, 0xb0, 0x2a, 0xff);
+        private static readonly Color NodeHidden = new Color(0.25f, 0.25f, 0.28f, 1f);
 
-        private static readonly (SkillTree tree, string title, string icon)[] SkillPages =
-        {
-            (SkillTree.Drill, "钻头升级", "tab_drill"),
-            (SkillTree.Blast, "爆破升级", "tab_blast"),
-            (SkillTree.Frenzy, "狂热升级", "tab_frenzy"),
-        };
+        private static readonly string[] TreeIcons = { "tab_drill", "icon_coin", "tab_blast", "tab_frenzy", "rare_23" };
 
-        private sealed class Card
+        private sealed class HangarCard
         {
-            public SkillDef Skill;
-            public RectTransform Root;
+            public int Tier;
             public Image Background;
             public Text Name;
+            public Text Count;
             public Text Price;
-            public Text Level;
-            public Image PriceIcon;
-            public bool WasUnlocked;
+            public Image BuyImage;
+            public Button Buy;
+            public Image MergeImage;
+            public Button Merge;
+            public Image Icon;
         }
 
-        private sealed class SkillPage
+        private sealed class TreeNode
         {
-            public GameObject Root;
-            public readonly List<Card> Cards = new List<Card>();
-            public Text UnlockedHeading;
-            public Text NewHeading;
+            public SkillDef Skill;
+            public Image Box;
+            public Image Icon;
+            public Text Level;
+            public Image LineUp;
         }
 
-        /// <summary>Tells the panel which card the pointer is on.</summary>
+        /// <summary>Tells the page which element the pointer is on.</summary>
         private sealed class HoverRelay : MonoBehaviour, IPointerEnterHandler
         {
             public Action Entered;
             public void OnPointerEnter(PointerEventData eventData) => Entered?.Invoke();
         }
 
-        private readonly List<SkillPage> skillPages = new List<SkillPage>();
+        private readonly List<HangarCard> hangarCards = new List<HangarCard>();
         private readonly List<GameObject> pages = new List<GameObject>();
         private readonly List<Image> railButtons = new List<Image>();
         private readonly List<string> pageTitles = new List<string>();
+        private readonly List<TreeNode> treeNodes = new List<TreeNode>();
+        private readonly List<Image> treeTabs = new List<Image>();
+        private readonly List<Image> rareIcons = new List<Image>();
+        private readonly List<Text> achievementLabels = new List<Text>();
 
         private GameSim sim;
         private ArtLibrary art;
         private CanvasScaler scaler;
         private RectTransform stageRoot;
-        private Text coinsLabel, incomeLabel, oresLabel, depthLabel, comboLabel, versionLabel;
-        private Text toastLabel, panelTitle, footerLabel, statsLabel;
+        private GameObject sidePanel;
+        private Text coinsLabel, incomeLabel, oresLabel, depthLabel, comboLabel, versionLabel, drillsLabel;
+        private Text toastLabel, panelTitle, footerLabel, statsLabel, treeInfo, collectionInfo, collectionTitle;
         private Image meterFill;
         private Image bossBar, bossFill, bossArmorFill;
         private Text bossLabel;
@@ -99,7 +117,8 @@ namespace DeepDrill.Game
         private float fpsAverage = 60;
         private double coinsInFlight;
         private double oresInFlight;
-        private bool cardsMoved;
+        private int currentTree;
+        private int currentPage;
 
         public Font Font { get; private set; }
         public RectTransform FxLayer { get; private set; }
@@ -139,7 +158,9 @@ namespace DeepDrill.Game
 
             BuildDigOverlay();
             BuildFrenzyMeter();
-            BuildPanel();
+            BuildSidePanel();
+            BuildTreePage();
+            BuildCollectionPage();
             BuildRail();
 
             var fxGo = new GameObject("Fx", typeof(RectTransform));
@@ -155,7 +176,8 @@ namespace DeepDrill.Game
             eventsGo.AddComponent<EventSystem>();
             eventsGo.AddComponent<StandaloneInputModule>();
 
-            ShowPage(0);
+            ShowPage(PageHangar);
+            ShowTree(0);
         }
 
         public void AddInFlight(double coins, double ores)
@@ -170,6 +192,8 @@ namespace DeepDrill.Game
             oresInFlight = Math.Max(0, oresInFlight - ores);
         }
 
+        public void ClearInFlight() => coinsInFlight = oresInFlight = 0;
+
         /// <summary>Big outlined message at the bottom of the dig area; fades out by itself.</summary>
         public void ShowToast(string text, float seconds)
         {
@@ -179,14 +203,23 @@ namespace DeepDrill.Game
 
         public void ShowPage(int index)
         {
+            currentPage = index;
             for (int i = 0; i < pages.Count; i++)
             {
                 pages[i].SetActive(i == index);
                 railButtons[i].color = i == index ? RailSelected : RailColor;
             }
+            sidePanel.SetActive(index != PageTree && index != PageCollection);
             panelTitle.text = pageTitles[index];
             footerLabel.text = "";
         }
+
+        /// <summary>Opens the skill tree page; used by the rail and the screenshot driver.</summary>
+        public void ShowTreePage() => ShowPage(PageTree);
+
+        public void ShowCollectionPage() => ShowPage(PageCollection);
+
+        public void ShowHangarPage() => ShowPage(PageHangar);
 
         private Text Floating(string text, float x, float y, float w, float h, int size, TextAnchor anchor)
         {
@@ -203,7 +236,8 @@ namespace DeepDrill.Game
             incomeLabel = Floating("", 4, 20, 110, 10, 7, TextAnchor.MiddleLeft);
             Ui.Icon(stageRoot, art.Get("icon_copper"), 4, 32, 8);
             oresLabel = Floating("0", 15, 31, 80, 10, 8, TextAnchor.MiddleLeft);
-            comboLabel = Floating("", 4, 43, 100, 11, 8, TextAnchor.MiddleLeft);
+            drillsLabel = Floating("", 4, 42, 100, 10, 7, TextAnchor.MiddleLeft);
+            comboLabel = Floating("", 4, 53, 100, 11, 8, TextAnchor.MiddleLeft);
 
             bossBar = Ui.Panel(stageRoot, "BossBar", (Stage.DigWidth - BossBarWidth) / 2f, 4, BossBarWidth, 7, PanelColor);
             bossBar.raycastTarget = false;
@@ -233,12 +267,12 @@ namespace DeepDrill.Game
             frenzyButton.onClick.AddListener(() => sim.StartFrenzy());
         }
 
+        // Hangar, tree, collection, stats, settings: the first three on top, the rest at the bottom.
         private void BuildRail()
         {
-            // the rail floats over the ground: upgrade tabs at the top, stats and settings at the bottom
             var rail = Ui.Panel(stageRoot, "Rail", Stage.DigWidth, 0, Stage.RailWidth, Stage.Height, Color.clear);
             rail.raycastTarget = false;
-            string[] icons = { "tab_drill", "tab_blast", "tab_frenzy", "tab_stats", "tab_settings" };
+            string[] icons = { "tab_drill", "tab_frenzy", "rare_0", "tab_stats", "tab_settings" };
             for (int i = 0; i < icons.Length; i++)
             {
                 int index = i;
@@ -252,35 +286,29 @@ namespace DeepDrill.Game
             }
         }
 
-        private void BuildPanel()
+        private void BuildSidePanel()
         {
             var panel = Ui.Panel(stageRoot, "Panel", Stage.PanelX, 0, Stage.PanelWidth, Stage.Height, PanelColor);
+            sidePanel = panel.gameObject;
             panelTitle = Ui.Label(panel.transform, Font, "", 0, 2, Stage.PanelWidth, 12, 8, TextAnchor.MiddleCenter);
             panelTitle.fontStyle = FontStyle.Bold;
             footerLabel = Ui.Label(panel.transform, Font, "", 3, Stage.Height - FooterHeight, Stage.PanelWidth - 6,
                 FooterHeight - 2, 6, TextAnchor.MiddleLeft);
             footerLabel.color = SoftText;
 
-            foreach (var def in SkillPages)
-            {
-                var page = new SkillPage { Root = NewPage(panel.transform, def.title) };
-                page.UnlockedHeading = Ui.Label(page.Root.transform, Font, "已解锁", 3, 0, 60, SectionHeight, 6, TextAnchor.MiddleLeft);
-                page.UnlockedHeading.color = WarmText;
-                page.NewHeading = Ui.Label(page.Root.transform, Font, "新技能", 3, 0, 60, SectionHeight, 6, TextAnchor.MiddleLeft);
-                page.NewHeading.color = WarmText;
-                foreach (var skill in SkillCatalog.All)
-                {
-                    if (skill.Tree == def.tree) page.Cards.Add(BuildCard(page.Root.transform, skill, def.icon));
-                }
-                skillPages.Add(page);
-                Layout(page);
-            }
+            var hangar = NewPage(panel.transform, "钻头机库");
+            BuildHangar(hangar.transform);
+
+            // the two full-screen pages keep their slots in the list so rail indexes line up
+            pages.Add(new GameObject("TreeSlot"));
+            pageTitles.Add("技能树");
+            pages.Add(new GameObject("CollectionSlot"));
+            pageTitles.Add("成就");
 
             var stats = NewPage(panel.transform, "统计");
-            statsLabel = Ui.Label(stats.transform, Font, "", 4, PanelTitleHeight, Stage.PanelWidth - 8, 140, 7, TextAnchor.UpperLeft);
-            statsLabel.lineSpacing = 1.3f;
-
-            rebirthButton = Ui.Button(stats.transform, Font, "", 3, 138, Stage.PanelWidth - 6, 18, 7, FrenzyColor, out rebirthLabel);
+            statsLabel = Ui.Label(stats.transform, Font, "", 4, PanelTitleHeight, Stage.PanelWidth - 8, 120, 7, TextAnchor.UpperLeft);
+            statsLabel.lineSpacing = 1.2f;
+            rebirthButton = Ui.Button(stats.transform, Font, "", 3, 144, Stage.PanelWidth - 6, 18, 7, FrenzyColor, out rebirthLabel);
             rebirthButton.onClick.AddListener(OnRebirthClicked);
 
             var settings = NewPage(panel.transform, "设置");
@@ -291,6 +319,208 @@ namespace DeepDrill.Game
                 SaveRequested?.Invoke();
                 ShowToast("已保存", 1.5f);
             });
+        }
+
+        private GameObject NewPage(Transform parent, string title)
+        {
+            var page = new GameObject("Page", typeof(RectTransform));
+            page.transform.SetParent(parent, false);
+            Ui.TopLeft((RectTransform)page.transform, 0, 0, Stage.PanelWidth, Stage.Height);
+            pages.Add(page);
+            pageTitles.Add(title);
+            return page;
+        }
+
+        private void BuildHangar(Transform parent)
+        {
+            var viewportGo = new GameObject("Viewport", typeof(RectTransform));
+            viewportGo.transform.SetParent(parent, false);
+            var viewport = (RectTransform)viewportGo.transform;
+            Ui.TopLeft(viewport, 2, PanelTitleHeight, Stage.PanelWidth - 4, Stage.Height - PanelTitleHeight - FooterHeight);
+            viewportGo.AddComponent<RectMask2D>();
+            var hit = viewportGo.AddComponent<Image>();
+            hit.color = Color.clear;
+
+            var contentGo = new GameObject("Content", typeof(RectTransform));
+            contentGo.transform.SetParent(viewport, false);
+            var content = (RectTransform)contentGo.transform;
+            Ui.TopLeft(content, 0, 0, Stage.PanelWidth - 4, DrillTiers.Count * HangarCardHeight);
+
+            var scroll = viewportGo.AddComponent<ScrollRect>();
+            scroll.content = content;
+            scroll.viewport = viewport;
+            scroll.horizontal = false;
+            scroll.movementType = ScrollRect.MovementType.Clamped;
+            scroll.inertia = false;
+            scroll.scrollSensitivity = HangarCardHeight / 2f;
+
+            for (int tier = 0; tier < DrillTiers.Count; tier++)
+                hangarCards.Add(BuildHangarCard(content, tier));
+        }
+
+        private HangarCard BuildHangarCard(Transform parent, int tier)
+        {
+            var bg = Ui.Panel(parent, $"tier{tier}", 1, tier * HangarCardHeight, CardWidth, HangarCardHeight - 2, CardBright);
+            var card = new HangarCard { Tier = tier, Background = bg };
+
+            var box = Ui.Panel(bg.transform, "IconBox", 2, 4, 18, 18, IconBoxColor);
+            box.raycastTarget = false;
+            card.Icon = Ui.Icon(box.transform, art.Strip($"tier_{tier}", 16)[0], 1, 1, 16);
+
+            card.Name = Ui.Label(bg.transform, Font, DrillTiers.Names[tier], 22, 1, CardWidth - 24, 10, 6, TextAnchor.MiddleLeft);
+            card.Name.fontStyle = FontStyle.Bold;
+            card.Count = Ui.Label(bg.transform, Font, "", 40, 1, CardWidth - 42, 10, 6, TextAnchor.MiddleRight);
+            card.Count.color = CoinColor;
+            card.Price = Ui.Label(bg.transform, Font, "", 22, 11, CardWidth - 24, 8, 5, TextAnchor.MiddleLeft);
+            card.Price.color = SoftText;
+
+            card.Buy = Ui.Button(bg.transform, Font, "买", 22, 19, 25, 8, 5, BuyColor, out _);
+            card.BuyImage = card.Buy.GetComponent<Image>();
+            card.Buy.onClick.AddListener(() => sim.BuyDrill(tier));
+            card.Merge = Ui.Button(bg.transform, Font, "合成", 48, 19, 24, 8, 5, MergeColor, out _);
+            card.MergeImage = card.Merge.GetComponent<Image>();
+            card.Merge.onClick.AddListener(() => sim.Merge(tier));
+
+            bg.gameObject.AddComponent<HoverRelay>().Entered = () =>
+                footerLabel.text = $"每次 {NumberFormat.Short(sim.DamageOf(tier))} 伤害";
+            return card;
+        }
+
+        // A drawn tree: a trunk across the top, one branch per effect, a node per rank with lines
+        // joining each rank to the one before it. Lit lines show what has been bought.
+        private void BuildTreePage()
+        {
+            var page = Ui.Panel(stageRoot, "TreePage", 0, 0, Stage.PanelX, Stage.Height, PanelColor);
+            pages.Insert(0, page.gameObject); // placeholder swapped below
+            pages.RemoveAt(0);
+            pages[PageTree] = page.gameObject;
+
+            var title = Ui.Label(page.transform, Font, "技能树", 0, 2, Stage.PanelX, 12, 9, TextAnchor.MiddleCenter);
+            title.fontStyle = FontStyle.Bold;
+
+            for (int i = 0; i < SkillCatalog.TreeNames.Length; i++)
+            {
+                int index = i;
+                var tab = Ui.Button(page.transform, Font, SkillCatalog.TreeNames[i], 4 + i * 47, 15, 45, 12, 7, RailColor, out _);
+                tab.onClick.AddListener(() => ShowTree(index));
+                treeTabs.Add(tab.GetComponent<Image>());
+            }
+
+            var trunk = Ui.Panel(page.transform, "Trunk", TreeLeft + NodeSize / 2f, TreeTop - 3,
+                4 * TreeColumnStep + 1, 1, LineOff);
+            trunk.raycastTarget = false;
+
+            for (int column = 0; column < 5; column++)
+            {
+                for (int rank = 0; rank < SkillCatalog.RanksPerEffect; rank++)
+                {
+                    int slot = treeNodes.Count;
+                    float x = TreeLeft + column * TreeColumnStep;
+                    float y = TreeTop + rank * TreeRowStep;
+
+                    var line = Ui.Panel(page.transform, "Line", x + NodeSize / 2f, y - 4, 1, 4, LineOff);
+                    line.raycastTarget = false;
+
+                    var box = Ui.Panel(page.transform, "Node", x, y, NodeSize, NodeSize, RailColor);
+                    var icon = Ui.Icon(box.transform, art.Get("tab_drill"), 1, 1, 16);
+                    var level = Ui.Label(page.transform, Font, "", x + NodeSize + 1, y + 5, 30, 8, 5, TextAnchor.MiddleLeft);
+                    level.color = SoftText;
+
+                    var button = box.gameObject.AddComponent<Button>();
+                    button.targetGraphic = box;
+                    button.transition = Selectable.Transition.None;
+                    button.onClick.AddListener(() =>
+                    {
+                        var skill = treeNodes[slot].Skill;
+                        sim.Buy(skill.Id);
+                        ShowNodeInfo(skill);
+                    });
+                    box.gameObject.AddComponent<HoverRelay>().Entered = () => ShowNodeInfo(treeNodes[slot].Skill);
+
+                    treeNodes.Add(new TreeNode { Box = box, Icon = icon, Level = level, LineUp = line });
+                }
+            }
+
+            treeInfo = Ui.Label(page.transform, Font, "", 6, 166, Stage.PanelX - 12, 12, 7, TextAnchor.MiddleLeft);
+            treeInfo.color = SoftText;
+        }
+
+        private void ShowTree(int tree)
+        {
+            currentTree = tree;
+            for (int i = 0; i < treeTabs.Count; i++) treeTabs[i].color = i == tree ? RailSelected : RailColor;
+
+            int slot = 0;
+            foreach (var skill in SkillCatalog.All)
+            {
+                if (skill.Tree != tree) continue;
+                var node = treeNodes[slot++];
+                node.Skill = skill;
+                node.Icon.sprite = art.Get(TreeIcons[tree]);
+            }
+            if (treeInfo != null) treeInfo.text = "";
+        }
+
+        private void ShowNodeInfo(SkillDef skill)
+        {
+            int level = sim.State.LevelOf(skill.Id);
+            string cost = level >= skill.MaxLevel ? "已满级" : "价格 " + NumberFormat.Short(skill.CostAt(level));
+            string gate = sim.SkillDepthReached(skill) ? "" : $"  需要到达 {skill.UnlockDepth} 米";
+            treeInfo.text = $"{skill.Name}  {skill.EffectText}/级  等级 {level}/{skill.MaxLevel}  {cost}{gate}";
+        }
+
+        private void BuildCollectionPage()
+        {
+            var page = Ui.Panel(stageRoot, "CollectionPage", 0, 0, Stage.PanelX, Stage.Height, PanelColor);
+            pages[PageCollection] = page.gameObject;
+
+            collectionTitle = Ui.Label(page.transform, Font, "", 4, 2, Stage.PanelX - 8, 12, 8, TextAnchor.MiddleLeft);
+            collectionTitle.fontStyle = FontStyle.Bold;
+
+            var viewportGo = new GameObject("Viewport", typeof(RectTransform));
+            viewportGo.transform.SetParent(page.transform, false);
+            var viewport = (RectTransform)viewportGo.transform;
+            Ui.TopLeft(viewport, 4, 16, 120, 160);
+            viewportGo.AddComponent<RectMask2D>();
+            viewportGo.AddComponent<Image>().color = Color.clear;
+
+            var contentGo = new GameObject("Content", typeof(RectTransform));
+            contentGo.transform.SetParent(viewport, false);
+            var content = (RectTransform)contentGo.transform;
+            Ui.TopLeft(content, 0, 0, 120, AchievementCatalog.All.Count * 10);
+
+            var scroll = viewportGo.AddComponent<ScrollRect>();
+            scroll.content = content;
+            scroll.viewport = viewport;
+            scroll.horizontal = false;
+            scroll.movementType = ScrollRect.MovementType.Clamped;
+            scroll.inertia = false;
+            scroll.scrollSensitivity = 10;
+
+            for (int i = 0; i < AchievementCatalog.All.Count; i++)
+            {
+                var label = Ui.Label(content, Font, AchievementCatalog.All[i].Name, 0, i * 10, 120, 10, 6, TextAnchor.MiddleLeft);
+                achievementLabels.Add(label);
+            }
+
+            var rareTitle = Ui.Label(page.transform, Font, "稀有物品", 130, 2, 110, 12, 8, TextAnchor.MiddleLeft);
+            rareTitle.fontStyle = FontStyle.Bold;
+            for (int i = 0; i < RareItems.All.Count; i++)
+            {
+                var item = RareItems.All[i];
+                float x = 130 + (i % 6) * 19;
+                float y = 18 + (i / 6) * 19;
+                var box = Ui.Panel(page.transform, "Rare", x, y, 18, 18, RailColor);
+                var icon = Ui.Icon(box.transform, art.Get($"rare_{i}"), 1, 1, 16);
+                rareIcons.Add(icon);
+                box.gameObject.AddComponent<HoverRelay>().Entered = () =>
+                    collectionInfo.text = sim.State.rareItems.Contains(item.Id)
+                        ? $"{item.Name}（{Strata.All[item.Stratum].Name}）"
+                        : $"未发现（{Strata.All[item.Stratum].Name}）";
+            }
+            collectionInfo = Ui.Label(page.transform, Font, "", 130, 100, 112, 30, 7, TextAnchor.UpperLeft);
+            collectionInfo.color = SoftText;
+            collectionInfo.horizontalOverflow = HorizontalWrapMode.Wrap;
         }
 
         // Rebirth wipes the run, so it takes a second click within a few seconds.
@@ -305,76 +535,6 @@ namespace DeepDrill.Game
             rebirthArmed = RebirthConfirmSeconds;
         }
 
-        private GameObject NewPage(Transform parent, string title)
-        {
-            var page = new GameObject("Page", typeof(RectTransform));
-            page.transform.SetParent(parent, false);
-            Ui.TopLeft((RectTransform)page.transform, 0, 0, Stage.PanelWidth, Stage.Height);
-            pages.Add(page);
-            pageTitles.Add(title);
-            return page;
-        }
-
-        private Card BuildCard(Transform parent, SkillDef skill, string iconName)
-        {
-            var bg = Ui.Panel(parent, skill.Id, 2, 0, CardWidth, CardHeight - 1, CardBright);
-            var card = new Card { Skill = skill, Root = bg.rectTransform, Background = bg };
-
-            var box = Ui.Panel(bg.transform, "IconBox", 2, 3, 18, 18, IconBoxColor);
-            box.raycastTarget = false;
-            Ui.Icon(box.transform, art.Get(iconName), 1, 1, 16);
-
-            card.Name = Ui.Label(bg.transform, Font, skill.Name, 22, 1, CardWidth - 24, 11, 7, TextAnchor.MiddleLeft);
-            card.Name.fontStyle = FontStyle.Bold;
-            card.PriceIcon = Ui.Icon(bg.transform, art.Get("icon_coin"), 22, 14, 7);
-            card.Price = Ui.Label(bg.transform, Font, "", 30, 13, 26, 9, 6, TextAnchor.MiddleLeft);
-            card.Level = Ui.Label(bg.transform, Font, "", 40, 13, CardWidth - 42, 9, 6, TextAnchor.MiddleRight);
-            card.Level.color = SoftText;
-
-            var button = bg.gameObject.AddComponent<Button>();
-            button.targetGraphic = bg;
-            button.transition = Selectable.Transition.None;
-            button.onClick.AddListener(() => sim.Buy(skill.Id));
-
-            bg.gameObject.AddComponent<HoverRelay>().Entered = () => footerLabel.text = skill.Effect;
-            card.WasUnlocked = sim.IsUnlocked(skill);
-            return card;
-        }
-
-        // Bought or buyable skills first under one heading, still locked ones under the other.
-        private void Layout(SkillPage page)
-        {
-            float y = PanelTitleHeight;
-            bool anyUnlocked = page.Cards.Exists(c => c.WasUnlocked);
-            bool anyLocked = page.Cards.Exists(c => !c.WasUnlocked);
-
-            page.UnlockedHeading.gameObject.SetActive(anyUnlocked);
-            if (anyUnlocked)
-            {
-                page.UnlockedHeading.rectTransform.anchoredPosition = new Vector2(3, -y);
-                y += SectionHeight;
-                foreach (var card in page.Cards)
-                {
-                    if (!card.WasUnlocked) continue;
-                    card.Root.anchoredPosition = new Vector2(2, -y);
-                    y += CardHeight;
-                }
-            }
-
-            page.NewHeading.gameObject.SetActive(anyLocked);
-            if (anyLocked)
-            {
-                page.NewHeading.rectTransform.anchoredPosition = new Vector2(3, -y);
-                y += SectionHeight;
-                foreach (var card in page.Cards)
-                {
-                    if (card.WasUnlocked) continue;
-                    card.Root.anchoredPosition = new Vector2(2, -y);
-                    y += CardHeight;
-                }
-            }
-        }
-
         private void Update()
         {
             int scale = Stage.Scale;
@@ -384,7 +544,9 @@ namespace DeepDrill.Game
             coinsLabel.text = NumberFormat.Short(s.coins - coinsInFlight);
             incomeLabel.text = $"{NumberFormat.Short(s.incomePerSecond)} 每秒金币";
             oresLabel.text = NumberFormat.Short(s.ores - oresInFlight);
-            depthLabel.text = $"{s.depth} 米";
+            drillsLabel.text = $"钻头 {NumberFormat.Short(s.DrillsOwned)}";
+            var stratum = Strata.All[Strata.OfDepth(s.depth)];
+            depthLabel.text = $"{stratum.Name} {s.depth} 米";
 
             float dt = Time.unscaledDeltaTime;
             if (dt > 0) fpsAverage = Mathf.Lerp(fpsAverage, 1f / dt, 0.05f);
@@ -393,39 +555,13 @@ namespace DeepDrill.Game
             UpdateCombo();
             UpdateMeter();
             UpdateToast(dt);
-            foreach (var page in skillPages) UpdatePage(page);
-            if (statsLabel.isActiveAndEnabled) UpdateStats();
             UpdateBoss();
             UpdateRebirth(dt);
-        }
 
-        public void ClearInFlight() => coinsInFlight = oresInFlight = 0;
-
-        private void UpdateBoss()
-        {
-            bool show = sim.BossActive;
-            bossBar.gameObject.SetActive(show);
-            if (!show)
-            {
-                bossLabel.text = "";
-                return;
-            }
-            string armor = sim.BossArmor > 0 ? " 护甲" : "";
-            bossLabel.text = $"{sim.CurrentBoss.Name}{armor} {NumberFormat.Short(sim.BossHp)}  " +
-                $"{Mathf.CeilToInt((float)sim.BossTimeLeft)}秒";
-            double fill = Math.Max(0, sim.BossHp / sim.BossMaxHp);
-            bossFill.rectTransform.sizeDelta = new Vector2((float)(fill * (BossBarWidth - 2)), 5);
-            double armorFill = sim.BossMaxArmor > 0 ? sim.BossArmor / sim.BossMaxArmor : 0;
-            bossArmorFill.rectTransform.sizeDelta = new Vector2((float)(armorFill * (BossBarWidth - 2)), 2);
-        }
-
-        private void UpdateRebirth(float dt)
-        {
-            bool can = sim.CanRebirth;
-            rebirthButton.gameObject.SetActive(can);
-            if (rebirthArmed > 0) rebirthArmed -= dt;
-            if (!can) return;
-            rebirthLabel.text = rebirthArmed > 0 ? "再点一次确认" : $"地核重铸 +{sim.ShardsOnRebirth}";
+            if (currentPage == PageHangar) foreach (var card in hangarCards) UpdateHangarCard(card);
+            if (currentPage == PageTree) foreach (var node in treeNodes) UpdateTreeNode(node);
+            if (currentPage == PageCollection) UpdateCollection();
+            if (currentPage == PageStats) UpdateStats();
         }
 
         private void UpdateCombo()
@@ -460,45 +596,89 @@ namespace DeepDrill.Game
             if (toastTime <= 0) toastLabel.text = "";
         }
 
-        private void UpdatePage(SkillPage page)
+        private void UpdateBoss()
         {
-            cardsMoved = false;
-            foreach (var card in page.Cards) UpdateCard(card);
-            if (cardsMoved) Layout(page);
+            bool show = sim.BossActive;
+            bossBar.gameObject.SetActive(show);
+            if (!show)
+            {
+                bossLabel.text = "";
+                return;
+            }
+            string armor = sim.BossArmor > 0 ? " 护甲" : "";
+            bossLabel.text = $"{sim.BossName}{armor} {NumberFormat.Short(sim.BossHp)}  " +
+                $"{Mathf.CeilToInt((float)sim.BossTimeLeft)}秒";
+            double fill = Math.Max(0, sim.BossHp / sim.BossMaxHp);
+            bossFill.rectTransform.sizeDelta = new Vector2((float)(fill * (BossBarWidth - 2)), 5);
+            double armorFill = sim.BossMaxArmor > 0 ? sim.BossArmor / sim.BossMaxArmor : 0;
+            bossArmorFill.rectTransform.sizeDelta = new Vector2((float)(armorFill * (BossBarWidth - 2)), 2);
         }
 
-        private void UpdateCard(Card card)
+        private void UpdateRebirth(float dt)
         {
-            var skill = card.Skill;
+            bool can = sim.CanRebirth;
+            rebirthButton.gameObject.SetActive(can);
+            if (rebirthArmed > 0) rebirthArmed -= dt;
+            if (!can) return;
+            rebirthLabel.text = rebirthArmed > 0 ? "再点一次确认" : $"地核重铸 +{sim.ShardsOnRebirth}";
+        }
+
+        private void UpdateHangarCard(HangarCard card)
+        {
+            int tier = card.Tier;
+            bool unlocked = sim.DrillUnlocked(tier);
+            bool canBuy = sim.CanBuyDrill(tier);
+            bool canMerge = sim.CanMerge(tier);
+
+            card.Background.color = canBuy || canMerge ? CardBright : CardDim;
+            card.Icon.color = unlocked ? Color.white : NodeHidden;
+            card.Name.color = unlocked ? Color.white : DimText;
+            card.Count.text = "x" + NumberFormat.Short(sim.State.DrillCount(tier));
+            card.Price.text = unlocked
+                ? "价格 " + NumberFormat.Short(sim.DrillCost(tier))
+                : $"{DrillTiers.UnlockDepth(tier)} 米解锁";
+            card.Buy.interactable = canBuy;
+            card.BuyImage.color = canBuy ? BuyColor : LockedColor;
+            card.Merge.interactable = canMerge;
+            card.MergeImage.color = canMerge ? MergeColor : LockedColor;
+        }
+
+        private void UpdateTreeNode(TreeNode node)
+        {
+            var skill = node.Skill;
             int level = sim.State.LevelOf(skill.Id);
-            bool unlocked = sim.IsUnlocked(skill);
             bool maxed = level >= skill.MaxLevel;
-            bool canBuy = sim.CanBuy(skill);
+            bool can = sim.CanBuy(skill);
+            bool open = sim.IsUnlocked(skill);
 
-            if (unlocked != card.WasUnlocked)
+            node.Box.color = maxed ? LineOn : (can ? BuyColor : (open ? RailSelected : RailColor));
+            node.Icon.color = open ? Color.white : NodeHidden;
+            node.Level.text = open ? $"{level}/{skill.MaxLevel}" : "";
+            node.LineUp.color = level > 0 ? LineOn : LineOff;
+        }
+
+        private void UpdateCollection()
+        {
+            var s = sim.State;
+            collectionTitle.text = $"成就 {s.achievements.Count}/{AchievementCatalog.All.Count}";
+            for (int i = 0; i < achievementLabels.Count; i++)
             {
-                card.WasUnlocked = unlocked;
-                cardsMoved = true;
-                if (unlocked) ShowToast($"解锁新技能：{skill.Name}", 2.5f); // rebirth locks cards silently
+                var a = AchievementCatalog.All[i];
+                bool done = s.achievements.Contains(a.Id);
+                achievementLabels[i].color = done ? CoinColor : DimText;
+                achievementLabels[i].text = (done ? "★ " : "  ") + a.Name;
             }
-
-            card.Background.color = canBuy ? CardBright : CardDim;
-            card.Name.color = canBuy ? Color.white : SoftText;
-            card.Level.text = $"{level}/{skill.MaxLevel}";
-            card.PriceIcon.enabled = unlocked && !maxed;
-            card.Price.color = canBuy ? CoinColor : DimText;
-            if (!unlocked) card.Price.text = "未解锁";
-            else if (maxed) card.Price.text = "满级";
-            else card.Price.text = NumberFormat.Short(skill.CostAt(level));
+            for (int i = 0; i < rareIcons.Count; i++)
+                rareIcons[i].color = s.rareItems.Contains(RareItems.All[i].Id) ? Color.white : Color.black;
         }
 
         private void UpdateStats()
         {
             var s = sim.State;
             statsLabel.text =
-                $"最大深度\n{s.maxDepth} 米\n总收入\n{NumberFormat.Short(s.totalIncome)}\n" +
-                $"每击伤害\n{NumberFormat.Short(sim.DamagePerHit)}\n每秒击打\n{sim.HitsPerSecond:0.0}\n" +
-                $"星核碎片\n{s.shards}";
+                $"最大深度\n{s.maxDepthEver} 米\n总收入\n{NumberFormat.Short(s.totalIncome)}\n" +
+                $"每秒伤害\n{NumberFormat.Short(sim.TotalDps)}\n钻头数量\n{NumberFormat.Short(s.DrillsOwned)}\n" +
+                $"星核碎片\n{s.shards}\n重铸次数\n{s.rebirths}";
         }
     }
 }

@@ -12,21 +12,17 @@ namespace DeepDrill.Game
     {
         private const float AutosaveSeconds = 30f;
         private const int HitstopFrames = 2;
-        private const float HitstopCooldown = 0.12f;
+        private const float HitstopCooldown = 0.5f;
         private const int DepthMilestone = 50;
-        private const double SoftLandingSpeed = 10;
         private const double HardLandingSpeed = 14;
+        private const double SoftLandingSpeed = 10;
 
         private static readonly Color DirtBits = new Color32(0x8c, 0x5f, 0x3f, 0xff);
         private static readonly Color RockBits = new Color32(0x8a, 0x8a, 0x98, 0xff);
-        private static readonly Color CoalBits = new Color32(0x3a, 0x3a, 0x44, 0xff);
-        private static readonly Color CopperBits = new Color32(0xe0, 0x8a, 0x4a, 0xff);
+        private static readonly Color OreBits = new Color32(0xe0, 0x8a, 0x4a, 0xff);
         private static readonly Color GrassBits = new Color32(0x76, 0xa8, 0x3a, 0xff);
         private static readonly Color ChestBits = new Color32(0xff, 0xe2, 0x7a, 0xff);
         private static readonly Color TntBits = new Color32(0xb8, 0x2c, 0x2c, 0xff);
-        private static readonly Color RootBits = new Color32(0x6b, 0x46, 0x30, 0xff);
-        private static readonly Color ArmorBits = new Color32(0x8a, 0x8a, 0x96, 0xff);
-        private static readonly Color SilverBits = new Color32(0xe8, 0xe8, 0xf0, 0xff);
         private static readonly Color SandBits = new Color32(0xe8, 0xcc, 0x84, 0xff);
         private static readonly Color HitText = Color.white;
         private static readonly Color CoinText = new Color32(0xff, 0xe2, 0x7a, 0xff);
@@ -43,6 +39,7 @@ namespace DeepDrill.Game
 
         public GameSim Sim => sim;
         public SaveService Saves => saves;
+        public HudView Hud => hud;
 
         public void SaveNow() => saves.Save(sim.State);
 
@@ -151,7 +148,7 @@ namespace DeepDrill.Game
 
                 case SimEventKind.Explosion:
                     fx.Explosion(WorldView.CellCenter(e.Row, e.Col), (int)e.Amount);
-                    fx.Debris(WorldView.CellCenter(e.Row, e.Col), CopperBits, 16);
+                    fx.Debris(WorldView.CellCenter(e.Row, e.Col), OreBits, 16);
                     world.Shake(0.2f, 3f);
                     break;
 
@@ -169,22 +166,22 @@ namespace DeepDrill.Game
                     break;
 
                 case SimEventKind.BossStarted:
-                    hud.ShowToast($"{sim.CurrentBoss.Name}！60 秒内打穿它", 3f);
+                    hud.ShowToast($"{sim.BossName}！{sim.BossDuration:0} 秒内打穿它", 3f);
                     world.Shake(0.3f, 3f);
                     break;
 
                 case SimEventKind.BossFailed:
-                    hud.ShowToast($"{sim.CurrentBoss.Name}恢复了，升级后再来", 3f);
+                    hud.ShowToast($"{sim.BossName}恢复了，升级后再来", 3f);
                     break;
 
                 case SimEventKind.BossArmorBroken:
                     hud.ShowToast("甲壳碎了！", 2f);
-                    fx.Debris(WorldView.CellCenter(Balance.BeetleRow, Mathf.RoundToInt((float)sim.Drill.X)), ArmorBits, 30);
                     world.Shake(0.3f, 4f);
                     break;
 
                 case SimEventKind.StratumEntered:
-                    hud.ShowToast($"进入{Balance.StratumNames[(int)e.Amount]}", 3.5f);
+                    var stratum = Strata.All[(int)e.Amount];
+                    hud.ShowToast($"进入{stratum.Name}  地下 {stratum.RealDepth}", 3.5f);
                     break;
 
                 case SimEventKind.BossDefeated:
@@ -192,6 +189,18 @@ namespace DeepDrill.Game
                     fx.Explosion(WorldView.CellCenter(e.Row, e.Col), Balance.BossBreachHalfWidth);
                     fx.Debris(WorldView.CellCenter(e.Row, e.Col), DirtBits, 40);
                     world.Shake(0.4f, 5f);
+                    break;
+
+                case SimEventKind.DrillMerged:
+                    hud.ShowToast($"合成了{DrillTiers.Names[(int)e.Amount]}", 2f);
+                    break;
+
+                case SimEventKind.RareFound:
+                    hud.ShowToast($"发现稀有物品：{RareItems.All[(int)e.Amount].Name}", 4f);
+                    break;
+
+                case SimEventKind.AchievementUnlocked:
+                    hud.ShowToast($"成就：{AchievementCatalog.All[(int)e.Amount].Name}", 3f);
                     break;
 
                 case SimEventKind.Rebirth:
@@ -203,52 +212,55 @@ namespace DeepDrill.Game
             }
         }
 
+        // Only the player's own taps and rare moments shake the screen, or a swarm never stops.
+        private void OnHit(in SimEvent e)
+        {
+            world.NoteHit(e.Row, e.Col);
+            if (e.FromClick)
+            {
+                string text = NumberFormat.Short(e.Amount) + (e.Crit ? "!" : "");
+                fx.FloatText(text, CellStage(e.Row, e.Col), e.Crit ? CoinText : HitText, e.Crit ? 13 : 8);
+                fx.Debris(WorldView.CellCenter(e.Row, e.Col), BitsColor(e.Block), 2);
+                if (e.Crit) world.Shake(0.14f, 2f);
+            }
+            else if (e.Crit)
+            {
+                fx.FloatText(NumberFormat.Short(e.Amount) + "!", CellStage(e.Row, e.Col), CoinText, 10);
+            }
+        }
+
         // A one-row drop is the normal dig rhythm; only longer falls earn a thump.
         private void OnLanded(in SimEvent e)
         {
             if (e.Amount < SoftLandingSpeed) return;
             bool hard = e.Amount >= HardLandingSpeed;
-            var feet = new Vector2((float)sim.Drill.X, -(float)sim.Drill.Y - 1f);
-            fx.Debris(feet, DirtBits, hard ? 22 : 8);
-            world.Shake(hard ? 0.28f : 0.12f, hard ? 4f : 2f);
-        }
-
-        private void OnHit(in SimEvent e)
-        {
-            world.NoteHit(e.Row, e.Col);
-            if (e.Crit)
-            {
-                fx.FloatText(NumberFormat.Short(e.Amount) + "!", CellStage(e.Row, e.Col), CoinText, 13);
-                world.Shake(0.14f, 2f);
-            }
-            else if (e.FromClick)
-            {
-                fx.FloatText(NumberFormat.Short(e.Amount), CellStage(e.Row, e.Col), HitText, 8);
-            }
-            if (e.FromClick) fx.Debris(WorldView.CellCenter(e.Row, e.Col), BitsColor(e.Block), 2);
+            var feet = new Vector2(e.Col, -e.Row + 0.5f);
+            fx.Debris(feet, DirtBits, hard ? 14 : 6);
+            if (e.Crit) world.Shake(hard ? 0.28f : 0.12f, hard ? 4f : 2f); // Crit marks the lead drill here
         }
 
         private void OnBroken(in SimEvent e)
         {
             Vector2 center = WorldView.CellCenter(e.Row, e.Col);
-            fx.Debris(center, BitsColor(e.Block), e.Block == BlockType.Chest ? 18 : 9);
-            world.Shake(0.08f, 1f);
+            fx.Debris(center, BitsColor(e.Block), e.Block == BlockType.Chest ? 18 : 6);
 
-            if (hitstopCooldown <= 0)
+            if (e.FromClick && hitstopCooldown <= 0)
             {
                 hitstop = HitstopFrames;
                 hitstopCooldown = HitstopCooldown;
+                world.Shake(0.08f, 1f);
             }
 
             Vector2 stage = CellStage(e.Row, e.Col);
-            fx.FloatText("+" + NumberFormat.Short(e.Amount), stage, CoinText, e.Block == BlockType.Chest ? 11 : 8);
+            if (e.Block == BlockType.Ore || e.Block == BlockType.Chest)
+                fx.FloatText("+" + NumberFormat.Short(e.Amount), stage, CoinText, e.Block == BlockType.Chest ? 11 : 8);
 
-            bool ore = WorldGen.IsOre(e.Block);
+            bool ore = e.Block == BlockType.Ore;
             double value = e.Amount;
             double oreCount = ore ? 1 : 0;
             if (ore || e.Block == BlockType.Chest)
             {
-                string icon = IconFor(e.Block);
+                string icon = ore ? $"oreicon_{e.Ore}" : "icon_coin";
                 Vector2 target = ore ? hud.OreTarget : hud.CoinTarget;
                 bool flying = fx.FlyIcon(art.Get(icon), stage, target, () => hud.Land(value, oreCount));
                 if (flying) hud.AddInFlight(value, oreCount);
@@ -258,32 +270,16 @@ namespace DeepDrill.Game
         private Vector2 CellStage(int row, int col) =>
             Stage.WorldToStage(WorldView.CellCenter(row, col), world.CameraPosition);
 
-        private static string IconFor(BlockType type)
-        {
-            switch (type)
-            {
-                case BlockType.Coal: return "icon_coal";
-                case BlockType.Copper: return "icon_copper";
-                case BlockType.Iron: return "icon_iron";
-                case BlockType.Silver: return "icon_silver";
-                default: return "icon_coin";
-            }
-        }
-
         private static Color BitsColor(BlockType type)
         {
             switch (type)
             {
-                case BlockType.Iron: return ArmorBits;
-                case BlockType.Silver: return SilverBits;
-                case BlockType.Sand: return SandBits;
                 case BlockType.Grass: return GrassBits;
                 case BlockType.HardRock: return RockBits;
-                case BlockType.Coal: return CoalBits;
-                case BlockType.Copper: return CopperBits;
+                case BlockType.Ore: return OreBits;
+                case BlockType.Sand: return SandBits;
                 case BlockType.Chest: return ChestBits;
                 case BlockType.Tnt: return TntBits;
-                case BlockType.BossRoot: return RootBits;
                 default: return DirtBits;
             }
         }

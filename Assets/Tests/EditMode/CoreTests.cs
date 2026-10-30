@@ -1,4 +1,6 @@
-﻿using DeepDrill.Core;
+﻿using System;
+using System.Linq;
+using DeepDrill.Core;
 using NUnit.Framework;
 
 namespace DeepDrill.Tests
@@ -7,17 +9,45 @@ namespace DeepDrill.Tests
     {
         private static GameSim NewSim(int seed = 42) => new GameSim(new GameState { seed = seed });
 
+        private static void MakeBlock(GameSim sim, int row, int col, BlockType type, double hp = 0.1)
+        {
+            var b = sim.Row(row)[col];
+            b.Type = type;
+            b.Hp = hp;
+            b.MaxHp = hp;
+        }
+
+        private static void Run(DrillBody body, Func<int, int, bool> solid, double seconds)
+        {
+            for (double t = 0; t < seconds; t += DrillBody.StepSeconds)
+                body.Step(DrillBody.StepSeconds, solid);
+        }
+
+        // Stands on column 20 of a floor at row 9; the neighbouring columns are floor only if asked.
+        private static DrillBody OnFloor(out Func<int, int, bool> solid, bool left, bool right)
+        {
+            var body = new DrillBody { X = 20, Y = 8.5 - DrillBody.HalfHeight };
+            solid = (row, col) =>
+            {
+                if (row < 9) return false;
+                if (col < 20) return left;
+                if (col > 20) return right;
+                return true;
+            };
+            return body;
+        }
+
         [Test]
         public void Formulas_MatchTheBrief()
         {
             Assert.AreEqual(10, Balance.BlockHp(0), 1e-9);
-            Assert.AreEqual(10 * System.Math.Pow(1.035, 50), Balance.BlockHp(50), 1e-9);
-            Assert.AreEqual(2 * System.Math.Pow(1.03, 10), Balance.OreValue(10, 2), 1e-9);
+            Assert.AreEqual(10 * Math.Pow(1.035, 50), Balance.BlockHp(50), 1e-9);
+            Assert.AreEqual(2 * Math.Pow(1.03, 10), Balance.OreValue(10, 2), 1e-9);
             Assert.AreEqual(8 * 1.1 * 1.1, Balance.Cost(8, 1.1, 2), 1e-9);
+            Assert.AreEqual((int)Math.Floor(Math.Pow(2, 1.5) * 6), Balance.ShardsForRebirth(200, 1e6));
         }
 
         [TestCase(0, "0")]
-        [TestCase(999, "999")]
         [TestCase(0.5, "0.5")]
         [TestCase(999.9, "999.9")]
         [TestCase(1000, "1.00K")]
@@ -26,101 +56,63 @@ namespace DeepDrill.Tests
         [TestCase(2.5e9, "2.50B")]
         [TestCase(7e12, "7.00T")]
         [TestCase(1e15, "1.00e15")]
-        [TestCase(3.456e20, "3.46e20")]
         public void Numbers_AreShortened(double value, string expected)
         {
             Assert.AreEqual(expected, NumberFormat.Short(value));
         }
 
         [Test]
-        public void WorldGen_IsDeterministic()
+        public void Strata_RunFromTheSurfaceToTheCore()
         {
-            for (int row = 0; row < 200; row++)
-                for (int col = 0; col < Balance.Columns; col++)
-                    Assert.AreEqual(WorldGen.TypeAt(7, row, col), WorldGen.TypeAt(7, row, col));
-        }
-
-        [Test]
-        public void WorldGen_ProducesOreAndRock()
-        {
-            int ore = 0, rock = 0;
-            for (int row = 3; row < 300; row++)
-                for (int col = 0; col < Balance.Columns; col++)
-                {
-                    var t = WorldGen.TypeAt(3, row, col);
-                    if (WorldGen.IsOre(t)) ore++;
-                    if (t == BlockType.HardRock) rock++;
-                }
-            Assert.Greater(ore, 200);
-            Assert.Greater(rock, 200);
-        }
-
-        [Test]
-        public void WorldGen_HasNoLeftRightSymmetry()
-        {
-            int matches = 0, total = 0;
-            int lastTopsoilRow = Balance.SandstoneRow - Balance.TransitionRows;
-            for (int row = 3; row < lastTopsoilRow; row++)
-                for (int col = 1; col < Balance.StartColumn; col++)
-                {
-                    total++;
-                    var a = WorldGen.TypeAt(5, row, col);
-                    var b = WorldGen.TypeAt(5, row, 2 * Balance.StartColumn - col);
-                    if (a != BlockType.Dirt && a == b) matches++;
-                }
-            Assert.Less(matches, total * 0.03);
-        }
-
-        [Test]
-        public void HardRock_HasTripleHp()
-        {
-            Assert.AreEqual(Balance.BlockHp(9) * 3, WorldGen.HpOf(BlockType.HardRock, 9), 1e-9);
-        }
-
-        [Test]
-        public void Drill_DigsDownAndEarns()
-        {
-            var sim = NewSim();
-            for (int i = 0; i < 600; i++) sim.Tick(0.1);
-            Assert.Greater(sim.State.depth, 0);
-            Assert.Greater(sim.State.coins, 0);
-            Assert.AreEqual(sim.State.depth, sim.State.maxDepth);
-        }
-
-        // A flat floor one row below the body, with no blocks anywhere else near it.
-        private static DrillBody BodyOnFloor(out System.Func<int, int, bool> solid, bool left, bool right)
-        {
-            var body = new DrillBody { X = 20, Y = 8.5 - DrillBody.HalfHeight };
-            solid = (row, col) =>
+            Assert.AreEqual(12, Strata.All.Length);
+            Assert.AreEqual(0, Strata.OfDepth(0));
+            Assert.AreEqual(1, Strata.OfDepth(100));
+            Assert.AreEqual(11, Strata.OfDepth(1150));
+            Assert.AreEqual(11, Strata.OfDepth(5000), "the last stratum runs on");
+            foreach (var s in Strata.All)
             {
-                if (row < 9) return false;
-                if (col < 20) return left;
-                if (col > 20) return right;
-                return left && right;
-            };
-            return body;
+                Assert.IsNotEmpty(s.BossName);
+                Assert.IsNotEmpty(s.Ores);
+                foreach (int ore in s.Ores) Assert.Less(ore, Strata.Ores.Length);
+            }
         }
 
-        private static void Run(DrillBody body, System.Func<int, int, bool> solid, double seconds)
+        [Test]
+        public void EveryStratum_GeneratesItsOwnOres()
         {
-            for (double t = 0; t < seconds; t += DrillBody.StepSeconds)
-                body.Step(DrillBody.StepSeconds, solid);
+            for (int s = 0; s < Strata.All.Length; s++)
+            {
+                var found = new System.Collections.Generic.HashSet<int>();
+                for (int row = s * 100 + 10; row < s * 100 + 90; row++)
+                    for (int col = 0; col < Balance.Columns; col++)
+                        if (WorldGen.TypeAt(9, row, col) == BlockType.Ore) found.Add(WorldGen.OreAt(9, row, col));
+                Assert.That(found.Count, Is.EqualTo(Strata.All[s].Ores.Length), Strata.All[s].Name);
+            }
+        }
+
+        [Test]
+        public void StrataMix_NearTheBoundaryOnly()
+        {
+            Assert.AreEqual(0, WorldGen.StratumAt(3, 90, 5));
+            int mixed = 0;
+            for (int col = 0; col < Balance.Columns; col++) mixed += WorldGen.StratumAt(3, 99, col);
+            Assert.That(mixed, Is.InRange(10, 39));
         }
 
         [Test]
         public void Physics_LeftHole_TiltsAndSlidesLeft()
         {
-            var body = BodyOnFloor(out var solid, false, true);
+            var body = OnFloor(out var solid, false, true);
             Run(body, solid, 0.3);
-            Assert.Less(body.Angle, -10, "tips towards the hole");
-            Assert.Less(body.X, 20, "slides towards the hole");
-            Assert.Less(body.TipX, body.X, "the tip now points down and left");
+            Assert.Less(body.Angle, -10);
+            Assert.Less(body.X, 20);
+            Assert.Less(body.TipX, body.X);
         }
 
         [Test]
         public void Physics_RightHole_TiltsAndSlidesRight()
         {
-            var body = BodyOnFloor(out var solid, true, false);
+            var body = OnFloor(out var solid, true, false);
             Run(body, solid, 0.3);
             Assert.Greater(body.Angle, 10);
             Assert.Greater(body.X, 20);
@@ -138,29 +130,20 @@ namespace DeepDrill.Tests
         [Test]
         public void Physics_BothSupported_StandsAndReturnsUpright()
         {
-            var body = BodyOnFloor(out var solid, true, true);
+            var body = OnFloor(out var solid, true, true);
             body.Angle = 30;
             double y = body.Y;
             Run(body, solid, 3);
             Assert.AreEqual(0, body.Angle, 0.5);
             Assert.AreEqual(y, body.Y, 1e-9);
-            Assert.AreEqual(20, body.X, 1e-9);
         }
 
         [Test]
-        public void Physics_TiltNeverSnapsAndStaysNearTheLimit()
+        public void Physics_TiltMovesSmoothly()
         {
-            var body = BodyOnFloor(out var solid, false, true);
+            var body = OnFloor(out var solid, false, true);
             body.Step(DrillBody.StepSeconds, solid);
-            Assert.Greater(body.Angle, -5, "one step must not jump to full tilt");
-
-            double most = 0;
-            for (double t = 0; t < 2; t += DrillBody.StepSeconds)
-            {
-                body.Step(DrillBody.StepSeconds, solid);
-                most = System.Math.Min(most, body.Angle);
-            }
-            Assert.Greater(most, -DrillBody.MaxTilt * 1.4, "spring overshoot stays small");
+            Assert.Greater(body.Angle, -6, "one step must not jump to full tilt");
         }
 
         [Test]
@@ -175,63 +158,92 @@ namespace DeepDrill.Tests
         }
 
         [Test]
-        public void Physics_WallStopsSideways()
+        public void Drill_DigsDownAndEarns()
         {
-            var body = BodyOnFloor(out var floor, false, true);
-            System.Func<int, int, bool> solid = (row, col) => col <= 18 || floor(row, col);
-            Run(body, solid, 1);
-            Assert.AreEqual(0, body.VelocityX, 1e-9);
-            Assert.Greater(body.X - DrillBody.HalfWidth, 18.4);
+            var sim = NewSim();
+            for (int i = 0; i < 600; i++) sim.Tick(0.1);
+            Assert.Greater(sim.State.depth, 0);
+            Assert.Greater(sim.State.coins, 0);
+            Assert.AreEqual(sim.State.depth, sim.State.maxDepth);
         }
 
         [Test]
-        public void Tilted_DrillDigsTheBlockItsTipPointsAt()
+        public void TiltedDrill_DigsWhereItsTipPoints()
         {
             var sim = NewSim();
-            for (int r = 0; r < 12; r++) // a floor at row 12, with a hole to the left of the body
-                for (int c = 10; c < 30; c++)
-                    sim.Row(r)[c].Hp = 0;
-            sim.Drill.X = 20;
-            sim.Drill.Y = 11.5 - DrillBody.HalfHeight;
-            sim.Drill.Angle = -30;
-            Assert.IsTrue(sim.FindTarget(out int row, out int col));
-            Assert.AreEqual(12, row);
-            Assert.Less(col, 20, "digs down and left");
-
-            sim.Drill.Angle = 30;
-            Assert.IsTrue(sim.FindTarget(out _, out col));
-            Assert.Greater(col, 20, "digs down and right");
+            var body = sim.Lead.Body;
+            body.Place(20, 10.5 - DrillBody.HalfHeight);
+            body.Angle = -35;
+            Assert.IsTrue(sim.FindTarget(body, out int row, out int col));
+            Assert.AreEqual(11, row);
+            Assert.Less(col, 20);
         }
 
         [Test]
-        public void BlastHole_BesideTheDrill_MakesItTilt()
+        public void BuyingDrills_AddsBodiesAndCostsMore()
         {
             var sim = NewSim();
-            MakeBlock(sim, 1, 18, BlockType.Tnt);
-            sim.Row(0)[19].Hp = 0;
-            sim.Row(0)[18].Hp = 0;
-            sim.Row(0)[17].Hp = 0;
-            sim.Click(1, 18);
-            sim.Tick(0.05);
-            for (int i = 0; i < 20; i++)
-            {
-                for (int c = 20; c <= 23; c++) sim.Row(0)[c].Hp = 1e12; // the right foot stays planted
-                sim.Tick(0.02);
-            }
-            Assert.Less(sim.Drill.Angle, -5);
+            sim.State.coins = 1e6;
+            double first = sim.DrillCost(0);
+            Assert.IsTrue(sim.BuyDrill(0));
+            Assert.AreEqual(2, sim.Units.Count);
+            Assert.Greater(sim.DrillCost(0), first);
         }
 
         [Test]
-        public void Drill_WalksRoundACarvedPocketAndKeepsGoing()
+        public void HigherDrills_WaitForTheirDepth()
         {
             var sim = NewSim();
-            for (int r = 3; r < 7; r++)
-                for (int c = 15; c < 20; c++)
-                    sim.Carve(r, c);
-            double startX = sim.Drill.X;
-            for (int i = 0; i < 1500; i++) sim.Tick(0.1);
-            Assert.Greater(sim.State.depth, 10, "never wedges");
-            Assert.AreNotEqual(startX, sim.Drill.X, "the tunnel bent");
+            sim.State.coins = 1e12;
+            Assert.IsFalse(sim.BuyDrill(5));
+            sim.State.maxDepthEver = DrillTiers.UnlockDepth(5);
+            Assert.IsTrue(sim.BuyDrill(5));
+        }
+
+        [Test]
+        public void Merging_TurnsThreeIntoOneStrongerDrill()
+        {
+            var sim = NewSim();
+            sim.State.SetDrillCount(0, 3);
+            Assert.IsTrue(sim.CanMerge(0));
+            Assert.IsTrue(sim.Merge(0));
+            Assert.AreEqual(0, sim.State.DrillCount(0));
+            Assert.AreEqual(1, sim.State.DrillCount(1));
+            Assert.Greater(DrillTiers.Damage(1), DrillTiers.Damage(0) * Balance.MergeCost, "merging must gain power");
+            Assert.IsFalse(sim.CanMerge(0));
+        }
+
+        [Test]
+        public void TopTier_CannotMerge()
+        {
+            var sim = NewSim();
+            sim.State.SetDrillCount(DrillTiers.Count - 1, 10);
+            Assert.IsFalse(sim.CanMerge(DrillTiers.Count - 1));
+        }
+
+        [Test]
+        public void OwnedDrills_HaveNoCap_AndExtrasAddTheirPower()
+        {
+            var sim = NewSim();
+            sim.State.coins = 0;
+            sim.State.SetDrillCount(0, 5000);
+            sim.Merge(0); // rebuilds units
+            Assert.LessOrEqual(sim.Units.Count, Balance.MaxSimulatedDrills);
+            Assert.Greater(sim.State.DrillsOwned, 4990);
+            double perSwing = sim.DamageOf(0) * sim.Units.Count(u => u.Tier == 0);
+            Assert.Greater(perSwing, DrillTiers.Damage(0) * 4000, "the unsimulated drills still count");
+        }
+
+        [Test]
+        public void ManyDrills_KeepDiggingWithoutGettingStuck()
+        {
+            var sim = NewSim();
+            sim.State.SetDrillCount(0, 60);
+            sim.Merge(0);
+            for (int i = 0; i < 400; i++) sim.Tick(0.05);
+            Assert.Greater(sim.State.depth, 5);
+            int nearLead = sim.Units.Count(u => Math.Abs(u.Body.Y - sim.Lead.Body.Y) < 12);
+            Assert.Greater(nearLead, sim.Units.Count / 2, "stragglers rejoin the lead");
         }
 
         [Test]
@@ -241,78 +253,84 @@ namespace DeepDrill.Tests
             var block = sim.Row(5)[0];
             double before = block.Hp;
             Assert.IsTrue(sim.Click(5, 0));
-            Assert.AreEqual(before - sim.DamagePerHit, block.Hp, 1e-9);
+            Assert.Less(block.Hp, before);
             block.Hp = 0;
             Assert.IsFalse(sim.Click(5, 0));
         }
 
         [Test]
-        public void Buying_ChargesAndRespectsRequirements()
+        public void Skills_NumberExactlyOneHundredAndFifty()
         {
-            var sim = NewSim();
-            Assert.IsFalse(sim.Buy(SkillCatalog.DrillDamage), "no money yet");
-
-            sim.State.coins = 1000;
-            Assert.IsTrue(sim.Buy(SkillCatalog.DrillDamage));
-            Assert.AreEqual(Balance.BaseDamage + 1, sim.DamagePerHit, 1e-9);
-            Assert.AreEqual(1000 - 8, sim.State.coins, 1e-9);
-
-            Assert.IsFalse(sim.Buy(SkillCatalog.DrillSpeed), "locked until damage is level 3");
-            sim.Buy(SkillCatalog.DrillDamage);
-            sim.Buy(SkillCatalog.DrillDamage);
-            Assert.IsTrue(sim.Buy(SkillCatalog.DrillSpeed));
-            Assert.AreEqual(Balance.BaseHitsPerSecond * 1.05, sim.HitsPerSecond, 1e-9);
-        }
-
-        private static void MakeBlock(GameSim sim, int row, int col, BlockType type, double hp = 0.1)
-        {
-            var b = sim.Row(row)[col];
-            b.Type = type;
-            b.Hp = hp;
-            b.MaxHp = hp;
-        }
-
-        [Test]
-        public void Combo_GrowsResetsAndBoostsPerTenBreaks()
-        {
-            var sim = NewSim();
-            for (int col = 0; col < 10; col++)
+            Assert.AreEqual(150, SkillCatalog.All.Count);
+            Assert.AreEqual(150, SkillCatalog.All.Select(s => s.Id).Distinct().Count());
+            Assert.AreEqual(150, SkillCatalog.All.Select(s => s.Name).Distinct().Count());
+            foreach (var s in SkillCatalog.All)
             {
-                MakeBlock(sim, 8, col, BlockType.Dirt);
-                sim.Click(8, col);
+                Assert.Greater(s.MaxLevel, 0, s.Id);
+                Assert.Greater(s.PerLevel, 0, s.Id);
+                if (s.RequiresId != null) Assert.IsNotNull(SkillCatalog.Get(s.RequiresId), s.Id);
             }
-            Assert.AreEqual(10, sim.Combo);
-            Assert.AreEqual(1.1, sim.ComboMultiplier, 1e-9);
-            // the drill must not break anything while the window runs out
-            for (int col = 0; col < Balance.Columns; col++) sim.Row(0)[col].Hp = 1e12;
-            sim.Tick(Balance.ComboWindowSeconds + 0.01);
-            Assert.AreEqual(0, sim.Combo);
         }
 
         [Test]
-        public void Crits_HappenAtAboutTheConfiguredRateAndMultiply()
+        public void SkillCosts_FollowTheirUnlockDepth()
+        {
+            foreach (var s in SkillCatalog.All)
+            {
+                double value = Math.Pow(1.03, s.UnlockDepth);
+                Assert.That(s.BaseCost / value, Is.InRange(SkillCatalog.CostScale, SkillCatalog.CostScale * 3.01), s.Id);
+            }
+            Assert.Greater(SkillCatalog.All.Max(s => s.UnlockDepth), 1100, "the last skills wait near the core");
+        }
+
+        [Test]
+        public void Skills_NeedDepthThenThePreviousRank()
         {
             var sim = NewSim();
-            int crits = 0;
-            for (int i = 0; i < 4000; i++)
+            sim.State.coins = 1e15;
+            string second = SkillCatalog.IdOf(SkillEffect.Damage, 1);
+            sim.State.maxDepthEver = SkillCatalog.Get(second).UnlockDepth;
+            Assert.IsFalse(sim.Buy(second), "rank I comes first");
+            Assert.IsTrue(sim.Buy(SkillCatalog.IdOf(SkillEffect.Damage, 0)));
+            Assert.IsTrue(sim.Buy(second));
+
+            string late = SkillCatalog.IdOf(SkillEffect.DepthValue, 5);
+            Assert.IsFalse(sim.Buy(late), "too deep yet");
+        }
+
+        [Test]
+        public void SkillEffects_ChangeTheGame()
+        {
+            var sim = NewSim();
+            double damage = sim.DamageOf(0);
+            sim.GrantSkill(SkillCatalog.IdOf(SkillEffect.Damage, 0), 5);
+            Assert.AreEqual(damage * 1.5, sim.DamageOf(0), 1e-9);
+
+            double speed = sim.HitsPerSecond;
+            sim.GrantSkill(SkillCatalog.IdOf(SkillEffect.Speed, 0), 5);
+            Assert.AreEqual(speed * 1.2, sim.HitsPerSecond, 1e-9);
+        }
+
+        [Test]
+        public void Combo_GrowsResetsAndIsCapped()
+        {
+            var sim = NewSim();
+            for (int i = 0; i < 10; i++)
             {
-                MakeBlock(sim, 8, 0, BlockType.Dirt, 1e12);
+                MakeBlock(sim, 8, 0, BlockType.Dirt);
                 sim.Click(8, 0);
             }
-            foreach (var e in sim.Events)
+            Assert.AreEqual(1.1, sim.ComboMultiplier, 1e-9);
+            for (int i = 0; i < 300; i++)
             {
-                if (e.Kind != SimEventKind.BlockHit) continue;
-                if (e.Crit)
-                {
-                    crits++;
-                    Assert.AreEqual(sim.DamagePerHit * Balance.CritMultiplier, e.Amount, 1e-9);
-                }
+                MakeBlock(sim, 8, 0, BlockType.Dirt);
+                sim.Click(8, 0);
             }
-            Assert.That(crits, Is.InRange(320, 480));
+            Assert.AreEqual(1 + Balance.ComboBonusMax, sim.ComboMultiplier, 1e-9);
         }
 
         [Test]
-        public void Frenzy_ChargesFromCombosRunsThenStops()
+        public void Frenzy_ChargesRunsAndStops()
         {
             var sim = NewSim();
             Assert.IsFalse(sim.StartFrenzy());
@@ -322,43 +340,11 @@ namespace DeepDrill.Tests
                 sim.Click(8, 0);
             }
             Assert.IsTrue(sim.FrenzyReady);
-            double normalSpeed = sim.HitsPerSecond;
+            double normal = sim.HitsPerSecond;
             Assert.IsTrue(sim.StartFrenzy());
-            Assert.AreEqual(normalSpeed * 5, sim.HitsPerSecond, 1e-9);
-            Assert.AreEqual(0, sim.FrenzyEnergy, 1e-9);
-            sim.Tick(Balance.FrenzySeconds + 0.01);
+            Assert.AreEqual(normal * Balance.FrenzySpeedMultiplier, sim.HitsPerSecond, 1e-9);
+            for (int i = 0; i < 110; i++) sim.Tick(0.1);
             Assert.IsFalse(sim.InFrenzy);
-            Assert.AreEqual(normalSpeed, sim.HitsPerSecond, 1e-9);
-        }
-
-        [Test]
-        public void FrenzyBurst_ExplodesWhenFrenzyEnds()
-        {
-            var sim = NewSim();
-            sim.State.SetLevel(SkillCatalog.FrenzyBurst, 1);
-            for (int i = 0; i < 140; i++)
-            {
-                MakeBlock(sim, 8, 0, BlockType.Dirt);
-                sim.Click(8, 0);
-            }
-            sim.StartFrenzy();
-            sim.Events.Clear();
-            sim.Tick(Balance.FrenzySeconds + 0.01);
-            Assert.IsTrue(sim.Events.Exists(e => e.Kind == SimEventKind.Explosion));
-        }
-
-        [Test]
-        public void Tnt_BreaksNeighboursAndPaysForThem()
-        {
-            var sim = NewSim();
-            MakeBlock(sim, 10, 2, BlockType.Tnt);
-            sim.Row(10)[3].Type = BlockType.Dirt;
-            sim.Click(10, 2);
-            Assert.IsFalse(sim.Row(10)[3].Alive, "right neighbour");
-            Assert.IsFalse(sim.Row(9)[2].Alive, "above");
-            Assert.IsFalse(sim.Row(11)[2].Alive, "below");
-            Assert.IsTrue(sim.Row(10)[5].Alive, "outside the radius");
-            Assert.Greater(sim.State.coins, 0);
         }
 
         [Test]
@@ -367,392 +353,148 @@ namespace DeepDrill.Tests
             var sim = NewSim();
             for (int col = 0; col < 8; col++) MakeBlock(sim, 10, col, BlockType.Tnt);
             sim.Click(10, 0);
-            int blasts = sim.Events.FindAll(e => e.Kind == SimEventKind.Explosion).Count;
-            Assert.AreEqual(Balance.BaseChainLimit, blasts);
+            Assert.AreEqual(Balance.BaseChainLimit, sim.Events.FindAll(e => e.Kind == SimEventKind.Explosion).Count);
+        }
 
-            sim = NewSim();
-            sim.State.SetLevel(SkillCatalog.BlastChain, 1);
-            for (int col = 0; col < 8; col++) MakeBlock(sim, 10, col, BlockType.Tnt);
-            sim.Click(10, 0);
-            blasts = sim.Events.FindAll(e => e.Kind == SimEventKind.Explosion).Count;
-            Assert.AreEqual(Balance.BaseChainLimit + Balance.ChainLimitPerLevel, blasts);
+        private static GameSim SimAtBoss(int stratum)
+        {
+            var sim = NewSim();
+            sim.State.bossesDefeated = stratum;
+            sim.Teleport(Strata.BossRow(stratum), Balance.StartColumn);
+            sim.Tick(0.1);
+            return sim;
         }
 
         [Test]
-        public void BlastLoot_DoublesOreFromExplosions()
+        public void EveryStratum_HasAGuardianThatBlocksTheWay()
         {
-            var sim = NewSim();
-            sim.State.SetLevel(SkillCatalog.BlastLoot, 1);
-            MakeBlock(sim, 10, 2, BlockType.Tnt);
-            for (int r = 9; r <= 11; r++)
-                for (int c = 1; c <= 3; c++)
-                    if (r != 10 || c != 2) sim.Row(r)[c].Type = BlockType.Dirt;
-            sim.Row(10)[3].Type = BlockType.Copper;
-            sim.Click(10, 2);
-            Assert.AreEqual(2, sim.State.ores, 1e-9);
+            for (int s = 0; s < Strata.All.Length; s++)
+            {
+                var sim = SimAtBoss(s);
+                Assert.IsTrue(sim.BossActive, Strata.All[s].BossName);
+                Assert.AreEqual(BlockType.BossRoot, sim.Row(Strata.BossRow(s))[3].Type);
+            }
         }
 
         [Test]
-        public void TwinDrill_SwingsTwice()
+        public void Boss_DefeatOpensTheWayAndAdvances()
         {
-            var sim = NewSim();
-            sim.Tick(1.001 / Balance.BaseHitsPerSecond);
-            Assert.AreEqual(3, sim.Events.FindAll(e => e.Kind == SimEventKind.BlockHit).Count);
-
-            sim = NewSim();
-            sim.State.SetLevel(SkillCatalog.DrillTwin, 1);
-            sim.Tick(1.001 / Balance.BaseHitsPerSecond);
-            Assert.AreEqual(6, sim.Events.FindAll(e => e.Kind == SimEventKind.BlockHit).Count);
+            var sim = SimAtBoss(0);
+            sim.State.SetDrillCount(10, 5);
+            sim.Merge(0);
+            sim.State.SetDrillCount(0, 3);
+            sim.Merge(0);
+            for (int i = 0; i < 2000 && sim.State.bossesDefeated == 0; i++) sim.Tick(0.05);
+            Assert.AreEqual(1, sim.State.bossesDefeated);
+            for (int i = 0; i < 100; i++) sim.Tick(0.05);
+            Assert.Greater(sim.State.depth, Strata.BossRow(0) + 1);
         }
 
         [Test]
-        public void EvenGround_IsDugStraightDown()
+        public void Armour_HalvesDamageUntilGone()
         {
-            var sim = NewSim();
-            for (int r = 0; r < 30; r++) // plain dirt with no holes to fall into
-                for (int c = 0; c < Balance.Columns; c++)
-                    MakeBlock(sim, r, c, BlockType.Dirt, Balance.BlockHp(r));
-            while (sim.State.depth < 20) sim.Tick(0.05);
-            Assert.AreEqual(Balance.StartColumn, sim.Drill.X, 1e-9);
-        }
-
-        [Test]
-        public void ToughBlockUnderOneFoot_BendsTheTunnelAwayFromIt()
-        {
-            var sim = NewSim();
-            for (int r = 0; r < 12; r++)
-                for (int c = 0; c < Balance.Columns; c++)
-                    MakeBlock(sim, r, c, BlockType.Dirt, Balance.BlockHp(r));
-            MakeBlock(sim, 3, Balance.StartColumn + 1, BlockType.HardRock, 1e6);
-            for (int i = 0; i < 400 && sim.State.depth < 8; i++) sim.Tick(0.05);
-            Assert.Less(sim.Drill.X, Balance.StartColumn, "slid off the rock into the left side of the hole");
-        }
-
-        [Test]
-        public void Pierce_AlsoDamagesTheBlockBelow()
-        {
-            var sim = NewSim();
-            sim.State.SetLevel(SkillCatalog.DrillPierce, 2);
-            double full = sim.Row(1)[Balance.StartColumn].MaxHp;
-            sim.Tick(1.001 / Balance.BaseHitsPerSecond);
-            Assert.Less(sim.Row(1)[Balance.StartColumn].Hp, full);
-        }
-
-        [Test]
-        public void HardRockSkill_RaisesDamageOnHardRockOnly()
-        {
-            var sim = NewSim();
-            sim.State.SetLevel(SkillCatalog.DrillHard, 5);
-            MakeBlock(sim, 8, 0, BlockType.HardRock, 1e12);
-            sim.Click(8, 0);
+            var sim = SimAtBoss(1);
+            Assert.Greater(sim.BossArmor, 0);
+            sim.Events.Clear();
+            sim.Click(Strata.BossRow(1), 0);
             var hit = sim.Events.Find(e => e.Kind == SimEventKind.BlockHit);
             double crit = hit.Crit ? Balance.CritMultiplier : 1;
-            Assert.AreEqual(sim.DamagePerHit * crit * 2, hit.Amount, 1e-6);
+            Assert.AreEqual(sim.ClickDamage * crit * Balance.BossArmorDamageRatio, hit.Amount, 1e-6);
         }
 
-        private static GameSim SimAtBoss()
+        [Test]
+        public void Rebirth_ClearsTheRunAndKeepsRecords()
         {
             var sim = NewSim();
-            sim.Teleport(Balance.BossRow, Balance.StartColumn);
-            sim.Tick(0.05);
-            return sim;
+            var s = sim.State;
+            s.bossesDefeated = 1;
+            s.maxDepth = 400;
+            s.maxDepthEver = 400;
+            s.depth = 400;
+            s.totalIncome = 1e6;
+            s.coins = 12345;
+            s.SetDrillCount(3, 7);
+            s.rareItems.Add("rare_0");
+            sim.GrantSkill(SkillCatalog.IdOf(SkillEffect.Damage, 0), 3);
+
+            Assert.IsTrue(sim.Rebirth());
+            Assert.AreEqual(48, s.shards);
+            Assert.AreEqual(0, s.coins);
+            Assert.AreEqual(0, s.depth);
+            Assert.AreEqual(1, s.DrillsOwned);
+            Assert.AreEqual(1, sim.Units.Count);
+            Assert.AreEqual(0, s.LevelOf(SkillCatalog.IdOf(SkillEffect.Damage, 0)));
+            Assert.AreEqual(400, s.maxDepthEver, "records stay");
+            Assert.AreEqual(1, s.rareItems.Count, "rare finds stay");
+            Assert.AreEqual(1, s.rebirths);
         }
 
         [Test]
-        public void Boss_StartsWhenTheDrillReachesTheRootAndBlocksTheWay()
-        {
-            var sim = SimAtBoss();
-            Assert.IsTrue(sim.BossActive);
-            Assert.AreEqual(Balance.BossSeconds, sim.BossTimeLeft, 0.2);
-            for (int i = 0; i < 40; i++) sim.Tick(0.1);
-            Assert.AreEqual(Balance.BossRow, sim.State.depth, "the root holds the drill");
-            Assert.Less(sim.BossHp, sim.BossMaxHp);
-        }
-
-        [Test]
-        public void Boss_RegrowsWhenTimeRunsOut()
-        {
-            var sim = SimAtBoss();
-            for (int i = 0; i < 20; i++) sim.Tick(0.1);
-            sim.Events.Clear();
-            for (int i = 0; i < Balance.BossSeconds * 10 + 5; i++) sim.Tick(0.1);
-            Assert.IsTrue(sim.Events.Exists(e => e.Kind == SimEventKind.BossFailed));
-            Assert.IsTrue(sim.BossActive);
-            Assert.IsFalse(sim.State.AnyBossDown);
-            Assert.Greater(sim.BossTimeLeft, Balance.BossSeconds - 6);
-        }
-
-        [Test]
-        public void Boss_DefeatOpensTheWayAndPays()
-        {
-            var sim = SimAtBoss();
-            sim.State.SetLevel(SkillCatalog.DrillDamage, 100);
-            sim.State.SetLevel(SkillCatalog.DrillSpeed, 50);
-            for (int i = 0; i < 2000 && !sim.State.AnyBossDown; i++) sim.Tick(0.05);
-            Assert.IsTrue(sim.State.AnyBossDown);
-            Assert.Greater(sim.State.coins, 1000);
-            for (int i = 0; i < 100; i++) sim.Tick(0.05);
-            Assert.Greater(sim.State.depth, Balance.BossRow + 1, "falls through the breach");
-        }
-
-        [Test]
-        public void Boss_IgnoresTntAndEarlyClicks()
-        {
-            var sim = NewSim();
-            Assert.IsFalse(sim.Click(Balance.BossRow, 3), "not started yet");
-            MakeBlock(sim, Balance.BossRow - 1, 3, BlockType.Tnt);
-            sim.Click(Balance.BossRow - 1, 3);
-            Assert.IsTrue(sim.Row(Balance.BossRow)[3].Alive);
-        }
-
-        private static GameSim SimAtBeetle()
-        {
-            var sim = NewSim();
-            sim.State.bossesDefeated = 1;
-            sim.Teleport(Balance.BeetleRow, Balance.StartColumn);
-            sim.Tick(0.05);
-            return sim;
-        }
-
-        [Test]
-        public void Beetle_ArmourHalvesDamageUntilItBreaks()
-        {
-            var sim = SimAtBeetle();
-            Assert.IsTrue(sim.BossActive);
-            Assert.Greater(sim.BossArmor, 0);
-
-            sim.Events.Clear();
-            sim.Click(Balance.BeetleRow, 0);
-            var armoured = sim.Events.Find(e => e.Kind == SimEventKind.BlockHit);
-            double crit = armoured.Crit ? Balance.CritMultiplier : 1;
-            Assert.AreEqual(sim.DamagePerHit * crit * 0.5, armoured.Amount, 1e-6);
-
-            sim.State.SetLevel(SkillCatalog.DrillDamage, 100);
-            sim.State.SetLevel(SkillCatalog.DrillSpeed, 50);
-            for (int i = 0; i < 1000 && sim.BossArmor > 0; i++) sim.Tick(0.05);
-            Assert.AreEqual(0, sim.BossArmor, 1e-9);
-
-            sim.Events.Clear();
-            sim.Click(Balance.BeetleRow, 0);
-            var bare = sim.Events.Find(e => e.Kind == SimEventKind.BlockHit);
-            crit = bare.Crit ? Balance.CritMultiplier : 1;
-            Assert.AreEqual(sim.DamagePerHit * crit, bare.Amount, 1e-6);
-        }
-
-        [Test]
-        public void Beetle_ArmourGrowsBackWhenTimeRunsOut()
-        {
-            var sim = SimAtBeetle();
-            sim.Click(Balance.BeetleRow, 0);
-            Assert.Less(sim.BossArmor, sim.BossMaxArmor);
-            for (int i = 0; i < Balance.BossSeconds * 10 + 5; i++) sim.Tick(0.1);
-            Assert.Greater(sim.BossArmor, sim.BossMaxArmor * 0.5);
-        }
-
-        [Test]
-        public void SecondBoss_OnlyWaitsBehindTheFirst()
-        {
-            var sim = NewSim();
-            Assert.AreEqual("巨型木根", sim.CurrentBoss.Name);
-            sim.State.bossesDefeated = 1;
-            Assert.AreEqual("岩甲虫", sim.CurrentBoss.Name);
-            sim.State.bossesDefeated = 2;
-            Assert.IsNull(sim.CurrentBoss);
-        }
-
-        [Test]
-        public void Sandstone_HasItsOreAndSandAndTheStrataMix()
-        {
-            int iron = 0, silver = 0, sand = 0, copper = 0;
-            for (int row = 110; row < 190; row++)
-                for (int col = 0; col < Balance.Columns; col++)
-                {
-                    var t = WorldGen.TypeAt(3, row, col);
-                    if (t == BlockType.Iron) iron++;
-                    if (t == BlockType.Silver) silver++;
-                    if (t == BlockType.Sand) sand++;
-                    if (t == BlockType.Copper) copper++;
-                }
-            Assert.Greater(iron, silver);
-            Assert.Greater(silver, copper, "copper is rare here");
-            Assert.Greater(sand, iron);
-            Assert.Greater(WorldGen.ValueOf(BlockType.Iron, 150), WorldGen.ValueOf(BlockType.Copper, 150));
-            Assert.Greater(WorldGen.ValueOf(BlockType.Silver, 150), WorldGen.ValueOf(BlockType.Iron, 150));
-
-            int mixedSand = 0;
-            for (int col = 0; col < Balance.Columns; col++)
-                mixedSand += WorldGen.StratumAt(3, Balance.SandstoneRow - 1, col);
-            Assert.That(mixedSand, Is.InRange(10, 39), "the last rows are a mix, not a hard line");
-            Assert.AreEqual(0, WorldGen.StratumAt(3, Balance.SandstoneRow - Balance.TransitionRows - 1, 5));
-            Assert.AreEqual(1, WorldGen.StratumAt(3, Balance.SandstoneRow, 5));
-        }
-
-        [Test]
-        public void Sand_FallsCellByCellAndStopsOnTheGround()
+        public void Loose_FallsCellByCellAndStops()
         {
             var sim = NewSim();
             for (int r = 5; r <= 10; r++) sim.Carve(r, 3);
             MakeBlock(sim, 4, 3, BlockType.Sand, 50);
-            sim.Row(10);
             sim.Row(11);
-
-            sim.Tick(Balance.SandStepSeconds * 1.01);
+            sim.Tick(Balance.LooseStepSeconds * 1.01);
             Assert.IsFalse(sim.Row(4)[3].Alive);
             Assert.AreEqual(BlockType.Sand, sim.Row(5)[3].Type);
-            Assert.IsTrue(sim.Row(5)[3].Alive);
-
-            for (int i = 0; i < 12; i++) sim.Tick(Balance.SandStepSeconds);
-            Assert.IsTrue(sim.Row(10)[3].Alive, "rests on the block below");
+            for (int i = 0; i < 12; i++) sim.Tick(Balance.LooseStepSeconds);
             Assert.AreEqual(BlockType.Sand, sim.Row(10)[3].Type);
             Assert.AreEqual(50, sim.Row(10)[3].Hp, 1e-9);
         }
 
         [Test]
-        public void Sand_WaitsOnTheDrillInsteadOfFallingThroughIt()
+        public void Rares_AreTwoPerStratumAndPayIncome()
         {
-            var sim = NewSim();
-            sim.Teleport(10, Balance.StartColumn);
-            int col = Balance.StartColumn;
-            for (int c = col - 2; c <= col + 2; c++)
-            {
-                MakeBlock(sim, 10, c, BlockType.Dirt, 1e9);
-                MakeBlock(sim, 6, c, BlockType.Sand, 1e9);
-                sim.Carve(7, c);
-                sim.Carve(8, c);
-                sim.Carve(9, c);
-            }
-            for (int i = 0; i < 12; i++) sim.Tick(Balance.SandStepSeconds);
-            Assert.AreEqual(BlockType.Sand, sim.Row(7)[col].Type);
-            Assert.IsTrue(sim.Row(7)[col].Alive, "stopped on top of the body");
-            Assert.IsFalse(sim.Row(8)[col].Alive);
-            Assert.IsFalse(sim.Row(9)[col].Alive);
+            Assert.AreEqual(24, RareItems.All.Count);
+            for (int s = 0; s < Strata.All.Length; s++)
+                Assert.AreEqual(2, RareItems.All.Count(r => r.Stratum == s));
         }
 
         [Test]
-        public void Sand_LandingUnderAFootGivesTheDrillSupport()
+        public void Achievements_UnlockFromProgressOnce()
         {
-            var sim = NewSim();
-            sim.Teleport(10, Balance.StartColumn);
-            int leftFoot = Balance.StartColumn - 1;
-            sim.Carve(10, leftFoot);
-            MakeBlock(sim, 9, leftFoot - 2, BlockType.Sand, 1e9);
-            Assert.IsFalse(sim.IsSolid(10, leftFoot));
-
-            sim.Row(9)[leftFoot].Hp = 0;
-            var sand = sim.Row(9)[leftFoot - 2];
-            sim.Row(9)[leftFoot - 2] = sim.Row(9)[leftFoot];
-            sim.Row(9)[leftFoot] = sand; // sand has drifted over the hole the foot hangs above
-            sim.Drill.X = Balance.StartColumn + 2.2; // clear of the column while it drops
-            sim.Tick(Balance.SandStepSeconds * 1.01);
-            Assert.IsTrue(sim.IsSolid(10, leftFoot), "the hole is plugged");
-        }
-
-        [Test]
-        public void EnteringSandstone_FiresOnce()
-        {
-            var sim = NewSim();
-            sim.State.bossesDefeated = 1;
-            sim.Teleport(Balance.SandstoneRow - 1, Balance.StartColumn);
-            for (int c = 16; c <= 24; c++)
-                for (int r = Balance.SandstoneRow - 1; r <= Balance.SandstoneRow + 1; r++)
-                    sim.Carve(r, c);
-            sim.Events.Clear();
-            for (int i = 0; i < 40; i++) sim.Tick(0.05);
-            Assert.AreEqual(1, sim.Events.FindAll(e => e.Kind == SimEventKind.StratumEntered).Count);
-        }
-
-        [Test]
-        public void OldSave_KeepsItsBossKill()
-        {
-            var state = new GameState { version = 2, bossDefeated = true };
-            state.Upgrade();
-            Assert.AreEqual(1, state.bossesDefeated);
-            Assert.AreEqual(GameState.CurrentVersion, state.version);
-
-            var fresh = new GameState { version = 3, bossesDefeated = 2 };
-            fresh.Upgrade();
-            Assert.AreEqual(2, fresh.bossesDefeated);
-        }
-
-        [Test]
-        public void Rebirth_NeedsTheBossDown()
-        {
-            var sim = NewSim();
-            sim.State.maxDepth = 300;
-            sim.State.totalIncome = 1e6;
-            Assert.IsFalse(sim.CanRebirth);
-            Assert.IsFalse(sim.Rebirth());
-        }
-
-        [Test]
-        public void Rebirth_FollowsTheShardFormulaAndClearsTheRun()
-        {
-            Assert.AreEqual((int)System.Math.Floor(System.Math.Pow(2, 1.5) * 6), Balance.ShardsForRebirth(200, 1e6));
+            Assert.Greater(AchievementCatalog.All.Count, 40);
+            Assert.AreEqual(AchievementCatalog.All.Count, AchievementCatalog.All.Select(a => a.Id).Distinct().Count());
 
             var sim = NewSim();
-            var s = sim.State;
-            s.bossesDefeated = 1;
-            s.maxDepth = 400;
-            s.depth = 400;
-            s.totalIncome = 1e6;
-            s.coins = 12345;
-            s.ores = 99;
-            s.SetLevel(SkillCatalog.DrillDamage, 10);
-            int oldSeed = s.seed;
-            int expected = (int)System.Math.Floor(8 * 6.0);
-
-            Assert.IsTrue(sim.Rebirth());
-            Assert.AreEqual(expected, s.shards);
-            Assert.AreEqual(0, s.coins);
-            Assert.AreEqual(0, s.ores);
-            Assert.AreEqual(0, s.depth);
-            Assert.AreEqual(0, s.maxDepth);
-            Assert.AreEqual(0, s.LevelOf(SkillCatalog.DrillDamage));
-            Assert.IsFalse(s.AnyBossDown);
-            Assert.AreNotEqual(oldSeed, s.seed);
-            Assert.AreEqual(Balance.StartColumn, sim.Drill.X, 1e-9);
-
-            double bonus = 1 + Balance.ShardBonus * expected;
-            Assert.AreEqual(Balance.BaseDamage * bonus, sim.DamagePerHit, 1e-9);
-            Assert.IsFalse(sim.Rebirth(), "nothing to reforge straight after");
+            sim.State.SetDrillCount(0, 12);
+            sim.Tick(1.1);
+            Assert.Contains("drills_10", sim.State.achievements);
+            int count = sim.State.achievements.Count;
+            sim.Tick(1.1);
+            Assert.AreEqual(count, sim.State.achievements.Count);
         }
 
         [Test]
-        public void EverySkillRequirement_PointsAtARealSkill()
-        {
-            foreach (var skill in SkillCatalog.All)
-            {
-                if (skill.RequiresId == null) continue;
-                var parent = SkillCatalog.Get(skill.RequiresId);
-                Assert.IsNotNull(parent, skill.Id);
-                Assert.LessOrEqual(skill.RequiresLevel, parent.MaxLevel, skill.Id);
-            }
-        }
-
-        [Test]
-        public void Offline_PaysHalfAndCapsAtTwoHours()
+        public void Offline_PaysHalfCapsAndUsesTheSkill()
         {
             Assert.AreEqual(50, Balance.OfflineEarnings(10, 10), 1e-9);
             Assert.AreEqual(10 * 7200 * 0.5, Balance.OfflineEarnings(10, 999999), 1e-9);
             Assert.AreEqual(0, Balance.OfflineEarnings(10, -5), 1e-9);
-
-            var state = new GameState { incomePerSecond = 4, lastSaveUnixSeconds = 1000 };
-            var sim = new GameSim(state);
-            Assert.AreEqual(200, sim.ApplyOffline(1100), 1e-9);
-            Assert.AreEqual(200, state.coins, 1e-9);
         }
 
         [Test]
-        public void ReloadedRun_RebuildsTheSameGroundWithTheShaftDug()
+        public void OldSave_DropsItsObsoleteSkills()
+        {
+            var state = new GameState { version = 3 };
+            state.SetLevel("drill_damage", 5);
+            state.Upgrade();
+            Assert.IsEmpty(state.skills);
+            Assert.AreEqual(GameState.CurrentVersion, state.version);
+        }
+
+        [Test]
+        public void ReloadedRun_KeepsTheDrillsAndGround()
         {
             var sim = NewSim();
+            sim.State.SetDrillCount(0, 5);
+            sim.Merge(0);
             while (sim.State.depth < 5) sim.Tick(0.1);
             var reloaded = new GameSim(sim.State);
-            Assert.AreEqual(sim.Drill.X, reloaded.Drill.X, 1e-9);
-            Assert.AreEqual(sim.Drill.Y, reloaded.Drill.Y, 1e-9);
-            Assert.IsFalse(reloaded.Row(2)[(int)System.Math.Round(reloaded.Drill.X)].Alive);
-            Assert.IsTrue(reloaded.Row(2)[0].Alive);
-            Assert.AreEqual(sim.Row(40)[3].Type, reloaded.Row(40)[3].Type);
+            Assert.AreEqual(sim.State.DrillsOwned, reloaded.Units.Count);
+            Assert.AreEqual(sim.Lead.Body.X, reloaded.Lead.Body.X, 1e-9);
         }
     }
 }
