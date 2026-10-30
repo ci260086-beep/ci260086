@@ -44,6 +44,13 @@ namespace DeepDrill.Core
         /// <summary>The row the feet stand on, which is the drill's depth.</summary>
         public int FeetRow => Round(Y + HalfHeight + 0.5);
 
+        public void Place(double x, double y)
+        {
+            X = x;
+            Y = y;
+            VelocityX = VelocityY = Angle = AngularVelocity = 0;
+        }
+
         /// <summary>Advances one fixed step. Returns the landing speed, or 0 if it did not land.</summary>
         public double Step(double dt, Func<int, int, bool> solid)
         {

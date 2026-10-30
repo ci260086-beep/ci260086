@@ -26,6 +26,7 @@ namespace DeepDrill.Core
         public double incomePerSecond;
         public int shards;
         public long lastSaveUnixSeconds;
+        public bool bossDefeated;
         public bool drillPlaced;
         public double drillX;
         public double drillY;

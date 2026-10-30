@@ -13,6 +13,10 @@ namespace DeepDrill.Core
         FrenzyStarted,
         FrenzyEnded,
         Landed,
+        BossStarted,
+        BossDefeated,
+        BossFailed,
+        Rebirth,
     }
 
     public struct SimEvent
@@ -63,15 +67,18 @@ namespace DeepDrill.Core
             random = new Random(randomSeed ?? state.seed);
             solidCheck = IsSolid;
 
-            if (!state.drillPlaced)
-            {
-                state.drillPlaced = true;
-                state.drillX = Balance.StartColumn;
-                state.drillY = -0.5 - DrillBody.HalfHeight;
-            }
+            if (!state.drillPlaced) PlaceDrillOnSurface();
             Drill.X = state.drillX;
             Drill.Y = state.drillY;
         }
+
+        public bool BossActive { get; private set; }
+        public double BossHp { get; private set; }
+        public double BossTimeLeft { get; private set; }
+        public double BossMaxHp => Balance.BlockHp(Balance.BossRow) * Balance.BossHpMultiplier;
+
+        public int ShardsOnRebirth => Balance.ShardsForRebirth(State.maxDepth, State.totalIncome);
+        public bool CanRebirth => State.bossDefeated && ShardsOnRebirth > 0;
 
         public int Combo { get; private set; }
         public double FrenzyEnergy { get; private set; }
@@ -108,8 +115,8 @@ namespace DeepDrill.Core
             blocks = new Block[Balance.Columns];
             for (int col = 0; col < Balance.Columns; col++)
             {
-                var type = WorldGen.TypeAt(State.seed, row, col, TntChance);
-                double hp = WorldGen.HpOf(type, row);
+                var type = IsBossRow(row) ? BlockType.BossRoot : WorldGen.TypeAt(State.seed, row, col, TntChance);
+                double hp = type == BlockType.BossRoot ? double.MaxValue : WorldGen.HpOf(type, row);
                 // only a reloaded run meets rows above the drill here: reopen the passage it stands in
                 bool alreadyDug = row < State.depth && Math.Abs(col - drillCol) <= 1;
                 blocks[col] = new Block { Type = type, MaxHp = hp, Hp = alreadyDug ? 0 : hp };
@@ -117,6 +124,9 @@ namespace DeepDrill.Core
             rows[row] = blocks;
             return blocks;
         }
+
+        private bool IsBossRow(int row) =>
+            !State.bossDefeated && row >= Balance.BossRow && row < Balance.BossRow + Balance.BossRows;
 
         /// <summary>The sky is open; the sides of the world are unbreakable walls.</summary>
         public bool IsSolid(int row, int col)
@@ -132,6 +142,7 @@ namespace DeepDrill.Core
             AdvanceCombo(dt);
             AdvanceFrenzy(dt);
             AdvancePhysics(dt);
+            AdvanceBoss(dt);
 
             hitClock += dt * HitsPerSecond;
             int hits = 0;
@@ -150,8 +161,61 @@ namespace DeepDrill.Core
             if (row < 0 || col < 0 || col >= Balance.Columns) return false;
             var block = Row(row)[col];
             if (!block.Alive) return false;
+            if (block.Type == BlockType.BossRoot && !BossActive) return false;
             Strike(row, col, 1, true, RollCrit());
             return true;
+        }
+
+        /// <summary>Moves the drill to stand on the given row, clearing room for it.</summary>
+        public void Teleport(int row, int col)
+        {
+            for (int r = row - 3; r < row; r++)
+                for (int c = col - 2; c <= col + 2; c++)
+                    if (r >= 0) Carve(r, c);
+            Drill.Place(col, row - 0.5 - DrillBody.HalfHeight);
+            State.depth = row;
+            State.maxDepth = Math.Max(State.maxDepth, row);
+            State.drillX = Drill.X;
+            State.drillY = Drill.Y;
+        }
+
+        /// <summary>Trades the whole run for star core shards. Shards and their bonus are all that stay.</summary>
+        public bool Rebirth()
+        {
+            if (!CanRebirth) return false;
+            int gained = ShardsOnRebirth;
+            State.shards += gained;
+
+            State.coins = 0;
+            State.ores = 0;
+            State.depth = 0;
+            State.maxDepth = 0;
+            State.totalIncome = 0;
+            State.incomePerSecond = 0;
+            State.skills.Clear();
+            State.bossDefeated = false;
+            State.seed = random.Next(1, int.MaxValue);
+            PlaceDrillOnSurface();
+            Drill.Place(State.drillX, State.drillY);
+
+            rows.Clear();
+            pendingBlasts.Clear();
+            Array.Clear(incomeBuckets, 0, incomeBuckets.Length);
+            incomeFilled = 0;
+            incomeClock = hitClock = physicsClock = comboClock = 0;
+            Combo = 0;
+            FrenzyEnergy = FrenzyTimeLeft = 0;
+            BossActive = false;
+
+            Events.Add(new SimEvent { Kind = SimEventKind.Rebirth, Amount = gained });
+            return true;
+        }
+
+        private void PlaceDrillOnSurface()
+        {
+            State.drillPlaced = true;
+            State.drillX = Balance.StartColumn;
+            State.drillY = -0.5 - DrillBody.HalfHeight;
         }
 
         /// <summary>Removes a block with no reward or effects.</summary>
@@ -300,6 +364,19 @@ namespace DeepDrill.Core
             if (block.Type == BlockType.HardRock)
                 amount *= 1 + Balance.HardRockBonusPerLevel * Level(SkillCatalog.DrillHard);
 
+            if (block.Type == BlockType.BossRoot)
+            {
+                if (!BossActive) return;
+                BossHp -= amount;
+                Events.Add(new SimEvent
+                {
+                    Kind = SimEventKind.BlockHit, Row = row, Col = col, Block = block.Type,
+                    Amount = amount, FromClick = fromClick, Crit = crit,
+                });
+                if (BossHp <= 0) DefeatBoss();
+                return;
+            }
+
             block.Hp -= amount;
             Events.Add(new SimEvent
             {
@@ -368,7 +445,7 @@ namespace DeepDrill.Core
                     int dr = r - row, dc = c - col;
                     if (dr * dr + dc * dc > radius * radius + 1) continue;
                     var block = Row(r)[c];
-                    if (block.Alive) Break(r, c, block, false, true);
+                    if (block.Alive && block.Type != BlockType.BossRoot) Break(r, c, block, false, true);
                 }
             }
         }
@@ -381,6 +458,51 @@ namespace DeepDrill.Core
             State.depth = feet;
             State.maxDepth = Math.Max(State.maxDepth, feet);
             Events.Add(new SimEvent { Kind = SimEventKind.DepthChanged, Row = feet });
+        }
+
+        private void AdvanceBoss(double dt)
+        {
+            if (State.bossDefeated) return;
+            if (!BossActive)
+            {
+                if (Drill.FeetRow < Balance.BossRow || !Drill.Grounded) return;
+                BossActive = true;
+                BossHp = BossMaxHp;
+                BossTimeLeft = Balance.BossSeconds;
+                Events.Add(new SimEvent { Kind = SimEventKind.BossStarted });
+                return;
+            }
+
+            BossTimeLeft -= dt;
+            if (BossTimeLeft > 0) return;
+            // the root regrows: the player gets another attempt, usually after upgrading
+            BossHp = BossMaxHp;
+            BossTimeLeft = Balance.BossSeconds;
+            Events.Add(new SimEvent { Kind = SimEventKind.BossFailed });
+        }
+
+        private void DefeatBoss()
+        {
+            BossActive = false;
+            State.bossDefeated = true;
+
+            double value = Balance.OreValue(Balance.BossRow, Balance.BossRewardValue);
+            State.coins += value;
+            State.totalIncome += value;
+            incomeBuckets[incomeIndex] += value;
+
+            int col = RoundToInt(Drill.X);
+            for (int row = Balance.BossRow; row < Balance.BossRow + Balance.BossRows; row++)
+            {
+                rows.Remove(row); // the rest of the row grows back as ordinary ground
+                for (int c = col - Balance.BossBreachHalfWidth; c <= col + Balance.BossBreachHalfWidth; c++)
+                    if (c >= 0 && c < Balance.Columns) Carve(row, c);
+            }
+
+            Events.Add(new SimEvent
+            {
+                Kind = SimEventKind.BossDefeated, Row = Balance.BossRow, Col = col, Amount = value,
+            });
         }
 
         private void AdvanceCombo(double dt)

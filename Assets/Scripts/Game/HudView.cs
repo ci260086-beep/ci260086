@@ -23,6 +23,8 @@ namespace DeepDrill.Game
         private const int MeterHeight = 7;
         private const int MeterY = 169;
         private const float ToastFadeSeconds = 0.6f;
+        private const int BossBarWidth = 100;
+        private const float RebirthConfirmSeconds = 4f;
 
         private static readonly Color PanelColor = new Color32(0x1a, 0x12, 0x10, 0xff);
         private static readonly Color RailColor = new Color32(0x2e, 0x1f, 0x17, 0xff);
@@ -83,6 +85,11 @@ namespace DeepDrill.Game
         private Text coinsLabel, incomeLabel, oresLabel, depthLabel, comboLabel, versionLabel;
         private Text toastLabel, panelTitle, footerLabel, statsLabel;
         private Image meterFill;
+        private Image bossBar, bossFill;
+        private Text bossLabel;
+        private Button rebirthButton;
+        private Text rebirthLabel;
+        private float rebirthArmed;
         private Button frenzyButton;
         private Image frenzyButtonImage;
         private Text frenzyButtonLabel;
@@ -196,6 +203,12 @@ namespace DeepDrill.Game
             oresLabel = Floating("0", 15, 31, 80, 10, 8, TextAnchor.MiddleLeft);
             comboLabel = Floating("", 4, 43, 100, 11, 8, TextAnchor.MiddleLeft);
 
+            bossBar = Ui.Panel(stageRoot, "BossBar", (Stage.DigWidth - BossBarWidth) / 2f, 4, BossBarWidth, 7, PanelColor);
+            bossBar.raycastTarget = false;
+            bossFill = Ui.Panel(bossBar.transform, "Fill", 1, 1, 0, 5, FrenzyColor);
+            bossFill.raycastTarget = false;
+            bossLabel = Floating("", (Stage.DigWidth - BossBarWidth) / 2f, 12, BossBarWidth, 10, 7, TextAnchor.MiddleCenter);
+
             depthLabel = Floating("", Stage.DigWidth - 104, 2, 100, 14, 10, TextAnchor.MiddleRight);
             depthLabel.fontStyle = FontStyle.Bold;
 
@@ -259,6 +272,9 @@ namespace DeepDrill.Game
             statsLabel = Ui.Label(stats.transform, Font, "", 4, PanelTitleHeight, Stage.PanelWidth - 8, 140, 7, TextAnchor.UpperLeft);
             statsLabel.lineSpacing = 1.3f;
 
+            rebirthButton = Ui.Button(stats.transform, Font, "", 3, 138, Stage.PanelWidth - 6, 18, 7, FrenzyColor, out rebirthLabel);
+            rebirthButton.onClick.AddListener(OnRebirthClicked);
+
             var settings = NewPage(panel.transform, "设置");
             var save = Ui.Button(settings.transform, Font, "立即保存", 4, PanelTitleHeight + 2, Stage.PanelWidth - 8, 16, 7,
                 CardBright, out _);
@@ -267,6 +283,18 @@ namespace DeepDrill.Game
                 SaveRequested?.Invoke();
                 ShowToast("已保存", 1.5f);
             });
+        }
+
+        // Rebirth wipes the run, so it takes a second click within a few seconds.
+        private void OnRebirthClicked()
+        {
+            if (rebirthArmed > 0)
+            {
+                rebirthArmed = 0;
+                sim.Rebirth();
+                return;
+            }
+            rebirthArmed = RebirthConfirmSeconds;
         }
 
         private GameObject NewPage(Transform parent, string title)
@@ -359,6 +387,31 @@ namespace DeepDrill.Game
             UpdateToast(dt);
             foreach (var page in skillPages) UpdatePage(page);
             if (statsLabel.isActiveAndEnabled) UpdateStats();
+            UpdateBoss();
+            UpdateRebirth(dt);
+        }
+
+        public void ClearInFlight() => coinsInFlight = oresInFlight = 0;
+
+        private void UpdateBoss()
+        {
+            bool show = sim.BossActive;
+            bossBar.gameObject.SetActive(show);
+            bossLabel.text = show
+                ? $"巨型木根 {NumberFormat.Short(sim.BossHp)}  {Mathf.CeilToInt((float)sim.BossTimeLeft)}秒"
+                : "";
+            if (!show) return;
+            double fill = System.Math.Max(0, sim.BossHp / sim.BossMaxHp);
+            bossFill.rectTransform.sizeDelta = new Vector2((float)(fill * (BossBarWidth - 2)), 5);
+        }
+
+        private void UpdateRebirth(float dt)
+        {
+            bool can = sim.CanRebirth;
+            rebirthButton.gameObject.SetActive(can);
+            if (rebirthArmed > 0) rebirthArmed -= dt;
+            if (!can) return;
+            rebirthLabel.text = rebirthArmed > 0 ? "再点一次确认" : $"地核重铸 +{sim.ShardsOnRebirth}";
         }
 
         private void UpdateCombo()
@@ -412,7 +465,7 @@ namespace DeepDrill.Game
             {
                 card.WasUnlocked = unlocked;
                 cardsMoved = true;
-                ShowToast($"解锁新技能：{skill.Name}", 2.5f);
+                if (unlocked) ShowToast($"解锁新技能：{skill.Name}", 2.5f); // rebirth locks cards silently
             }
 
             card.Background.color = canBuy ? CardBright : CardDim;

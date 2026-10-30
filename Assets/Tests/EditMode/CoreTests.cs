@@ -449,6 +449,104 @@ namespace DeepDrill.Tests
             Assert.AreEqual(sim.DamagePerHit * crit * 2, hit.Amount, 1e-6);
         }
 
+        private static GameSim SimAtBoss()
+        {
+            var sim = NewSim();
+            sim.Teleport(Balance.BossRow, Balance.StartColumn);
+            sim.Tick(0.05);
+            return sim;
+        }
+
+        [Test]
+        public void Boss_StartsWhenTheDrillReachesTheRootAndBlocksTheWay()
+        {
+            var sim = SimAtBoss();
+            Assert.IsTrue(sim.BossActive);
+            Assert.AreEqual(Balance.BossSeconds, sim.BossTimeLeft, 0.2);
+            for (int i = 0; i < 40; i++) sim.Tick(0.1);
+            Assert.AreEqual(Balance.BossRow, sim.State.depth, "the root holds the drill");
+            Assert.Less(sim.BossHp, sim.BossMaxHp);
+        }
+
+        [Test]
+        public void Boss_RegrowsWhenTimeRunsOut()
+        {
+            var sim = SimAtBoss();
+            for (int i = 0; i < 20; i++) sim.Tick(0.1);
+            sim.Events.Clear();
+            for (int i = 0; i < Balance.BossSeconds * 10 + 5; i++) sim.Tick(0.1);
+            Assert.IsTrue(sim.Events.Exists(e => e.Kind == SimEventKind.BossFailed));
+            Assert.IsTrue(sim.BossActive);
+            Assert.IsFalse(sim.State.bossDefeated);
+            Assert.Greater(sim.BossTimeLeft, Balance.BossSeconds - 6);
+        }
+
+        [Test]
+        public void Boss_DefeatOpensTheWayAndPays()
+        {
+            var sim = SimAtBoss();
+            sim.State.SetLevel(SkillCatalog.DrillDamage, 100);
+            sim.State.SetLevel(SkillCatalog.DrillSpeed, 50);
+            for (int i = 0; i < 2000 && !sim.State.bossDefeated; i++) sim.Tick(0.05);
+            Assert.IsTrue(sim.State.bossDefeated);
+            Assert.Greater(sim.State.coins, 1000);
+            for (int i = 0; i < 100; i++) sim.Tick(0.05);
+            Assert.Greater(sim.State.depth, Balance.BossRow + 1, "falls through the breach");
+        }
+
+        [Test]
+        public void Boss_IgnoresTntAndEarlyClicks()
+        {
+            var sim = NewSim();
+            Assert.IsFalse(sim.Click(Balance.BossRow, 3), "not started yet");
+            MakeBlock(sim, Balance.BossRow - 1, 3, BlockType.Tnt);
+            sim.Click(Balance.BossRow - 1, 3);
+            Assert.IsTrue(sim.Row(Balance.BossRow)[3].Alive);
+        }
+
+        [Test]
+        public void Rebirth_NeedsTheBossDown()
+        {
+            var sim = NewSim();
+            sim.State.maxDepth = 300;
+            sim.State.totalIncome = 1e6;
+            Assert.IsFalse(sim.CanRebirth);
+            Assert.IsFalse(sim.Rebirth());
+        }
+
+        [Test]
+        public void Rebirth_FollowsTheShardFormulaAndClearsTheRun()
+        {
+            Assert.AreEqual((int)System.Math.Floor(System.Math.Pow(2, 1.5) * 6), Balance.ShardsForRebirth(200, 1e6));
+
+            var sim = NewSim();
+            var s = sim.State;
+            s.bossDefeated = true;
+            s.maxDepth = 400;
+            s.depth = 400;
+            s.totalIncome = 1e6;
+            s.coins = 12345;
+            s.ores = 99;
+            s.SetLevel(SkillCatalog.DrillDamage, 10);
+            int oldSeed = s.seed;
+            int expected = (int)System.Math.Floor(8 * 6.0);
+
+            Assert.IsTrue(sim.Rebirth());
+            Assert.AreEqual(expected, s.shards);
+            Assert.AreEqual(0, s.coins);
+            Assert.AreEqual(0, s.ores);
+            Assert.AreEqual(0, s.depth);
+            Assert.AreEqual(0, s.maxDepth);
+            Assert.AreEqual(0, s.LevelOf(SkillCatalog.DrillDamage));
+            Assert.IsFalse(s.bossDefeated);
+            Assert.AreNotEqual(oldSeed, s.seed);
+            Assert.AreEqual(Balance.StartColumn, sim.Drill.X, 1e-9);
+
+            double bonus = 1 + Balance.ShardBonus * expected;
+            Assert.AreEqual(Balance.BaseDamage * bonus, sim.DamagePerHit, 1e-9);
+            Assert.IsFalse(sim.Rebirth(), "nothing to reforge straight after");
+        }
+
         [Test]
         public void EverySkillRequirement_PointsAtARealSkill()
         {

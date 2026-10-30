@@ -42,8 +42,9 @@ namespace DeepDrill.Game
         private Sprite[] drillFrames;
         private Sprite[] frenzyFrames;
         private Sprite tunnel;
-        private Sprite grass, hardRock, coal, copper, chest, tnt;
+        private Sprite grass, hardRock, coal, copper, chest, tnt, bossRoot;
         private SpriteRenderer drill;
+        private SpriteRenderer bossFace;
         private float followX;
         private float drillClock;
         private float shakeTime;
@@ -66,6 +67,10 @@ namespace DeepDrill.Game
             coal = art.Get("ore_coal");
             copper = art.Get("ore_copper");
             chest = art.Get("chest");
+            bossRoot = art.Get("boss_root");
+
+            bossFace = MakeRenderer("bossFace", 4, transform);
+            bossFace.sprite = art.Get("boss_face");
 
             cells = new Cell[VisibleRows, VisibleCols];
             for (int r = 0; r < VisibleRows; r++)
@@ -100,6 +105,9 @@ namespace DeepDrill.Game
         }
 
         public void NoteHit(int row, int col) => wobble[Key(row, col)] = WobbleSeconds;
+
+        /// <summary>Jumps the camera to the drill, for when it moves further than a pan should show.</summary>
+        public void SnapToDrill() => followX = (float)sim.Drill.X;
 
         public static Vector2 CellCenter(int row, int col) => new Vector2(col, -row);
 
@@ -139,6 +147,9 @@ namespace DeepDrill.Game
             drill.transform.SetPositionAndRotation(
                 new Vector3(Stage.SnapToPixel(drillX), Stage.SnapToPixel(drillY - DrillPivotBelowCenter), 0),
                 Quaternion.Euler(0, 0, angle));
+
+            bossFace.enabled = !sim.State.bossDefeated;
+            bossFace.transform.position = new Vector3(Mathf.Round(drillX), -(Balance.BossRow + 0.5f), 0);
 
             StepWobble(dt);
             DrawCells(target);
@@ -194,6 +205,7 @@ namespace DeepDrill.Game
                 cell.Tile.transform.position = pos + new Vector3(0, -1f / Stage.PixelsPerUnit, 0);
 
             double ratio = block.Hp / block.MaxHp;
+            if (block.Type == BlockType.BossRoot) ratio = sim.BossActive ? sim.BossHp / sim.BossMaxHp : 1;
             if (ratio > 0.66) return;
             cell.Crack.enabled = true;
             cell.Crack.sprite = cracks[ratio > 0.33 ? 0 : ratio > 0.1 ? 1 : 2];
@@ -213,6 +225,7 @@ namespace DeepDrill.Game
                 case BlockType.Copper: return copper;
                 case BlockType.Chest: return chest;
                 case BlockType.Tnt: return tnt;
+                case BlockType.BossRoot: return bossRoot;
                 default: return dirt[WorldGen.Hash(sim.State.seed + 7, row, col) % dirt.Length];
             }
         }

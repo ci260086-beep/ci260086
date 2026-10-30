@@ -9,6 +9,7 @@ namespace DeepDrill.Core
         Copper,
         Chest,
         Tnt,
+        BossRoot,
     }
 
     public sealed class Block

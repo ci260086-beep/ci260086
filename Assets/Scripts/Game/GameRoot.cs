@@ -24,6 +24,7 @@ namespace DeepDrill.Game
         private static readonly Color GrassBits = new Color32(0x76, 0xa8, 0x3a, 0xff);
         private static readonly Color ChestBits = new Color32(0xff, 0xe2, 0x7a, 0xff);
         private static readonly Color TntBits = new Color32(0xb8, 0x2c, 0x2c, 0xff);
+        private static readonly Color RootBits = new Color32(0x6b, 0x46, 0x30, 0xff);
         private static readonly Color HitText = Color.white;
         private static readonly Color CoinText = new Color32(0xff, 0xe2, 0x7a, 0xff);
 
@@ -41,6 +42,8 @@ namespace DeepDrill.Game
         public SaveService Saves => saves;
 
         public void SaveNow() => saves.Save(sim.State);
+
+        public void SnapCamera() => world.SnapToDrill();
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void Boot()
@@ -161,6 +164,29 @@ namespace DeepDrill.Game
                 case SimEventKind.Landed:
                     OnLanded(e);
                     break;
+
+                case SimEventKind.BossStarted:
+                    hud.ShowToast("巨型木根！60 秒内打穿它", 3f);
+                    world.Shake(0.3f, 3f);
+                    break;
+
+                case SimEventKind.BossFailed:
+                    hud.ShowToast("木根再生了，升级后再来", 3f);
+                    break;
+
+                case SimEventKind.BossDefeated:
+                    hud.ShowToast("打穿了！可以地核重铸", 4f);
+                    fx.Explosion(WorldView.CellCenter(e.Row, e.Col), Balance.BossBreachHalfWidth);
+                    fx.Debris(WorldView.CellCenter(e.Row, e.Col), DirtBits, 40);
+                    world.Shake(0.4f, 5f);
+                    break;
+
+                case SimEventKind.Rebirth:
+                    hud.ClearInFlight();
+                    hud.ShowToast($"地核重铸：获得 {NumberFormat.Short(e.Amount)} 星核碎片", 4f);
+                    world.SnapToDrill();
+                    SaveNow();
+                    break;
             }
         }
 
@@ -230,6 +256,7 @@ namespace DeepDrill.Game
                 case BlockType.Copper: return CopperBits;
                 case BlockType.Chest: return ChestBits;
                 case BlockType.Tnt: return TntBits;
+                case BlockType.BossRoot: return RootBits;
                 default: return DirtBits;
             }
         }

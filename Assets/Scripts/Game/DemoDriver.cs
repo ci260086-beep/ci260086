@@ -16,6 +16,7 @@ namespace DeepDrill.Game
         private const float NormalPlaySeconds = 12f;
         private const double TiltShotAngle = -15;
         private const float TiltTimeout = 10f;
+        private const float BossTimeout = 45f;
 
         private GameRoot root;
         private string folder;
@@ -55,11 +56,36 @@ namespace DeepDrill.Game
             yield return Shot("after_hole");
 
             VerifySaveRoundTrip();
+            yield return BossAndRebirth();
 #if UNITY_EDITOR
             UnityEditor.EditorApplication.Exit(0);
 #else
             Application.Quit();
 #endif
+        }
+
+        private IEnumerator BossAndRebirth()
+        {
+            var sim = root.Sim;
+            sim.State.SetLevel(SkillCatalog.DrillDamage, 100);
+            sim.State.SetLevel(SkillCatalog.DrillSpeed, 50);
+            sim.Teleport(Balance.BossRow - 2, Balance.StartColumn);
+            root.SnapCamera();
+
+            float wait = Time.time + BossTimeout;
+            while (!sim.BossActive && Time.time < wait) yield return null;
+            yield return new WaitForSeconds(2.5f);
+            yield return Shot("boss");
+
+            while (!sim.State.bossDefeated && Time.time < wait) yield return null;
+            yield return new WaitForSeconds(1.5f);
+            Debug.Log($"[demo] boss defeated={sim.State.bossDefeated} depth={sim.State.depth} shardsOffered={sim.ShardsOnRebirth}");
+            yield return Shot("boss_down");
+
+            bool reborn = sim.Rebirth();
+            yield return new WaitForSeconds(1f);
+            Debug.Log($"[demo] rebirth={reborn} shards={sim.State.shards} depth={sim.State.depth} coins={sim.State.coins:0.0} damage={sim.DamagePerHit:0.0}");
+            yield return Shot("rebirth");
         }
 
         private IEnumerator Shot(string name)

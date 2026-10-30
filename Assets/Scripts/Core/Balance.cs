@@ -43,6 +43,19 @@ namespace DeepDrill.Core
         public const int BaseChainLimit = 2;
         public const int ChainLimitPerLevel = 2;
 
+        public const int BossRow = 100;
+        public const int BossRows = 2;
+        public const double BossSeconds = 60;
+        public const double BossHpMultiplier = 60;
+        public const double BossRewardValue = 400;
+        public const int BossBreachHalfWidth = 3;
+
+        public static int ShardsForRebirth(int maxDepth, double totalIncome)
+        {
+            if (maxDepth <= 0 || totalIncome <= 1) return 0;
+            return (int)Math.Floor(Math.Pow(maxDepth / 100.0, 1.5) * Math.Log10(totalIncome));
+        }
+
         public const double OfflineRate = 0.5;
         public const double OfflineCapSeconds = 2 * 60 * 60;
 

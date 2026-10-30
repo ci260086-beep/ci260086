@@ -385,6 +385,38 @@ for f = 0, 3 do
 end
 save(blast, "Items/explosion")
 
+-- boss: a seamless wall of living root plus a face laid over it
+local root = canvas(16, 16)
+root:rect(0, 0, 15, 15, D3)
+for x = 0, 15 do
+  local groove = (x % 5 == 1)
+  for y = 0, 15 do
+    if groove and (y + x) % 7 ~= 0 then root:set(x, y, D2) end
+    if x % 5 == 3 and (y * 3 + x) % 5 == 0 then root:set(x, y, D4) end
+  end
+end
+root:set(8, 5, D1) root:set(9, 5, D1) root:set(8, 6, D1) root:set(9, 6, D5)
+save(root, "Tiles/boss_root")
+
+local face = canvas(48, 32)
+local GLOW = hex("ffb040")
+for _, ex in ipairs({ 13, 34 }) do
+  for y = 4, 15 do
+    for x = ex - 7, ex + 7 do
+      local d = ((x - ex) / 7) ^ 2 + ((y - 9.5) / 5.5) ^ 2
+      if d <= 1 then face:set(x, y, d > 0.7 and D2 or INK) end
+    end
+  end
+  face:rect(ex - 1, 8, ex + 1, 10, GLOW)
+  face:set(ex, 9, GOLD_HI)
+end
+for x = 8, 39 do
+  local jag = (x % 6 < 3) and 0 or 2
+  face:rect(x, 21 + jag, x, 26 - jag, INK)
+end
+for x = 9, 38, 6 do face:rect(x, 21, x + 1, 22, D7) end
+save(face, "Tiles/boss_face")
+
 -- 16x16 rail and card icons, each with an ink outline
 local function icon(name, draw)
   local g = canvas(16, 16)
