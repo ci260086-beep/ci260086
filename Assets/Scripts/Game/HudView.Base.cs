@@ -46,6 +46,8 @@ namespace DeepDrill.Game
             BuildAutomationTab();
             BuildSchoolTab();
             BuildFactoryTab();
+            BuildResearchTab();
+            BuildExpeditionTab();
             ShowBaseTab(0);
         }
 
@@ -166,6 +168,40 @@ namespace DeepDrill.Game
                     () => sim.UpgradeFactory(index), () => sim.CanUpgradeFactory(index));
             }
             AddBaseRow(2 + GameData.Factory.Count, () => $"结晶每 {GameData.CrystalSeconds / 3600:0} 小时长一颗，离线也在长，每 {GameData.FactoryCrystalEvery} 级工厂要用一颗");
+        }
+
+        private void BuildResearchTab()
+        {
+            NewBaseTab("研究");
+            AddBaseRow(0, () => $"地心结晶 {sim.Crystals}   " + (sim.ActiveResearch != null
+                    ? $"研究中：{sim.ActiveResearch.Name}，还要 {FormatDuration(sim.State.researchLeft)}" : "没有进行中的研究"),
+                () => "用结晶加速", () => sim.RushResearch(), () => sim.CanRushResearch);
+            for (int i = 0; i < GameData.Research.Count; i++)
+            {
+                int index = i;
+                var def = GameData.Research[i];
+                AddBaseRow(1 + i, () => $"{def.Name}：{def.Desc}（{FormatDuration(def.Seconds)}，{def.Crystals} 结晶）",
+                    () => sim.ResearchDone(index) ? "已完成" : "开始", () => sim.StartResearch(index), () => sim.CanResearch(index));
+            }
+        }
+
+        private void BuildExpeditionTab()
+        {
+            NewBaseTab("探险");
+            AddBaseRow(0, () => $"探险员 {sim.State.explorers}，空闲 {sim.ExplorersIdle}。远古遗迹的宝箱里可能救出探险员");
+            for (int i = 0; i < GameData.Expeditions.Count; i++)
+            {
+                int index = i;
+                var trip = GameData.Expeditions[i];
+                AddBaseRow(1 + i, () => $"{trip.Name}：{FormatDuration(trip.Seconds)}，成功率 {trip.Success * 100:0}%，{trip.Shards} 碎片 {trip.Ores:0} 矿" + (trip.Crystals > 0 ? $" {trip.Crystals:0} 结晶" : ""),
+                    () => "出发", () => sim.SendExpedition(index), () => sim.CanSendExpedition(index));
+            }
+            for (int i = 0; i < 4; i++)
+            {
+                int index = i;
+                AddBaseRow(6 + i, () => index < sim.State.expeditionTiers.Count
+                    ? $"{GameData.Expeditions[sim.State.expeditionTiers[index]].Name}：还要 {FormatDuration(sim.State.expeditionLeft[index])}" : "");
+            }
         }
 
         // Steps through the layer bottoms, then off again.

@@ -344,5 +344,106 @@ namespace DeepDrill.Tests
         }
 
         #endregion
+
+        #region step 6: research and expeditions
+
+        [Test]
+        public void Research_SpendsCrystalsAndFinishesInTime()
+        {
+            var sim = CoreTests.NewSim();
+            int code = DrillCode.Make(0, 0);
+            double before = sim.DamageOf(code);
+            sim.State.crystals = 1;
+            Assert.IsTrue(sim.StartResearch(0));
+            Assert.AreEqual(0, sim.Crystals);
+            sim.Tick(GameData.Research[0].Seconds - 1);
+            Assert.IsFalse(sim.ResearchDone(0));
+            sim.Tick(2);
+            Assert.IsTrue(sim.ResearchDone(0));
+            Assert.Greater(sim.DamageOf(code), before);
+        }
+
+        [Test]
+        public void Research_RunsOneAtATime()
+        {
+            var sim = CoreTests.NewSim();
+            sim.State.crystals = 5;
+            Assert.IsTrue(sim.StartResearch(0));
+            Assert.IsFalse(sim.StartResearch(1));
+        }
+
+        [Test]
+        public void Research_CannotRepeat()
+        {
+            var sim = CoreTests.NewSim();
+            sim.State.crystals = 5;
+            sim.StartResearch(0);
+            sim.Tick(GameData.Research[0].Seconds + 1);
+            Assert.IsFalse(sim.StartResearch(0));
+        }
+
+        [Test]
+        public void Research_CrystalCutsTheWait()
+        {
+            var sim = CoreTests.NewSim();
+            sim.State.crystals = 2;
+            sim.StartResearch(0);
+            Assert.IsTrue(sim.RushResearch());
+            Assert.IsTrue(sim.ResearchDone(0), "half an hour of research is under one rush");
+        }
+
+        [Test]
+        public void Research_RunsWhileAway()
+        {
+            var sim = CoreTests.NewSim();
+            sim.State.crystals = 1;
+            sim.StartResearch(0);
+            sim.State.lastSaveUnixSeconds = 1000;
+            sim.ApplyOffline(1000 + (long)GameData.Research[0].Seconds + 1);
+            Assert.IsTrue(sim.ResearchDone(0));
+        }
+
+        [Test]
+        public void Expedition_NeedsAnIdleExplorer()
+        {
+            var sim = CoreTests.NewSim();
+            Assert.IsFalse(sim.SendExpedition(0));
+            sim.State.explorers = 1;
+            Assert.IsTrue(sim.SendExpedition(0));
+            Assert.AreEqual(0, sim.ExplorersIdle);
+            Assert.IsFalse(sim.SendExpedition(0));
+        }
+
+        [Test]
+        public void Expedition_ComesBackAndPaysOnSuccess()
+        {
+            var sim = CoreTests.NewSim();
+            sim.State.explorers = 1;
+            int paid = 0;
+            for (int i = 0; i < 40; i++)
+            {
+                sim.SendExpedition(0);
+                int before = sim.State.shards;
+                sim.State.lastSaveUnixSeconds = 1000;
+                sim.ApplyOffline(1000 + (long)GameData.Expeditions[0].Seconds + 1);
+                Assert.AreEqual(1, sim.ExplorersIdle, "the explorer always comes home");
+                if (sim.State.shards > before) paid++;
+            }
+            Assert.Greater(paid, 25);
+            Assert.Less(paid, 40, "ten percent of trips fail");
+        }
+
+        [Test]
+        public void Expedition_RiskierTripsPayMore()
+        {
+            CoreTests.EnsureData();
+            for (int i = 1; i < GameData.Expeditions.Count; i++)
+            {
+                Assert.Less(GameData.Expeditions[i].Success, GameData.Expeditions[i - 1].Success);
+                Assert.Greater(GameData.Expeditions[i].Shards, GameData.Expeditions[i - 1].Shards);
+            }
+        }
+
+        #endregion
     }
 }

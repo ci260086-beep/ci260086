@@ -309,6 +309,7 @@ namespace DeepDrill.Core
                 * (1 + Effect(SkillEffect.chest_gold) / 100) * MasteryMultiplier(row);
             Earn(value);
             RollRareDrop(row);
+            RollRescue(row);
             Events.Add(new SimEvent { Kind = SimEventKind.BlockBroken, Row = row, Col = col, Block = BlockType.Chest, Amount = value });
         }
 

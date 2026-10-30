@@ -1,4 +1,26 @@
 {
+ "research": {
+  "rushSeconds": 3600,
+  "projects": [
+   {"name": "钻头合金", "effect": "dmg_pct", "amount": 50, "seconds": 1800, "crystals": 1, "desc": "全部伤害 +50%"},
+   {"name": "矿物化验", "effect": "ore_pct", "amount": 100, "seconds": 1800, "crystals": 1, "desc": "矿物价值 +100%"},
+   {"name": "地质账本", "effect": "gold_pct", "amount": 50, "seconds": 3600, "crystals": 1, "desc": "全部收入 +50%"},
+   {"name": "高速轴承", "effect": "speed_pct", "amount": 30, "seconds": 3600, "crystals": 2, "desc": "攻速 +30%"},
+   {"name": "探矿图", "effect": "chest_pct", "amount": 100, "seconds": 3600, "crystals": 2, "desc": "宝箱 +100%"},
+   {"name": "爆破配方", "effect": "blast_dmg", "amount": 200, "seconds": 7200, "crystals": 2, "desc": "爆炸伤害 +200%"},
+   {"name": "碎片共鸣", "effect": "shard_pct", "amount": 25, "seconds": 14400, "crystals": 3, "desc": "重铸碎片 +25%"},
+   {"name": "搜救训练", "effect": "rare_pct", "amount": 50, "seconds": 14400, "crystals": 3, "desc": "稀有物品 +50%"}
+  ]
+ },
+ "expeditions": {
+  "rescueChance": 0.25,
+  "tiers": [
+   {"name": "近郊勘探", "seconds": 1800, "success": 0.9, "shards": 20, "ores": 50, "crystals": 0},
+   {"name": "深坑探险", "seconds": 7200, "success": 0.7, "shards": 100, "ores": 250, "crystals": 0},
+   {"name": "裂谷远征", "seconds": 21600, "success": 0.5, "shards": 400, "ores": 1000, "crystals": 1},
+   {"name": "地核深潜", "seconds": 57600, "success": 0.3, "shards": 1500, "ores": 4000, "crystals": 3}
+  ]
+ },
  "crystals": {"seconds": 7200, "cap": 24, "factoryEvery": 5},
  "factory": [
   {"id": "smelter", "name": "冶炼炉", "effect": "gold_pct", "perLevel": 10, "maxLevel": 30, "oreCost": 40, "oreGrowth": 1.25, "desc": "全部收入 +10%/级"},

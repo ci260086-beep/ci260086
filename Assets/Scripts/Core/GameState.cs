@@ -79,6 +79,13 @@ namespace DeepDrill.Core
         public double crystals;
         public List<int> factory = new List<int>(); // level per building
 
+        public int research = -1;
+        public double researchLeft;
+        public List<int> researchDone = new List<int>();
+        public int explorers;
+        public List<int> expeditionTiers = new List<int>();     // one entry per explorer away
+        public List<double> expeditionLeft = new List<double>();
+
         public bool AnyBossDown => bossesDefeated > 0;
 
         public int BoughtOf(int family) => family < bought.Count ? bought[family] : 0;

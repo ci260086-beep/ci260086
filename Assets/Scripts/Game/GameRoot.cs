@@ -289,6 +289,18 @@ namespace DeepDrill.Game
                     hud.ShowToast($"{GameData.Schools[(int)e.Amount].Name}通关：{GameData.Schools[(int)e.Amount].Reward.Desc}", 5f);
                     break;
 
+                case SimEventKind.ResearchDone:
+                    hud.ShowToast($"研究完成：{GameData.Research[(int)e.Amount].Name}", 4f);
+                    break;
+
+                case SimEventKind.ExpeditionReturned:
+                    hud.ShowToast($"{GameData.Expeditions[(int)e.Amount].Name}{(e.Row > 0 ? "成功归来" : "空手而归")}", 4f);
+                    break;
+
+                case SimEventKind.ExplorerRescued:
+                    hud.ShowToast("救出一名探险员", 4f);
+                    break;
+
                 case SimEventKind.MilestoneReached:
                     hud.ShowToast($"里程碑：{GameData.Milestones[(int)e.Amount][e.Row].Desc}", 3f);
                     break;

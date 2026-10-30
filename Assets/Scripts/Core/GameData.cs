@@ -128,6 +128,26 @@ namespace DeepDrill.Core
         public string Desc;
     }
 
+    public sealed class ResearchDef
+    {
+        public string Name;
+        public SkillEffect Effect;
+        public double Amount;
+        public double Seconds;
+        public int Crystals;
+        public string Desc;
+    }
+
+    public sealed class ExpeditionDef
+    {
+        public string Name;
+        public double Seconds;
+        public double Success;
+        public int Shards;
+        public double Ores;
+        public double Crystals;
+    }
+
     public enum RebirthPerk { coins, root, drills, hangar, skills }
 
     public sealed class RebirthMilestone
@@ -190,6 +210,10 @@ namespace DeepDrill.Core
         public static double CrystalCap;
         public static int FactoryCrystalEvery;
         public static List<FactoryDef> Factory;
+        public static List<ResearchDef> Research;
+        public static double ResearchRushSeconds;
+        public static List<ExpeditionDef> Expeditions;
+        public static double RescueChance;
 
         private static Dictionary<string, SkillDef> skillsById;
 
@@ -399,6 +423,40 @@ namespace DeepDrill.Core
         {
             var root = Obj(MiniJson.Parse(json));
             LoadEvents(Obj(root["events"]));
+
+            var lab = Obj(root["research"]);
+            ResearchRushSeconds = Num(lab, "rushSeconds");
+            Research = new List<ResearchDef>();
+            foreach (var item in Arr(lab["projects"]))
+            {
+                var o = Obj(item);
+                Research.Add(new ResearchDef
+                {
+                    Name = Str(o, "name"),
+                    Effect = (SkillEffect)Enum.Parse(typeof(SkillEffect), Str(o, "effect")),
+                    Amount = Num(o, "amount"),
+                    Seconds = Num(o, "seconds"),
+                    Crystals = (int)Num(o, "crystals"),
+                    Desc = Str(o, "desc"),
+                });
+            }
+
+            var trips = Obj(root["expeditions"]);
+            RescueChance = Num(trips, "rescueChance");
+            Expeditions = new List<ExpeditionDef>();
+            foreach (var item in Arr(trips["tiers"]))
+            {
+                var o = Obj(item);
+                Expeditions.Add(new ExpeditionDef
+                {
+                    Name = Str(o, "name"),
+                    Seconds = Num(o, "seconds"),
+                    Success = Num(o, "success"),
+                    Shards = (int)Num(o, "shards"),
+                    Ores = Num(o, "ores"),
+                    Crystals = Num(o, "crystals"),
+                });
+            }
 
             var crystals = Obj(root["crystals"]);
             CrystalSeconds = Num(crystals, "seconds");
