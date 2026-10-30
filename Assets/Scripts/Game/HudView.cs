@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using DeepDrill.Core;
 using UnityEngine;
@@ -33,6 +33,7 @@ namespace DeepDrill.Game
         private const float MaxZoom = 2f;
         private const float ZoomStep = 0.1f;
         private const int GalleryColumns = 22;
+        private const int ComboFlashStep = 10;
 
         private const int PageHangar = 0;
         private const int PageTree = 1;
@@ -56,6 +57,10 @@ namespace DeepDrill.Game
         private static readonly Color LineOn = new Color32(0xff, 0xd8, 0x50, 0xff);
         private static readonly Color SilhouetteColor = new Color(0, 0, 0, 1);
         private static readonly Color NotOwned = new Color(0.25f, 0.25f, 0.28f, 1f);
+        private static readonly Color[] ComboColors =
+        {
+            Color.white, new Color32(0xff, 0xe2, 0x7a, 255), new Color32(0xff, 0x9a, 0x3c, 255), new Color32(0xff, 0x50, 0x70, 255),
+        };
 
         private static readonly Dictionary<string, Color32> BranchColors = new Dictionary<string, Color32>
         {
@@ -152,6 +157,10 @@ namespace DeepDrill.Game
         private double coinsInFlight;
         private double oresInFlight;
         private float treeZoom = 1f;
+        private float coinPulse;
+        private float comboFlash;
+        private int lastComboTier;
+        private int comboStep;
         private int currentPage;
         private int lastDrillCount = -1;
         private int lastDrillHash;
@@ -233,6 +242,7 @@ namespace DeepDrill.Game
         {
             coinsInFlight = Math.Max(0, coinsInFlight - coins);
             oresInFlight = Math.Max(0, oresInFlight - ores);
+            coinPulse = 1f;
         }
 
         public void ClearInFlight() => coinsInFlight = oresInFlight = 0;
@@ -363,6 +373,22 @@ namespace DeepDrill.Game
             {
                 SaveRequested?.Invoke();
                 ShowToast("已保存", 1.5f);
+            });
+
+            var shake = Ui.Button(settings.transform, Font, "", 4, PanelTitleHeight + 20, Stage.PanelWidth - 8, 16, 7, CardBright, out Text shakeLabel);
+            shakeLabel.text = "震屏：" + GameSettings.ShakeNames[GameSettings.ShakeLevel];
+            shake.onClick.AddListener(() =>
+            {
+                GameSettings.ShakeLevel = (GameSettings.ShakeLevel + 1) % GameSettings.ShakeNames.Length;
+                shakeLabel.text = "震屏：" + GameSettings.ShakeNames[GameSettings.ShakeLevel];
+            });
+
+            var particles = Ui.Button(settings.transform, Font, "", 4, PanelTitleHeight + 38, Stage.PanelWidth - 8, 16, 7, CardBright, out Text particleLabel);
+            particleLabel.text = "粒子：" + GameSettings.ParticleNames[GameSettings.ParticleLevel];
+            particles.onClick.AddListener(() =>
+            {
+                GameSettings.ParticleLevel = (GameSettings.ParticleLevel + 1) % GameSettings.ParticleNames.Length;
+                particleLabel.text = "粒子：" + GameSettings.ParticleNames[GameSettings.ParticleLevel];
             });
         }
 
@@ -659,6 +685,7 @@ namespace DeepDrill.Game
             versionLabel.text = $"v{Application.version}  {fpsAverage:0} FPS";
 
             UpdateCombo();
+            UpdateCoinPulse();
             UpdateMeter();
             UpdateToast(dt);
             UpdateGuide();
@@ -690,16 +717,37 @@ namespace DeepDrill.Game
                 : (currentPage == PageTree ? RailSelected : RailColor);
         }
 
+        // The count grows with the chain and changes colour, with a flash, at each milestone.
         private void UpdateCombo()
         {
-            if (sim.Combo < 2)
+            int combo = sim.Combo;
+            if (combo < 2)
             {
                 comboLabel.text = "";
+                lastComboTier = 0;
                 return;
             }
             double bonus = (sim.ComboMultiplier - 1) * 100;
-            comboLabel.text = bonus > 0 ? $"{sim.Combo} 连击 +{bonus:0}%" : $"{sim.Combo} 连击";
-            comboLabel.color = bonus > 0 ? CoinColor : Color.white;
+            comboLabel.text = bonus > 0 ? $"{combo} 连击 +{bonus:0}%" : $"{combo} 连击";
+
+            int tier = combo >= 100 ? 3 : combo >= 50 ? 2 : combo >= 10 ? 1 : 0;
+            if (tier != lastComboTier) comboFlash = 1f;
+            if (combo / ComboFlashStep != comboStep) comboFlash = Mathf.Max(comboFlash, 0.6f);
+            comboStep = combo / ComboFlashStep;
+            lastComboTier = tier;
+
+            comboFlash = Mathf.Max(0, comboFlash - Time.unscaledDeltaTime * 4f);
+            comboLabel.fontSize = 8 + tier * 2;
+            comboLabel.color = Color.Lerp(ComboColors[tier], Color.white, comboFlash);
+            comboLabel.rectTransform.localScale = Vector3.one * (1 + comboFlash * 0.4f);
+        }
+
+        private void UpdateCoinPulse()
+        {
+            if (coinPulse <= 0) return;
+            coinPulse = Mathf.Max(0, coinPulse - Time.unscaledDeltaTime * 6f);
+            coinsLabel.rectTransform.localScale = Vector3.one * (1 + coinPulse * 0.25f);
+            coinsLabel.color = Color.Lerp(CoinColor, Color.white, coinPulse);
         }
 
         private void UpdateMeter()

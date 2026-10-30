@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using DeepDrill.Core;
 using UnityEngine;
 
@@ -18,6 +18,13 @@ namespace DeepDrill.Game
         private const float DrillPivotBelowCenter = 0.33f; // sprites turn about a point near the tip
         private const float DrillPivotY = 1f / 12f;
         private const int DrillPool = 400;
+        private const float MaxShakePixels = 6f;
+        private const float TraumaDecay = 1.8f;
+        private const float TraumaPerStrength = 0.11f;
+        private const float NoiseSpeed = 22f;
+        private const double SquashSeconds = 0.09;
+        private const float SquashWidth = 1.15f;
+        private const float SquashHeight = 0.85f;
 
         private sealed class Cell
         {
@@ -25,6 +32,7 @@ namespace DeepDrill.Game
             public SpriteRenderer Tile;
             public SpriteRenderer Overlay;
             public SpriteRenderer Crack;
+            public SpriteRenderer Flash;
             public SpriteRenderer[] Edges;
         }
 
@@ -46,6 +54,7 @@ namespace DeepDrill.Game
 
         private readonly Dictionary<long, float> wobble = new Dictionary<long, float>();
         private readonly List<long> wobbleKeys = new List<long>();
+        private readonly HashSet<long> flashing = new HashSet<long>();
         private readonly List<SpriteRenderer> drillPool = new List<SpriteRenderer>();
 
         private GameSim sim;
@@ -63,8 +72,7 @@ namespace DeepDrill.Game
         private SpriteRenderer bossFace;
         private float followX;
         private float drillClock;
-        private float shakeTime;
-        private float shakeStrength;
+        private float trauma;
 
         public Vector2 CameraPosition { get; private set; }
 
@@ -121,10 +129,14 @@ namespace DeepDrill.Game
                         Tile = tile,
                         Overlay = MakeRenderer("overlay", 2, tile.transform),
                         Crack = MakeRenderer("crack", 4, tile.transform),
+                        Flash = MakeRenderer("flash", 5, tile.transform),
                         Edges = new SpriteRenderer[EdgeNames.Length],
                     };
                     for (int e = 0; e < EdgeNames.Length; e++)
                         cell.Edges[e] = MakeRenderer("edge", 3, tile.transform);
+                    cell.Flash.sprite = art.Get("pixel");
+                    cell.Flash.transform.localScale = new Vector3(Stage.PixelsPerUnit, Stage.PixelsPerUnit, 1);
+                    cell.Flash.color = new Color(1, 1, 1, 0.8f);
                     cells[r, c] = cell;
                 }
             }
@@ -138,13 +150,18 @@ namespace DeepDrill.Game
             followX = (float)sim.Lead.Body.X;
         }
 
+        /// <summary>Adds trauma; the screen moves by its square, so small hits stay subtle.</summary>
         public void Shake(float seconds, float strength)
         {
-            shakeTime = Mathf.Max(shakeTime, seconds);
-            shakeStrength = Mathf.Max(shakeStrength, strength);
+            trauma = Mathf.Min(1f, trauma + strength * TraumaPerStrength * Mathf.Clamp(seconds * 8f, 0.5f, 1.5f));
         }
 
-        public void NoteHit(int row, int col) => wobble[Key(row, col)] = WobbleSeconds;
+        public void NoteHit(int row, int col)
+        {
+            long key = Key(row, col);
+            wobble[key] = WobbleSeconds;
+            flashing.Add(key);
+        }
 
         /// <summary>Jumps the camera to the lead drill, for when it moves further than a pan should show.</summary>
         public void SnapToDrill() => followX = (float)sim.Lead.Body.X;
@@ -170,11 +187,12 @@ namespace DeepDrill.Game
             CameraPosition = target;
 
             Vector2 shake = Vector2.zero;
-            if (shakeTime > 0)
+            if (trauma > 0)
             {
-                shakeTime -= dt;
-                shake = new Vector2(Random.Range(-1, 2), Random.Range(-1, 2)) * shakeStrength / Stage.PixelsPerUnit;
-                if (shakeTime <= 0) shakeStrength = 0;
+                trauma = Mathf.Max(0, trauma - TraumaDecay * dt);
+                float amount = trauma * trauma * MaxShakePixels * GameSettings.ShakeScale / Stage.PixelsPerUnit;
+                float t = Time.unscaledTime * NoiseSpeed;
+                shake = new Vector2(Mathf.PerlinNoise(t, 0.3f) * 2 - 1, Mathf.PerlinNoise(0.7f, t) * 2 - 1) * amount;
             }
             cam.transform.position = new Vector3(target.x + shake.x, target.y + shake.y, -10);
 
@@ -191,6 +209,7 @@ namespace DeepDrill.Game
 
             StepWobble(dt);
             DrawCells(target);
+            flashing.Clear();
         }
 
         // Only drills in view take a sprite, so a huge swarm costs no more to draw than a screenful.
@@ -211,6 +230,9 @@ namespace DeepDrill.Game
                 var frames = drillFrames[unit.Code];
                 sr.sprite = frames[((int)drillClock + i) % frames.Length]; // offset so they do not spin in step
                 sr.color = sim.InFrenzy ? FrenzyTint : Color.white;
+                double age = sim.Now - unit.LastSwing;
+                bool squash = unit.LastSwing >= 0 && age < SquashSeconds;
+                sr.transform.localScale = squash ? new Vector3(SquashWidth, SquashHeight, 1) : Vector3.one;
                 // the pivot stays put and the body swings around it; positive core angles tip the nose right
                 sr.transform.SetPositionAndRotation(
                     new Vector3(Stage.SnapToPixel(x), Stage.SnapToPixel(y - DrillPivotBelowCenter), 0),
@@ -260,6 +282,7 @@ namespace DeepDrill.Game
             cell.Back.color = solid ? Color.white : WallTint(row);
             cell.Tile.enabled = solid;
             cell.Crack.enabled = false;
+            cell.Flash.enabled = false;
             cell.Overlay.enabled = false;
             for (int e = 0; e < cell.Edges.Length; e++)
             {
@@ -271,6 +294,7 @@ namespace DeepDrill.Game
             var block = sim.Row(row)[col];
             DrawBlock(cell, block, row, col, layer);
 
+            cell.Flash.enabled = flashing.Contains(Key(row, col));
             if (wobble.ContainsKey(Key(row, col)))
                 cell.Tile.transform.position = pos + new Vector3(0, -1f / Stage.PixelsPerUnit, 0);
 

@@ -14,6 +14,7 @@ namespace DeepDrill.Game
         private const int HitstopFrames = 2;
         private const float HitstopCooldown = 0.5f;
         private const int DepthMilestone = 50;
+        private const int BusySwarm = 50; // past this, only a third of the swings get full effects
         private const int QuietCritDrills = 20; // past this, drill crits would only be noise
         private const double HardLandingSpeed = 14;
         private const double SoftLandingSpeed = 10;
@@ -26,12 +27,14 @@ namespace DeepDrill.Game
         private static readonly Color TntBits = new Color32(0xb8, 0x2c, 0x2c, 0xff);
         private static readonly Color SandBits = new Color32(0xe8, 0xcc, 0x84, 0xff);
         private static readonly Color HitText = Color.white;
+        private static readonly Color BossText = new Color32(0xff, 0x50, 0x48, 0xff);
         private static readonly Color CoinText = new Color32(0xff, 0xe2, 0x7a, 0xff);
 
         private GameSim sim;
         private SaveService saves;
         private WorldView world;
         private FxView fx;
+        private SoundBank sound;
         private HudView hud;
         private ArtLibrary art;
         private float autosave;
@@ -76,6 +79,9 @@ namespace DeepDrill.Game
             fx = new GameObject("Fx").AddComponent<FxView>();
             fx.Init(art, hud.FxLayer, hud.Font);
 
+            sound = gameObject.AddComponent<SoundBank>();
+            sound.Init();
+
             hud.SaveRequested += SaveNow;
             if (offline > 0) hud.ShowToast($"离线收益 +{NumberFormat.Short(offline)}", 5f);
 
@@ -98,6 +104,7 @@ namespace DeepDrill.Game
         private void Update()
         {
             hitstopCooldown -= Time.deltaTime;
+            fx.Density = GameSettings.ParticleScale * (sim.Units.Count > BusySwarm ? 1f / 3f : 1f);
             if (hitstop > 0) hitstop--;
             else sim.Tick(Time.deltaTime);
 
@@ -150,8 +157,9 @@ namespace DeepDrill.Game
 
                 case SimEventKind.Explosion:
                     fx.Explosion(WorldView.CellCenter(e.Row, e.Col), (int)e.Amount);
-                    fx.Debris(WorldView.CellCenter(e.Row, e.Col), OreBits, 16);
+                    fx.Debris(WorldView.CellCenter(e.Row, e.Col), OreBits, 22);
                     world.Shake(0.2f, 3f);
+                    sound.Play("blast", 0.7f, 0, true);
                     break;
 
                 case SimEventKind.FrenzyStarted:
@@ -170,6 +178,7 @@ namespace DeepDrill.Game
                 case SimEventKind.BossStarted:
                     hud.ShowToast($"{sim.CurrentBoss.BossName}！{sim.BossDuration:0} 秒内打穿它", 3f);
                     world.Shake(0.3f, 3f);
+                    sound.Play("boss", 0.8f, 0, true);
                     break;
 
                 case SimEventKind.BossFailed:
@@ -192,11 +201,18 @@ namespace DeepDrill.Game
                 case SimEventKind.BossDefeated:
                     hud.ShowToast("打穿了！可以地核重铸", 4f);
                     fx.Explosion(WorldView.CellCenter(e.Row, e.Col), Balance.BossBreachHalfWidth);
-                    fx.Debris(WorldView.CellCenter(e.Row, e.Col), DirtBits, 40);
-                    world.Shake(0.4f, 5f);
+                    fx.Debris(WorldView.CellCenter(e.Row, e.Col), DirtBits, 60);
+                    world.Shake(0.4f, 8f);
+                    sound.Play("blast", 0.9f, -0.2f, true);
+                    break;
+
+                case SimEventKind.SkillBought:
+                    sound.Play("upgrade", 0.6f, 0, true);
                     break;
 
                 case SimEventKind.DrillMerged:
+                    sound.Play("merge", 0.6f, 0, true);
+                    fx.Flash(world.CameraPosition, 3f);
                     hud.ShowToast($"合成了{HudView.KindName((int)e.Amount)}", 2f);
                     break;
 
@@ -221,17 +237,21 @@ namespace DeepDrill.Game
         private void OnHit(in SimEvent e)
         {
             world.NoteHit(e.Row, e.Col);
+            bool boss = e.Block == BlockType.BossRoot;
             if (e.FromClick)
             {
                 string text = NumberFormat.Short(e.Amount) + (e.Crit ? "!" : "");
-                fx.FloatText(text, CellStage(e.Row, e.Col), e.Crit ? CoinText : HitText, e.Crit ? 13 : 8);
+                var style = e.Crit ? FxView.Text3.Crit : (boss ? FxView.Text3.Boss : FxView.Text3.Normal);
+                fx.FloatText(text, CellStage(e.Row, e.Col), boss ? BossText : (e.Crit ? CoinText : HitText), e.Crit ? 13 : 8, style);
                 fx.Debris(WorldView.CellCenter(e.Row, e.Col), BitsColor(e.Block), 2);
                 if (e.Crit) world.Shake(0.14f, 2f);
             }
             else if (e.Crit && sim.Units.Count <= QuietCritDrills)
             {
-                fx.FloatText(NumberFormat.Short(e.Amount) + "!", CellStage(e.Row, e.Col), CoinText, 10);
+                fx.FloatText(NumberFormat.Short(e.Amount) + "!", CellStage(e.Row, e.Col), CoinText, 10, FxView.Text3.Crit);
             }
+            if ((e.Block == BlockType.HardRock || e.Block == BlockType.SuperHard) && fx.Allow())
+                fx.Sparks(WorldView.CellCenter(e.Row, e.Col), 3);
         }
 
         // A one-row drop is the normal dig rhythm; only longer falls earn a thump.
@@ -248,17 +268,25 @@ namespace DeepDrill.Game
         {
             Vector2 center = WorldView.CellCenter(e.Row, e.Col);
             fx.Debris(center, BitsColor(e.Block), e.Block == BlockType.Chest ? 18 : 6);
+            fx.Puff(center);
+            sound.Play(e.Block == BlockType.HardRock || e.Block == BlockType.SuperHard ? "hard" : "break", 0.35f);
 
             if (e.FromClick && hitstopCooldown <= 0)
             {
-                hitstop = HitstopFrames;
+                // a bigger hit holds the frame longer
+                bool big = e.Block == BlockType.HardRock || e.Block == BlockType.SuperHard;
+                hitstop = e.Block == BlockType.Chest ? 3 : (big ? HitstopFrames : 1);
                 hitstopCooldown = HitstopCooldown;
-                world.Shake(0.08f, 1f);
+                world.Shake(0.08f, big ? 2f : 1f);
             }
 
             Vector2 stage = CellStage(e.Row, e.Col);
             if (e.Block == BlockType.Ore || e.Block == BlockType.Chest)
-                fx.FloatText("+" + NumberFormat.Short(e.Amount), stage, CoinText, e.Block == BlockType.Chest ? 11 : 8);
+            {
+                var color = e.Block == BlockType.Ore ? OreTextColor(e.Ore) : CoinText;
+                fx.FloatText("+" + NumberFormat.Short(e.Amount), stage, color, e.Block == BlockType.Chest ? 11 : 8, FxView.Text3.Ore);
+                sound.Play("coin", 0.3f, Mathf.Min(0.6f, sim.Combo * 0.004f));
+            }
 
             bool ore = e.Block == BlockType.Ore;
             double value = e.Amount;
@@ -274,6 +302,21 @@ namespace DeepDrill.Game
 
         private Vector2 CellStage(int row, int col) =>
             Stage.WorldToStage(WorldView.CellCenter(row, col), world.CameraPosition);
+
+        // mid tones of the 24 ores, in design order
+        private static readonly Color32[] OreColors =
+        {
+            new Color32(0x9a, 0x9a, 0xa8, 255), new Color32(0xe0, 0x8a, 0x4a, 255), new Color32(0xc0, 0xc0, 0xcc, 255),
+            new Color32(0xe8, 0xe8, 0xf0, 255), new Color32(0xb0, 0x90, 0xf0, 255), new Color32(0xe8, 0xb0, 0x2a, 255),
+            new Color32(0xe0, 0xd8, 0xe0, 255), new Color32(0x60, 0x90, 0xf0, 255), new Color32(0xb0, 0x8c, 0x38, 255),
+            new Color32(0xe8, 0x30, 0x5a, 255), new Color32(0xc8, 0xc8, 0xd8, 255), new Color32(0x6a, 0xa8, 0xc0, 255),
+            new Color32(0x90, 0x98, 0xb0, 255), new Color32(0xc8, 0xd0, 0xe4, 255), new Color32(0x90, 0xc0, 0x40, 255),
+            new Color32(0x90, 0xe8, 0xf8, 255), new Color32(0x50, 0x60, 0xe0, 255), new Color32(0xe8, 0x40, 0x80, 255),
+            new Color32(0x80, 0xb0, 0x50, 255), new Color32(0xc0, 0x50, 0xb0, 255), new Color32(0xe8, 0xc8, 0x70, 255),
+            new Color32(0x60, 0xb0, 0xf0, 255), new Color32(0xff, 0xe2, 0x7a, 255), new Color32(0xc0, 0x5c, 0xff, 255),
+        };
+
+        private static Color OreTextColor(int ore) => OreColors[ore];
 
         private static Color BitsColor(BlockType type)
         {

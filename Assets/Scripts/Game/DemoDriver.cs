@@ -50,6 +50,16 @@ namespace DeepDrill.Game
             Debug.Log($"[demo] unlocked auto={sim.AutoDrillUnlocked} depth={sim.State.depth}");
             yield return Shot("unlocked");
 
+            // set off a charge beside the drill to catch the explosion mid-air
+            int blastRow = sim.Lead.Body.FeetRow + 2;
+            int blastCol = sim.Lead.Body.Column + 3;
+            var charge = sim.Row(blastRow)[blastCol];
+            charge.Type = BlockType.Tnt;
+            charge.Hp = 0.01;
+            sim.Click(blastRow, blastCol);
+            yield return new WaitForSeconds(0.12f);
+            yield return Shot("blast");
+
             sim.State.coins = 1e12;
             for (int i = 0; i < SwarmSize; i++) sim.BuyDrill(0);
             sim.Merge(DrillCode.Make(0, 0));

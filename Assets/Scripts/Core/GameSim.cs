@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 
 namespace DeepDrill.Core
@@ -45,6 +45,7 @@ namespace DeepDrill.Core
         public readonly DrillBody Body = new DrillBody();
         public int Code;
         public double HitClock;
+        public double LastSwing = -1;
 
         public int Family => DrillCode.Family(Code);
         public int Tier => DrillCode.Tier(Code);
@@ -119,6 +120,7 @@ namespace DeepDrill.Core
         }
 
         public DrillUnit Lead { get; private set; }
+        public double Now => simTime;
 
         public bool BossActive { get; private set; }
         public double BossHp { get; private set; }
@@ -337,6 +339,7 @@ namespace DeepDrill.Core
         private bool SwingByHand(DrillUnit unit)
         {
             if (!FindTarget(unit.Body, out int row, out int col)) return false;
+            unit.LastSwing = simTime;
             Strike(row, col, DamageOf(unit.Code) * (1 + Effect(SkillEffect.click_pct) / 100), true, RollCrit(), unit);
             return true;
         }
@@ -688,6 +691,7 @@ namespace DeepDrill.Core
         private void Swing(DrillUnit unit)
         {
             if (!FindTarget(unit.Body, out int row, out int col)) return;
+            unit.LastSwing = simTime;
             Strike(row, col, DamageOf(unit.Code), false, RollCrit(), unit);
         }
 

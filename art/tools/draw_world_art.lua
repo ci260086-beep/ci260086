@@ -401,6 +401,44 @@ for layer = 1, 12 do
   save(g, "Layers/boss_face_" .. (layer - 1))
 end
 
+-- effects: a soft flash disc, an expanding shock ring and drifting smoke
+local disc = canvas(16, 16)
+for y = 0, 15 do
+  for x = 0, 15 do
+    local d = math.sqrt((x - 7.5) ^ 2 + (y - 7.5) ^ 2)
+    if d <= 7.8 then disc:set(x, y, hex("ffffff", d < 5 and 255 or 170)) end
+  end
+end
+save(disc, "Items/fx_circle")
+
+local ring = canvas(128, 32)
+for f = 0, 3 do
+  local r = 6 + f * 3
+  for y = 0, 31 do
+    for x = 0, 31 do
+      local d = math.sqrt((x - 15.5) ^ 2 + (y - 15.5) ^ 2)
+      if math.abs(d - r) < 1.2 - f * 0.2 then ring:set(x + f * 32, y, hex("fff0c0", 230 - f * 50)) end
+    end
+  end
+end
+save(ring, "Items/fx_ring")
+
+local smoke = canvas(64, 16)
+for f = 0, 3 do
+  for i = 1, 5 do
+    local cx, cy = 3 + rnd(10), 3 + rnd(10)
+    local r = 2 + f * 0.6
+    for y = 0, 15 do
+      for x = 0, 15 do
+        if math.sqrt((x - cx) ^ 2 + (y - cy) ^ 2) <= r and (x + y + f) % (f + 2) ~= 0 then
+          smoke:set(x + f * 16, y, hex(i % 2 == 0 and "5a5660" or "3e3a44", 210 - f * 30))
+        end
+      end
+    end
+  end
+end
+save(smoke, "Items/fx_smoke")
+
 -- achievement badge: the page tints it, and shows a black silhouette until earned
 local badge = canvas(16, 16)
 for y = 2, 13 do
