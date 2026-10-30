@@ -1,75 +1,161 @@
+using System;
 using System.Collections.Generic;
 
 namespace DeepDrill.Core
 {
-    public enum SkillTree
+    public enum SkillEffect
     {
-        Drill,
-        Blast,
-        Frenzy,
+        Damage, Speed, CritChance, CritDamage, HardDamage,
+        OreValue, CoinValue, ChestValue, Offline, DrillDiscount,
+        TntRate, BlastRadius, BlastLoot, BlastChain, Pierce,
+        FrenzyTime, FrenzyCharge, FrenzyBurst, ComboWindow, ComboCap,
+        BossDamage, BossTime, Shards, MergeBonus, DepthValue,
     }
 
     public sealed class SkillDef
     {
         public string Id;
-        public SkillTree Tree;
+        public int Tree;
+        public int Column;
+        public int Rank;
+        public SkillEffect Effect;
         public string Name;
-        public string Effect;
+        public string EffectText;
+        public double PerLevel;
         public int MaxLevel;
+        public int UnlockDepth;
         public double BaseCost;
         public double Growth;
         public string RequiresId;
-        public int RequiresLevel;
 
         public double CostAt(int level) => Balance.Cost(BaseCost, Growth, level);
     }
 
+    /// <summary>
+    /// 5 trees of 5 effects with 6 ranks each: 150 skills. Every number is derived from the depth
+    /// the skill unlocks at, so a skill always costs about what that depth pays.
+    /// </summary>
     public static class SkillCatalog
     {
-        public const string DrillDamage = "drill_damage";
-        public const string DrillSpeed = "drill_speed";
-        public const string DrillHard = "drill_hard";
-        public const string DrillTwin = "drill_twin";
-        public const string DrillPierce = "drill_pierce";
-        public const string BlastRate = "blast_rate";
-        public const string BlastRadius = "blast_radius";
-        public const string BlastLoot = "blast_loot";
-        public const string BlastChain = "blast_chain";
-        public const string FrenzyTime = "frenzy_time";
-        public const string FrenzyCharge = "frenzy_charge";
-        public const string FrenzyBurst = "frenzy_burst";
+        public const int RanksPerEffect = 6;
+        public const int DepthStep = 40;
+        public const double CostGrowth = 1.18;
+        public const double CostScale = 30;
 
-        public static readonly IReadOnlyList<SkillDef> All = new List<SkillDef>
+        private struct Seed
         {
-            Skill(DrillDamage, SkillTree.Drill, "钻头强化", "伤害+1", 100, 8, 1.10),
-            Skill(DrillSpeed, SkillTree.Drill, "涡轮马达", "钻速+5%", 50, 25, 1.13, DrillDamage, 3),
-            Skill(DrillHard, SkillTree.Drill, "硬质合金", "硬岩伤害+20%", 20, 60, 1.14, DrillSpeed, 2),
-            Skill(DrillTwin, SkillTree.Drill, "双钻头", "每次打两轮", 1, 500, 1.15, DrillSpeed, 5),
-            Skill(DrillPierce, SkillTree.Drill, "穿透", "下一格+25%", 5, 300, 1.15, DrillHard, 3),
+            public SkillEffect Effect;
+            public string Name;
+            public string Format; // {0} is the per-level amount
+            public double PerLevel;
+            public int MaxLevel;
+            public double CostWeight;
+        }
 
-            Skill(BlastRate, SkillTree.Blast, "多埋炸药", "出现率+0.5%", 10, 40, 1.13),
-            Skill(BlastRadius, SkillTree.Blast, "加大药量", "爆炸半径+1", 3, 200, 1.15, BlastRate, 3),
-            Skill(BlastLoot, SkillTree.Blast, "定向爆破", "爆炸矿物x2", 1, 800, 1.15, BlastRadius, 1),
-            Skill(BlastChain, SkillTree.Blast, "连环引爆", "连锁+2", 3, 400, 1.15, BlastRate, 5),
+        public static readonly string[] TreeNames = { "钻头", "经济", "爆破", "狂热", "地核" };
 
-            Skill(FrenzyTime, SkillTree.Frenzy, "持久狂热", "时长+1秒", 10, 50, 1.13),
-            Skill(FrenzyCharge, SkillTree.Frenzy, "快速充能", "充能+10%", 10, 80, 1.13),
-            Skill(FrenzyBurst, SkillTree.Frenzy, "终结爆发", "结束时大爆炸", 1, 1000, 1.15, FrenzyTime, 3),
+        private static readonly Seed[][] Trees =
+        {
+            new[]
+            {
+                S(SkillEffect.Damage, "钻头强化", "伤害+{0}%", 10, 10, 1),
+                S(SkillEffect.Speed, "涡轮马达", "钻速+{0}%", 4, 10, 1.3),
+                S(SkillEffect.CritChance, "精准打击", "暴击率+{0}%", 1, 5, 1.6),
+                S(SkillEffect.CritDamage, "致命一击", "暴击伤害+{0}%", 15, 8, 1.9),
+                S(SkillEffect.HardDamage, "硬质合金", "硬岩伤害+{0}%", 20, 8, 2.2),
+            },
+            new[]
+            {
+                S(SkillEffect.OreValue, "矿物精炼", "矿物价值+{0}%", 8, 10, 1),
+                S(SkillEffect.CoinValue, "黄金市场", "全部收入+{0}%", 4, 10, 1.3),
+                S(SkillEffect.ChestValue, "寻宝罗盘", "宝箱价值+{0}%", 30, 5, 1.6),
+                S(SkillEffect.Offline, "自动矿场", "离线收益+{0}%", 2, 5, 1.9),
+                S(SkillEffect.DrillDiscount, "批量采购", "钻头价格-{0}%", 1, 5, 2.2),
+            },
+            new[]
+            {
+                S(SkillEffect.TntRate, "多埋炸药", "炸药率+{0}%", 0.2, 5, 1),
+                S(SkillEffect.BlastRadius, "加大药量", "爆炸半径+{0}", 0.25, 2, 3),
+                S(SkillEffect.BlastLoot, "定向爆破", "爆炸矿物+{0}%", 25, 4, 1.6),
+                S(SkillEffect.BlastChain, "连环引爆", "连锁+{0}", 1, 3, 1.9),
+                S(SkillEffect.Pierce, "穿透钻头", "下一格伤害+{0}%", 8, 5, 2.2),
+            },
+            new[]
+            {
+                S(SkillEffect.FrenzyTime, "持久狂热", "时长+{0}秒", 0.5, 5, 1),
+                S(SkillEffect.FrenzyCharge, "快速充能", "充能+{0}%", 8, 5, 1.3),
+                S(SkillEffect.FrenzyBurst, "终结爆发", "结束爆炸半径+{0}", 0.5, 2, 3),
+                S(SkillEffect.ComboWindow, "连击续航", "连击窗口+{0}秒", 0.1, 5, 1.9),
+                S(SkillEffect.ComboCap, "连击上限", "连击上限+{0}%", 20, 5, 2.2),
+            },
+            new[]
+            {
+                S(SkillEffect.BossDamage, "破岩专家", "Boss 伤害+{0}%", 15, 8, 1),
+                S(SkillEffect.BossTime, "限时延长", "Boss 时限+{0}秒", 1, 5, 1.3),
+                S(SkillEffect.Shards, "星核萃取", "星核碎片+{0}%", 5, 5, 1.6),
+                S(SkillEffect.MergeBonus, "合成精通", "合成钻头伤害+{0}%", 5, 5, 1.9),
+                S(SkillEffect.DepthValue, "深度红利", "每 100 米收入+{0}%", 1, 5, 2.2),
+            },
         };
+
+        public static readonly IReadOnlyList<SkillDef> All = Build();
+
+        private static Dictionary<string, SkillDef> byId;
 
         public static SkillDef Get(string id)
         {
-            foreach (var s in All)
-                if (s.Id == id) return s;
-            return null;
+            if (byId == null)
+            {
+                byId = new Dictionary<string, SkillDef>();
+                foreach (var s in All) byId[s.Id] = s;
+            }
+            return byId.TryGetValue(id, out var skill) ? skill : null;
         }
 
-        private static SkillDef Skill(string id, SkillTree tree, string name, string effect, int maxLevel,
-            double baseCost, double growth, string requiresId = null, int requiresLevel = 0) =>
-            new SkillDef
+        public static string IdOf(SkillEffect effect, int rank) => $"{effect}_{rank}";
+
+        /// <summary>Unlock depth runs through a tree rank by rank, reaching the core near 1200m.</summary>
+        public static int UnlockDepthFor(int column, int rank) => (rank * Trees[0].Length + column) * DepthStep;
+
+        public static double BaseCostFor(int unlockDepth, double weight) =>
+            CostScale * weight * Math.Pow(1.03, unlockDepth);
+
+        private static IReadOnlyList<SkillDef> Build()
+        {
+            string[] numerals = { "I", "II", "III", "IV", "V", "VI" };
+            var list = new List<SkillDef>();
+            for (int tree = 0; tree < Trees.Length; tree++)
             {
-                Id = id, Tree = tree, Name = name, Effect = effect, MaxLevel = maxLevel,
-                BaseCost = baseCost, Growth = growth, RequiresId = requiresId, RequiresLevel = requiresLevel,
-            };
+                for (int column = 0; column < Trees[tree].Length; column++)
+                {
+                    var seed = Trees[tree][column];
+                    for (int rank = 0; rank < RanksPerEffect; rank++)
+                    {
+                        int depth = UnlockDepthFor(column, rank);
+                        double perLevel = seed.PerLevel * (1 + rank * 0.5);
+                        list.Add(new SkillDef
+                        {
+                            Id = IdOf(seed.Effect, rank),
+                            Tree = tree,
+                            Column = column,
+                            Rank = rank,
+                            Effect = seed.Effect,
+                            Name = $"{seed.Name} {numerals[rank]}",
+                            EffectText = string.Format(seed.Format, perLevel.ToString("0.##")),
+                            PerLevel = perLevel,
+                            MaxLevel = seed.MaxLevel,
+                            UnlockDepth = depth,
+                            BaseCost = BaseCostFor(depth, seed.CostWeight),
+                            Growth = CostGrowth,
+                            RequiresId = rank == 0 ? null : IdOf(seed.Effect, rank - 1),
+                        });
+                    }
+                }
+            }
+            return list;
+        }
+
+        private static Seed S(SkillEffect effect, string name, string format, double perLevel, int maxLevel, double weight) =>
+            new Seed { Effect = effect, Name = name, Format = format, PerLevel = perLevel, MaxLevel = maxLevel, CostWeight = weight };
     }
 }

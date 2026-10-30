@@ -5,10 +5,7 @@ namespace DeepDrill.Core
         Grass,
         Dirt,
         HardRock,
-        Coal,
-        Copper,
-        Iron,
-        Silver,
+        Ore,
         Sand,
         Chest,
         Tnt,
@@ -18,6 +15,7 @@ namespace DeepDrill.Core
     public sealed class Block
     {
         public BlockType Type;
+        public int Ore; // index into Strata.Ores when Type is Ore
         public double Hp;
         public double MaxHp;
         public bool Alive => Hp > 0;
@@ -28,6 +26,11 @@ namespace DeepDrill.Core
     {
         private const int SafeRows = 3;
         private const int StratumHashOffset = 1000;
+        private const int OreHashOffset = 2000;
+        private const double ChestShare = 0.005;
+        private const double OreShare = 0.11;
+        private const double HardShare = 0.10;
+        private const double LooseShare = 0.16;
 
         public static uint Hash(int seed, int row, int col)
         {
@@ -53,16 +56,27 @@ namespace DeepDrill.Core
             }
         }
 
-        private static double Unit(int seed, int row, int col) => Hash(seed, row, col) / (double)uint.MaxValue;
+        public static double Unit(int seed, int row, int col) => Hash(seed, row, col) / (double)uint.MaxValue;
 
         /// <summary>Which stratum a cell belongs to. The last rows of one stratum mix in the next.</summary>
         public static int StratumAt(int seed, int row, int col)
         {
-            int start = Balance.SandstoneRow - Balance.TransitionRows;
-            if (row < start) return 0;
-            if (row >= Balance.SandstoneRow) return 1;
-            double share = (row - start + 1) / (double)(Balance.TransitionRows + 1);
-            return Unit(seed, row, col + StratumHashOffset) < share ? 1 : 0;
+            int stratum = Strata.OfDepth(row);
+            if (stratum >= Strata.Last || row < 0) return stratum;
+            int intoEnd = row % Strata.RowsPerStratum - (Strata.RowsPerStratum - Strata.TransitionRows);
+            if (intoEnd < 0) return stratum;
+            double share = (intoEnd + 1) / (double)(Strata.TransitionRows + 1);
+            return Unit(seed, row, col + StratumHashOffset) < share ? stratum + 1 : stratum;
+        }
+
+        public static void Fill(Block block, int seed, int row, int col, double tntChance)
+        {
+            block.Ore = 0;
+            block.Type = TypeAt(seed, row, col, tntChance);
+            if (block.Type == BlockType.Ore) block.Ore = OreAt(seed, row, col);
+            double hp = HpOf(block.Type, row);
+            block.Hp = hp;
+            block.MaxHp = hp;
         }
 
         public static BlockType TypeAt(int seed, int row, int col, double tntChance = Balance.TntChance)
@@ -71,54 +85,52 @@ namespace DeepDrill.Core
             if (row < SafeRows) return BlockType.Dirt;
 
             double r = Unit(seed, row, col);
-            return StratumAt(seed, row, col) == 0 ? TopsoilType(r, tntChance) : SandstoneType(r, tntChance);
+            var stratum = Strata.All[StratumAt(seed, row, col)];
+            if (r < ChestShare) return BlockType.Chest;
+            r -= ChestShare;
+            if (r < OreShare) return BlockType.Ore;
+            r -= OreShare;
+            if (r < HardShare) return BlockType.HardRock;
+            r -= HardShare;
+            if (stratum.HasLoose)
+            {
+                if (r < LooseShare) return BlockType.Sand;
+                r -= LooseShare;
+            }
+            return r < tntChance ? BlockType.Tnt : BlockType.Dirt;
         }
 
-        private static BlockType TopsoilType(double r, double tntChance)
+        /// <summary>The first ore listed for a stratum is the common one; each next is half as likely.</summary>
+        public static int OreAt(int seed, int row, int col)
         {
-            if (r < 0.005) return BlockType.Chest;
-            if (r < 0.085) return BlockType.Coal;
-            if (r < 0.145) return BlockType.Copper;
-            if (r < 0.245) return BlockType.HardRock;
-            if (r < 0.245 + tntChance) return BlockType.Tnt;
-            return BlockType.Dirt;
-        }
-
-        private static BlockType SandstoneType(double r, double tntChance)
-        {
-            if (r < 0.005) return BlockType.Chest;
-            if (r < 0.065) return BlockType.Iron;
-            if (r < 0.095) return BlockType.Silver;
-            if (r < 0.105) return BlockType.Coal;
-            if (r < 0.115) return BlockType.Copper;
-            if (r < 0.215) return BlockType.HardRock;
-            if (r < 0.395) return BlockType.Sand;
-            if (r < 0.395 + tntChance) return BlockType.Tnt;
-            return BlockType.Dirt;
+            int[] ores = Strata.All[StratumAt(seed, row, col)].Ores;
+            double r = Unit(seed, row, col + OreHashOffset);
+            double weight = 0.5;
+            for (int i = 0; i < ores.Length - 1; i++)
+            {
+                if (r < weight) return ores[i];
+                r -= weight;
+                weight /= 2;
+            }
+            return ores[ores.Length - 1];
         }
 
         public static double HpOf(BlockType type, int depth)
         {
             double hp = Balance.BlockHp(depth);
             if (type == BlockType.HardRock) return hp * Balance.HardRockHpMultiplier;
-            if (type == BlockType.Sand) return hp * Balance.SandHpMultiplier;
+            if (type == BlockType.Sand) return hp * Balance.LooseHpMultiplier;
             return hp;
         }
 
-        public static double ValueOf(BlockType type, int depth)
+        public static double ValueOf(Block block, int depth)
         {
-            switch (type)
+            switch (block.Type)
             {
-                case BlockType.Coal: return Balance.OreValue(depth, Balance.CoalValue);
-                case BlockType.Copper: return Balance.OreValue(depth, Balance.CopperValue);
-                case BlockType.Iron: return Balance.OreValue(depth, Balance.IronValue);
-                case BlockType.Silver: return Balance.OreValue(depth, Balance.SilverValue);
+                case BlockType.Ore: return Balance.OreValue(depth, Strata.Ores[block.Ore].Value);
                 case BlockType.Chest: return Balance.OreValue(depth, Balance.ChestValue);
                 default: return Balance.OreValue(depth, Balance.DirtValue);
             }
         }
-
-        public static bool IsOre(BlockType type) =>
-            type == BlockType.Coal || type == BlockType.Copper || type == BlockType.Iron || type == BlockType.Silver;
     }
 }
