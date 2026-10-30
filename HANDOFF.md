@@ -1,5 +1,22 @@
 # 《深渊钻头》交接文档
 
+## 第二版现状（`v2` 分支，先读这一节）
+
+主文件夹当前检出 `v2`（`bb14124` 之后）。下面第 1 至 9 节写于第一版，结构和流程仍有参考价值，第二版有差异的地方以本节为准。
+
+- **数据：** `tools/Design/gen_design_data.py` 生成 `Assets/Resources/Data/*.json`，改数值改这个脚本。这台电脑的 `python` 是商店占位程序，用 Blender 自带的 Python 运行：`"C:\Program Files (x86)\Steam\steamapps\common\Blender\5.2\python\bin\python.exe" -I gen_design_data.py ..\..\Assets\Resources\Data`。
+- **核心：** `MiniJson` + `GameData` 读数据，`GameSim` 管多钻头，`DrillBody` 是单台物理。`Strata`、`Skills` 等第一版的类已删除。
+- **美术：** `art/tools/draw_world_art.lua` 生成 12 层、24 矿物、60 种钻头、36 稀有物品，输出到 `Assets/Art/Layers`、`Drill`、`Items`。`draw_game_art.lua` 仍负责炸药、裂纹、图标。
+- **已在编辑器实测：** 200 台钻头 60 FPS（最差一帧约 24 毫秒）、机库、技能树、图鉴的显示，12 层画面，存档读回。Unity 内 58 个测试全过。
+- **只有测试、没看过实际效果：** 第 3 至 12 层的特殊机制（水晶反射、水流、遗迹房间、超硬岩、过热、岩浆、相变、对流、回填、地核高温）。
+- **没验证：** 真实鼠标的拖拽合成、拖动和缩放、悬停；正常数值下的难度曲线。
+- **未完成：** 各层 Boss 只有两张脸循环加染色，没有 12 个独立外观；设计里的“吸取 3 格内掉落”（磁力钻）没做；`center` 成就的“星系跃迁”没有内容。
+- **我定的：** 超过 300 台的钻头不做物理，威力计入 `SwarmMultiplier`；`hangar_slots` 暂时提高这个上限；Boss 护甲从第 2 层起占血量 25%；各机制的具体数值在 `Balance` 里。
+- **脚本坑：** 不要用 `Select-Object -First` 接 `check.ps1` 的输出，管道提前结束会中止脚本，后面的截图复制不会执行。
+- **`master` 的小问题：** 砂岩相关素材提交时没有 `.meta`，Unity 打开时会生成，切分支前要清掉。
+
+**Windows 打包（第 7 步）未解决，原因已基本定位：** 卡住的 `cmd.exe` 主线程状态是 `Suspended`（1 线程、3 句柄、CPU 0、无子进程），进程启动后就被冻结。这台电脑装有 Avast 和 Reason Cybersecurity，高度怀疑是它们拦截，比第 4 节的“令牌过期”更可信，但还没用排除规则验证过。下一步：让用户把 `C:\GAME\DeepDril` 和 `C:\Program Files\Unity\Hub\Editor\6000.0.85f1` 加入杀毒软件排除项，再点 DeepDrill > Build Windows。
+
 写于 2026-10-30。工程在 `C:\GAME\DeepDril`（文件夹名就是一个 l，已确认不改）。
 Unity 6000.0.85f1，内置渲染管线，uGUI，旧 Input Manager。git 主分支叫 `master`，不是 `main`。
 
