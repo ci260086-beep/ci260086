@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Runs the engine-free EditMode tests without Unity. Pass -p:NUnitDll=<path to nunit.framework.dll>. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net$(BundledNETCoreAppTargetFrameworkVersion)</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <NoWarn>CS0649;CS0414;NU1701</NoWarn>
+    <OutputPath>out\run</OutputPath>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <RollForward>Major</RollForward>
+    <Project>$(MSBuildThisFileDirectory)..\..</Project>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="$(Project)\Assets\Scripts\Core\*.cs" />
+    <Compile Include="$(Project)\Assets\Tests\EditMode\*.cs" />
+    <Compile Include="TestRunner.cs" />
+    <Reference Include="NUnit">
+      <HintPath>$(NUnitDll)</HintPath>
+    </Reference>
+  </ItemGroup>
+</Project>
