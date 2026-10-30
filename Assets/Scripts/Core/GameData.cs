@@ -148,6 +148,18 @@ namespace DeepDrill.Core
         public double Crystals;
     }
 
+    public enum ChallengeRule { no_skills, no_drills, no_frenzy, poor, weak }
+
+    public sealed class ChallengeDef
+    {
+        public string Name;
+        public ChallengeRule Rule;
+        public double Amount;
+        public int TargetRow;
+        public string Desc;
+        public BonusDef Reward;
+    }
+
     public enum RebirthPerk { coins, root, drills, hangar, skills }
 
     public sealed class RebirthMilestone
@@ -214,6 +226,7 @@ namespace DeepDrill.Core
         public static double ResearchRushSeconds;
         public static List<ExpeditionDef> Expeditions;
         public static double RescueChance;
+        public static List<ChallengeDef> Challenges;
 
         private static Dictionary<string, SkillDef> skillsById;
 
@@ -423,6 +436,21 @@ namespace DeepDrill.Core
         {
             var root = Obj(MiniJson.Parse(json));
             LoadEvents(Obj(root["events"]));
+
+            Challenges = new List<ChallengeDef>();
+            foreach (var item in Arr(root["challenges"]))
+            {
+                var o = Obj(item);
+                Challenges.Add(new ChallengeDef
+                {
+                    Name = Str(o, "name"),
+                    Rule = (ChallengeRule)Enum.Parse(typeof(ChallengeRule), Str(o, "rule")),
+                    Amount = Num(o, "amount"),
+                    TargetRow = (int)Num(o, "targetRow"),
+                    Desc = Str(o, "desc"),
+                    Reward = LoadBonus(o["reward"]),
+                });
+            }
 
             var lab = Obj(root["research"]);
             ResearchRushSeconds = Num(lab, "rushSeconds");

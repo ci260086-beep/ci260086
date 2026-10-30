@@ -6,7 +6,7 @@
 
 - **仓库：** https://github.com/ci260086-beep/ci260086 ，主分支是 `master`。不要 force push。合并进 `master` 前先等用户确认。
 - **分支：** `master`（`de825d3`，第一版）；`v2`（`8f3b4c6`，第三阶段第 0 步）；`phase3-step2`（从 `v2` 分出，正在做第 2 步）；`terrain-pixel`（`e7d03fb`，已包含在 `v2` 里，检出在 `Builds/wtp`）；`wip-v2`（旧存档分支）。
-- **第三阶段进度：** 计划在 `tools/Design/phase3_plan.md`。用户决定在 `phase3-step2` 这一条分支上把第 1 到第 8 步全部做完，每步只跑编译和单元测试，最后统一做完整测试和节奏调参。第 0、2、1、3、4、5、6 步已提交。第 2 步：`milestones.json`、`GameSim.MilestonesOf/MasteryOf`、`HudView.Mastery.cs`（图鉴的“里程碑”“精通”标签页，未实机看过）。
+- **第三阶段进度：** 计划在 `tools/Design/phase3_plan.md`。用户决定在 `phase3-step2` 这一条分支上把第 1 到第 8 步全部做完，每步只跑编译和单元测试，最后统一做完整测试和节奏调参。第 0、2、1、3、4、5、6、7 步已提交。第 2 步：`milestones.json`、`GameSim.MilestonesOf/MasteryOf`、`HudView.Mastery.cs`（图鉴的“里程碑”“精通”标签页，未实机看过）。
 - **第四阶段计划：** https://claude.ai/artifact/CKUBNxSWKeDQZEUQSTgwkF
 - **用户已定：** 横屏 320×180；逐像素地形；手动起步（解锁自动钻探前只能点击）；定价 6 元人民币；不做广告和付费加速。
 - **节奏目标：** 第一次重铸约 30 到 45 分钟；第 1 局到第 4 到 5 层；之后每层约 8 到 15 分钟；10 到 15 局到地心。
@@ -20,6 +20,7 @@
 - **第 4 步：** 钻探流派：`GameSim.Schools.cs`，每局选一派，重铸后重置，通关该派给永久奖励，技能价格走 `SkillCost`。
 - **第 5 步：** 地表加工厂和地心结晶：`GameSim.Factory.cs`，结晶按真实时间生长，离线也算，工厂花矿物，等级跨重铸保留。
 - **第 6 步：** 研究所和探险队：`GameSim.Lab.cs`，同时只能研究一项，结晶可加速，探险员来自远古遗迹宝箱，失败也会回来。
+- **第 7 步：** 挑战深井：`GameSim.Challenges.cs`，五条规则，到达目标深度给永久奖励；重置逻辑抽成 `ResetRun`。
 - **节奏现状（调到一半）：** 种子 7、11、23、42 的第一次重铸在 21 到 36 分钟，第 1 局到第 4 层，第 6 层在 24 到 38 分钟，约 18 局以上才接近地心，HpGrowthDeep 1.012 尚未验证。HpRamp 到 4.5 以上时第一局会卡在第 2 层 Boss。旋钮：`Balance.HpRamp/HpGrowthDeep/OreValuePower/ShardBonus/BossHpScale`，生成器里的 `TIER_DMG_MULT`、`BUY_GROWTH`、圈价倍数和技能价格增长率。
 - **本阶段修过的旧 bug：** 连锁炸药一帧炸穿全图（现在限 24 次、24 行内）；爆炸无视血量（现在按伤害预算，`blast_dmg` 生效）；钻头悬空导致 Boss 不触发；爆破钻溅射没实现。
 

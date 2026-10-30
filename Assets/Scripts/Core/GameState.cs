@@ -86,6 +86,9 @@ namespace DeepDrill.Core
         public List<int> expeditionTiers = new List<int>();     // one entry per explorer away
         public List<double> expeditionLeft = new List<double>();
 
+        public int challenge = -1;
+        public List<int> challengesDone = new List<int>();
+
         public bool AnyBossDown => bossesDefeated > 0;
 
         public int BoughtOf(int family) => family < bought.Count ? bought[family] : 0;

@@ -445,5 +445,109 @@ namespace DeepDrill.Tests
         }
 
         #endregion
+
+        #region step 7: challenge wells
+
+        private static GameSim ChallengeReady()
+        {
+            var sim = CoreTests.NewSim();
+            sim.State.maxDepthEver = GameData.Layers[Balance.ChallengeLayer].RowStart;
+            return sim;
+        }
+
+        private static int Challenge(ChallengeRule rule) => GameData.Challenges.FindIndex(c => c.Rule == rule);
+
+        [Test]
+        public void Challenge_LockedUntilDeepEnough()
+        {
+            var sim = CoreTests.NewSim();
+            Assert.IsFalse(sim.StartChallenge(0));
+            Assert.IsTrue(ChallengeReady().StartChallenge(0));
+        }
+
+        [Test]
+        public void Challenge_RestartsTheRunWithoutShards()
+        {
+            var sim = ChallengeReady();
+            sim.State.coins = 5000;
+            sim.State.maxDepth = 300;
+            sim.State.shards = 7;
+            Assert.IsTrue(sim.StartChallenge(0));
+            Assert.AreEqual(0, sim.State.maxDepth);
+            Assert.AreEqual(7, sim.State.shards);
+            Assert.AreEqual(Balance.StartGold, sim.State.coins, 1e-9);
+        }
+
+        [Test]
+        public void Challenge_RulesBlockThePurchase()
+        {
+            var skills = ChallengeReady();
+            skills.StartChallenge(Challenge(ChallengeRule.no_skills));
+            skills.State.coins = 1e6;
+            skills.Buy(GameSim.RootSkill);
+            Assert.IsFalse(skills.Buy("drill_01"));
+
+            var drills = ChallengeReady();
+            drills.StartChallenge(Challenge(ChallengeRule.no_drills));
+            drills.State.coins = 1e6;
+            Assert.IsFalse(drills.BuyDrill(0));
+
+            var frenzy = ChallengeReady();
+            frenzy.StartChallenge(Challenge(ChallengeRule.no_frenzy));
+            frenzy.FillFrenzy();
+            Assert.IsFalse(frenzy.StartFrenzy());
+        }
+
+        [Test]
+        public void Challenge_WeakRuleCutsDamage()
+        {
+            var sim = ChallengeReady();
+            int code = DrillCode.Make(0, 0);
+            double before = sim.DamageOf(code);
+            sim.StartChallenge(Challenge(ChallengeRule.weak));
+            sim.GrantSkill(GameSim.RootSkill, 1);
+            Assert.AreEqual(before * 0.1, sim.DamageOf(code), 1e-9);
+        }
+
+        [Test]
+        public void Challenge_BlocksRebirth()
+        {
+            var sim = ChallengeReady();
+            sim.StartChallenge(0);
+            sim.State.bossesDefeated = 1;
+            sim.State.maxDepth = 200;
+            sim.State.totalIncome = 1e6;
+            Assert.IsFalse(sim.CanRebirth);
+        }
+
+        [Test]
+        public void Challenge_ReachingTheTargetPaysAndEndsIt()
+        {
+            var sim = ChallengeReady();
+            int index = Challenge(ChallengeRule.no_skills);
+            int code = DrillCode.Make(0, 0);
+            double before = sim.DamageOf(code);
+            sim.StartChallenge(index);
+            sim.GrantSkill(GameSim.RootSkill, 1);
+            sim.State.maxDepth = GameData.Challenges[index].TargetRow;
+            sim.Tick(1.1);
+            Assert.IsTrue(sim.ChallengeDone(index));
+            Assert.IsNull(sim.CurrentChallenge);
+            Assert.AreEqual(0, sim.State.maxDepth);
+            Assert.Greater(sim.DamageOf(code), before);
+            Assert.IsFalse(sim.CanStartChallenge(index));
+        }
+
+        [Test]
+        public void Challenge_CanBeAbandoned()
+        {
+            var sim = ChallengeReady();
+            sim.StartChallenge(0);
+            Assert.IsTrue(sim.AbandonChallenge());
+            Assert.IsNull(sim.CurrentChallenge);
+            Assert.IsFalse(sim.ChallengeDone(0));
+        }
+
+        #endregion
     }
 }

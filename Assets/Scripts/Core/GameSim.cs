@@ -34,6 +34,7 @@ namespace DeepDrill.Core
         ResearchDone,
         ExpeditionReturned,
         ExplorerRescued,
+        ChallengeDone,
     }
 
     public struct SimEvent
@@ -178,7 +179,7 @@ namespace DeepDrill.Core
         public int ShardsOnRebirth =>
             (int)Math.Floor(Balance.ShardsForRebirth(State.maxDepth, State.totalIncome)
                 * (1 + (Effect(SkillEffect.shard_pct) + 5 * AchievementCount("rebirth_")) / 100));
-        public bool CanRebirth => State.AnyBossDown && ShardsOnRebirth > 0;
+        public bool CanRebirth => State.AnyBossDown && ShardsOnRebirth > 0 && State.challenge < 0;
 
         /// <summary>Shards this run has earned per minute so far, zero until the run has settled.</summary>
         public double ShardsPerMinute =>
@@ -250,6 +251,7 @@ namespace DeepDrill.Core
                     * ComboMultiplier
                     * DamageBuffMult
                     * (1 + metaDamage / 100)
+                    * ChallengeDamage
                     * frenzy;
             }
         }
@@ -303,7 +305,8 @@ namespace DeepDrill.Core
         private double IncomeMultiplier =>
             (1 + Effect(SkillEffect.gold_pct) / 100)
             * (1 + (2 * AchievementCount("reach_") + RareBonus(2, 5)) / 100)
-            * (1 + metaIncome / 100);
+            * (1 + metaIncome / 100)
+            * ChallengePay;
 
         public int SimulationLimit => Balance.SimulatedDrills + (int)Effect(SkillEffect.hangar_slots);
 
@@ -344,7 +347,7 @@ namespace DeepDrill.Core
         public double DrillPrice(int family) =>
             Balance.DrillPrice(GameData.Families[family].BasePrice, State.BoughtOf(family), DiscountFraction, BuyTier);
 
-        public bool CanBuyDrill(int family) => FamilyUnlocked(family) && State.coins >= DrillPrice(family);
+        public bool CanBuyDrill(int family) => FamilyUnlocked(family) && State.coins >= DrillPrice(family) && !Under(ChallengeRule.no_drills);
 
         public bool BuyDrill(int family)
         {
@@ -422,7 +425,7 @@ namespace DeepDrill.Core
 
         public bool StartFrenzy()
         {
-            if (!FrenzyReady) return false;
+            if (!FrenzyReady || Under(ChallengeRule.no_frenzy)) return false;
             FrenzyEnergy = 0;
             FrenzyTimeLeft = FrenzyDuration;
             Events.Add(new SimEvent { Kind = SimEventKind.FrenzyStarted });
@@ -442,6 +445,7 @@ namespace DeepDrill.Core
         public bool CanBuy(SkillDef skill)
         {
             int level = State.LevelOf(skill.Id);
+            if (Under(ChallengeRule.no_skills) && skill.Id != RootSkill) return false;
             return IsUnlocked(skill) && level < skill.MaxLevel && State.coins >= SkillCost(skill);
         }
 
@@ -503,10 +507,18 @@ namespace DeepDrill.Core
         {
             if (!CanRebirth) return false;
             int gained = ShardsOnRebirth;
-            double startGold = Balance.StartGold * Math.Max(1, Effect(SkillEffect.start_gold));
-            bool keepAutoDrill = Effect(SkillEffect.start_gold) > 0;
             State.shards += gained;
             State.rebirths++;
+            ResetRun();
+            Events.Add(new SimEvent { Kind = SimEventKind.Rebirth, Amount = gained });
+            return true;
+        }
+
+        // Clears everything a run owns; only shards and lifetime records stay.
+        private void ResetRun()
+        {
+            double startGold = Balance.StartGold * Math.Max(1, Effect(SkillEffect.start_gold));
+            bool keepAutoDrill = Effect(SkillEffect.start_gold) > 0;
 
             State.coins = startGold;
             State.ores = 0;
@@ -543,8 +555,6 @@ namespace DeepDrill.Core
             State.drills.Add(DrillCode.Make(0, 0));
             GrantStartDrills();
             RebuildUnits();
-            Events.Add(new SimEvent { Kind = SimEventKind.Rebirth, Amount = gained });
-            return true;
         }
 
         private void RefreshEffects()
@@ -734,6 +744,7 @@ namespace DeepDrill.Core
             CheckMilestones();
             CheckMastery();
             CheckSchoolCleared();
+            CheckChallenge();
             RunAutomation();
         }
 

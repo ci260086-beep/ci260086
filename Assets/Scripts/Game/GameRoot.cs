@@ -301,6 +301,12 @@ namespace DeepDrill.Game
                     hud.ShowToast("救出一名探险员", 4f);
                     break;
 
+                case SimEventKind.ChallengeDone:
+                    hud.ShowToast($"挑战完成：{GameData.Challenges[(int)e.Amount].Reward.Desc}", 5f);
+                    world.SnapToDrill();
+                    SaveNow();
+                    break;
+
                 case SimEventKind.MilestoneReached:
                     hud.ShowToast($"里程碑：{GameData.Milestones[(int)e.Amount][e.Row].Desc}", 3f);
                     break;

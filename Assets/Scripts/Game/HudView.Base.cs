@@ -48,6 +48,7 @@ namespace DeepDrill.Game
             BuildFactoryTab();
             BuildResearchTab();
             BuildExpeditionTab();
+            BuildChallengeTab();
             ShowBaseTab(0);
         }
 
@@ -201,6 +202,22 @@ namespace DeepDrill.Game
                 int index = i;
                 AddBaseRow(6 + i, () => index < sim.State.expeditionTiers.Count
                     ? $"{GameData.Expeditions[sim.State.expeditionTiers[index]].Name}：还要 {FormatDuration(sim.State.expeditionLeft[index])}" : "");
+            }
+        }
+
+        private void BuildChallengeTab()
+        {
+            NewBaseTab("挑战");
+            AddBaseRow(0, () => sim.CurrentChallenge != null ? $"挑战中：{sim.CurrentChallenge.Name}，目标 {GameData.FormatDepth(sim.CurrentChallenge.TargetRow)}"
+                    : sim.ChallengesUnlocked ? "进入挑战会放弃本局，不给碎片" : $"到达{GameData.Layers[Balance.ChallengeLayer].Name}后解锁",
+                () => "放弃", () => sim.AbandonChallenge(), () => sim.CurrentChallenge != null);
+            for (int i = 0; i < GameData.Challenges.Count; i++)
+            {
+                int index = i;
+                var def = GameData.Challenges[i];
+                AddBaseRow(1 + i * 2, () => $"{def.Name}：{def.Desc}，挖到 {GameData.FormatDepth(def.TargetRow)}",
+                    () => sim.ChallengeDone(index) ? "已完成" : "进入", () => sim.StartChallenge(index), () => sim.CanStartChallenge(index));
+                AddBaseRow(2 + i * 2, () => $"  奖励：{def.Reward.Desc}");
             }
         }
 

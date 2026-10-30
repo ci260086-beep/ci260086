@@ -1,4 +1,11 @@
 {
+ "challenges": [
+  {"name": "徒手深井", "rule": "no_skills", "amount": 1, "targetRow": 250, "desc": "只能买根节点，不能买技能", "reward": {"effect": "dmg_pct", "amount": 100, "desc": "永久全部伤害 +100%"}},
+  {"name": "独钻深井", "rule": "no_drills", "amount": 1, "targetRow": 250, "desc": "不能买钻头", "reward": {"effect": "speed_pct", "amount": 30, "desc": "永久攻速 +30%"}},
+  {"name": "冷静深井", "rule": "no_frenzy", "amount": 1, "targetRow": 430, "desc": "不能开狂热", "reward": {"effect": "frenzy_mult", "amount": 100, "desc": "永久狂热伤害 +100%"}},
+  {"name": "贫矿深井", "rule": "poor", "amount": 0.1, "targetRow": 430, "desc": "收入只有十分之一", "reward": {"effect": "gold_pct", "amount": 100, "desc": "永久全部收入 +100%"}},
+  {"name": "重岩深井", "rule": "weak", "amount": 0.1, "targetRow": 630, "desc": "伤害只有十分之一", "reward": {"effect": "hard_pct", "amount": 200, "desc": "永久对硬岩伤害 +200%"}}
+ ],
  "research": {
   "rushSeconds": 3600,
   "projects": [
