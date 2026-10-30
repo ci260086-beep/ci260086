@@ -1,0 +1,289 @@
+using System;
+using System.Collections.Generic;
+
+namespace DeepDrill.Core
+{
+    /// <summary>The effect keys of skills.json; the names match the data exactly.</summary>
+    public enum SkillEffect
+    {
+        dmg_pct, speed_pct, crit_chance, crit_mult, hard_pct, boss_pct, pierce, swarm_pct,
+        ore_pct, gold_pct, offline_pct, offline_hours, chest_pct, chest_gold,
+        tnt_rate, blast_radius, blast_ore, chain, blast_dmg,
+        buy_discount, buy_tier, merge_lucky, auto_merge, auto_buy, hangar_slots,
+        frenzy_time, frenzy_charge, frenzy_mult, combo_cap, combo_window, frenzy_quake,
+        layer_pct, rare_pct, shard_pct, start_gold, click_pct,
+    }
+
+    public sealed class OreDef
+    {
+        public int Index; // position across all layers; picks the art
+        public string Name;
+        public double ValueMult;
+        public double Rate;
+    }
+
+    public sealed class LayerDef
+    {
+        public int Index; // zero based
+        public string Name;
+        public double DepthStartM;
+        public double DepthEndM;
+        public int RowStart;
+        public int RowEnd;
+        public string Mechanic;
+        public string BossName;
+        public double BossHpMult;
+        public double BossSeconds;
+        public List<OreDef> Ores = new List<OreDef>();
+    }
+
+    public sealed class FamilyDef
+    {
+        public int Index;
+        public string Id;
+        public string Name;
+        public double Damage;
+        public double HitsPerSecond;
+        public string Trait;
+        public int UnlockLayer; // zero based
+        public double BasePrice;
+    }
+
+    public sealed class SkillDef
+    {
+        public string Id;
+        public string Name;
+        public string Branch;
+        public SkillEffect Effect;
+        public double PerLevel;
+        public int MaxLevel;
+        public double BaseCost;
+        public double CostGrowth;
+        public List<string> Prereq = new List<string>();
+        public double X;
+        public double Y;
+        public int RequiresLayer; // zero based
+        public int ForLayer = -1; // layer_pct only, zero based
+        public string Desc;
+
+        public double CostAt(int level) => BaseCost * Math.Pow(CostGrowth, level);
+    }
+
+    public sealed class AchievementDef
+    {
+        public string Id;
+        public string Name;
+        public string Cond;
+        public string Reward;
+    }
+
+    public sealed class RareDef
+    {
+        public string Id;
+        public string Name;
+        public int Layer; // zero based
+        public int Rank;  // 0 rare, 1 epic, 2 legendary: selects the bonus type
+        public string Rarity;
+        public double DropChance;
+        public string Bonus;
+    }
+
+    /// <summary>
+    /// The numbers from tools/Design/gen_design_data.py. The reader callback fetches a file by
+    /// name, so Unity and the tests can supply the JSON their own way.
+    /// </summary>
+    public static class GameData
+    {
+        private const double OverlapStep = 0.9;
+
+        public static List<LayerDef> Layers;
+        public static List<FamilyDef> Families;
+        public static List<string> Materials;
+        public static double TierDamageMult;
+        public static double BuyGrowth;
+        public static List<SkillDef> Skills;
+        public static List<AchievementDef> Achievements;
+        public static List<RareDef> Rares;
+        public static int OreCount;
+
+        private static Dictionary<string, SkillDef> skillsById;
+
+        public static bool Loaded => Layers != null;
+        public static int TotalRows => Layers[Layers.Count - 1].RowEnd;
+        public static int Tiers => Materials.Count;
+        public static LayerDef LastLayer => Layers[Layers.Count - 1];
+
+        public static void Load(Func<string, string> read)
+        {
+            LoadLayers(read("layers"));
+            LoadDrills(read("drills"));
+            LoadSkills(read("skills"));
+            LoadAchievements(read("achievements"));
+            LoadRares(read("rare_items"));
+        }
+
+        public static SkillDef Skill(string id) => skillsById.TryGetValue(id, out var s) ? s : null;
+
+        /// <summary>The layer a row lies in; rows past the centre stay in the last layer.</summary>
+        public static int LayerOfRow(int row)
+        {
+            if (row <= 0) return 0;
+            for (int i = 0; i < Layers.Count; i++)
+                if (row < Layers[i].RowEnd) return i;
+            return Layers.Count - 1;
+        }
+
+        /// <summary>Real depth in metres: rows map linearly onto their layer's real span.</summary>
+        public static double MetresAt(int row)
+        {
+            if (row <= 0) return 0;
+            var layer = Layers[LayerOfRow(row)];
+            double t = (row - layer.RowStart) / (double)(layer.RowEnd - layer.RowStart);
+            return layer.DepthStartM + (layer.DepthEndM - layer.DepthStartM) * Math.Min(1, t);
+        }
+
+        public static string FormatDepth(int row)
+        {
+            double m = MetresAt(row);
+            if (m < 1000) return $"{m:0} 米";
+            return m < 100000 ? $"{m / 1000:0.0} 千米" : $"{m / 1000:0} 千米";
+        }
+
+        private static string Str(Dictionary<string, object> o, string k) => (string)o[k];
+        private static double Num(Dictionary<string, object> o, string k) => (double)o[k];
+        private static Dictionary<string, object> Obj(object o) => (Dictionary<string, object>)o;
+        private static List<object> Arr(object o) => (List<object>)o;
+
+        private static void LoadLayers(string json)
+        {
+            Layers = new List<LayerDef>();
+            OreCount = 0;
+            foreach (var item in Arr(MiniJson.Parse(json)))
+            {
+                var o = Obj(item);
+                var boss = Obj(o["boss"]);
+                var layer = new LayerDef
+                {
+                    Index = Layers.Count,
+                    Name = Str(o, "name"),
+                    DepthStartM = Num(o, "depthStartM"),
+                    DepthEndM = Num(o, "depthEndM"),
+                    RowStart = (int)Num(o, "rowStart"),
+                    RowEnd = (int)Num(o, "rowEnd"),
+                    Mechanic = Str(o, "mechanic"),
+                    BossName = Str(boss, "name"),
+                    BossHpMult = Num(boss, "hpMult"),
+                    BossSeconds = Num(boss, "timeLimitSec"),
+                };
+                foreach (var oreItem in Arr(o["ores"]))
+                {
+                    var ore = Obj(oreItem);
+                    layer.Ores.Add(new OreDef
+                    {
+                        Index = OreCount++, Name = Str(ore, "name"), ValueMult = Num(ore, "valueMult"), Rate = Num(ore, "rate"),
+                    });
+                }
+                Layers.Add(layer);
+            }
+        }
+
+        private static void LoadDrills(string json)
+        {
+            var root = Obj(MiniJson.Parse(json));
+            TierDamageMult = Num(root, "tierDamageMult");
+            BuyGrowth = Num(root, "buyPriceGrowth");
+            Materials = new List<string>();
+            foreach (var m in Arr(root["materials"])) Materials.Add((string)m);
+            Families = new List<FamilyDef>();
+            foreach (var item in Arr(root["families"]))
+            {
+                var o = Obj(item);
+                Families.Add(new FamilyDef
+                {
+                    Index = Families.Count,
+                    Id = Str(o, "id"),
+                    Name = Str(o, "name"),
+                    Damage = Num(o, "damage"),
+                    HitsPerSecond = Num(o, "hitsPerSec"),
+                    Trait = Str(o, "trait"),
+                    UnlockLayer = (int)Num(o, "unlockLayer") - 1,
+                    BasePrice = Num(o, "basePrice"),
+                });
+            }
+        }
+
+        private static void LoadSkills(string json)
+        {
+            Skills = new List<SkillDef>();
+            skillsById = new Dictionary<string, SkillDef>();
+            foreach (var item in Arr(MiniJson.Parse(json)))
+            {
+                var o = Obj(item);
+                var skill = new SkillDef
+                {
+                    Id = Str(o, "id"),
+                    Name = Str(o, "name"),
+                    Branch = Str(o, "branch"),
+                    Effect = (SkillEffect)Enum.Parse(typeof(SkillEffect), Str(o, "effect")),
+                    PerLevel = Num(o, "perLevel"),
+                    MaxLevel = (int)Num(o, "maxLevel"),
+                    BaseCost = Num(o, "baseCost"),
+                    CostGrowth = Num(o, "costGrowth"),
+                    X = Num(o, "x"),
+                    Y = Num(o, "y"),
+                    RequiresLayer = (int)Num(o, "requiresLayer") - 1,
+                    Desc = Str(o, "desc"),
+                };
+                if (o.TryGetValue("layer", out var forLayer)) skill.ForLayer = (int)(double)forLayer - 1;
+                foreach (var p in Arr(o["prereq"])) skill.Prereq.Add((string)p);
+                Skills.Add(skill);
+                skillsById[skill.Id] = skill;
+            }
+            SeparateOverlaps();
+        }
+
+        // A few nodes share a coordinate in the data; push later ones apart vertically.
+        private static void SeparateOverlaps()
+        {
+            var taken = new HashSet<string>();
+            foreach (var skill in Skills)
+            {
+                while (!taken.Add(CellOf(skill))) skill.Y += OverlapStep;
+            }
+        }
+
+        private static string CellOf(SkillDef s) => $"{Math.Round(s.X / OverlapStep)}:{Math.Round(s.Y / OverlapStep)}";
+
+        private static void LoadAchievements(string json)
+        {
+            Achievements = new List<AchievementDef>();
+            foreach (var item in Arr(MiniJson.Parse(json)))
+            {
+                var o = Obj(item);
+                Achievements.Add(new AchievementDef
+                {
+                    Id = Str(o, "id"), Name = Str(o, "name"), Cond = Str(o, "cond"), Reward = Str(o, "reward"),
+                });
+            }
+        }
+
+        private static void LoadRares(string json)
+        {
+            Rares = new List<RareDef>();
+            foreach (var item in Arr(MiniJson.Parse(json)))
+            {
+                var o = Obj(item);
+                Rares.Add(new RareDef
+                {
+                    Id = Str(o, "id"),
+                    Name = Str(o, "name"),
+                    Layer = (int)Num(o, "layer") - 1,
+                    Rank = Rares.Count % 3,
+                    Rarity = Str(o, "rarity"),
+                    DropChance = Num(o, "dropChance"),
+                    Bonus = Str(o, "bonus"),
+                });
+            }
+        }
+    }
+}

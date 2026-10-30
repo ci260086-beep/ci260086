@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace DeepDrill.Core
@@ -18,7 +18,7 @@ namespace DeepDrill.Core
         BossFailed,
         BossArmorBroken,
         Rebirth,
-        StratumEntered,
+        LayerEntered,
         DrillsChanged,
         DrillMerged,
         RareFound,
@@ -35,26 +35,37 @@ namespace DeepDrill.Core
         public double Amount;
         public bool FromClick;
         public bool Crit;
+        public bool Lead;
     }
 
-    /// <summary>One drill on the field. Only the strongest few are simulated bodies.</summary>
+    /// <summary>One drill on the field. Up to the simulation limit each owned drill gets a body.</summary>
     public sealed class DrillUnit
     {
         public readonly DrillBody Body = new DrillBody();
-        public int Tier;
+        public int Code;
         public double HitClock;
+
+        public int Family => DrillCode.Family(Code);
+        public int Tier => DrillCode.Tier(Code);
     }
 
     /// <summary>
     /// The whole game rule set. Knows nothing about Unity: the presentation layer calls Tick and
-    /// Click, then drains <see cref="Events"/> to draw what happened.
+    /// Click, then drains <see cref="Events"/> to draw what happened. Needs GameData loaded.
     /// </summary>
     public sealed class GameSim
     {
         private const int IncomeWindowSeconds = 10;
-        private const int MaxHitsPerUnitPerTick = 8;
+        private const int MaxSwingsPerUnitPerTick = 8;
         private const int KeptRowsAbove = 30;
         private const double HousekeepingSeconds = 1;
+        private const int SwarmPerDrills = 10;
+        private const int AutoBuysPerTick = 5;
+        private const int MaxSpawnRowsUp = 40;
+        private const int SwiftFamily = 1;
+        private const int HeavyFamily = 2;
+        private const int BlastFamily = 3;
+        private const int MagnetFamily = 4;
 
         public readonly GameState State;
         public readonly List<DrillUnit> Units = new List<DrillUnit>();
@@ -62,11 +73,13 @@ namespace DeepDrill.Core
 
         private readonly Dictionary<int, Block[]> rows = new Dictionary<int, Block[]>();
         private readonly Queue<(int row, int col)> pendingBlasts = new Queue<(int, int)>();
-        private readonly HashSet<long> occupiedCells = new HashSet<long>();
+        private readonly Dictionary<long, DrillUnit> occupied = new Dictionary<long, DrillUnit>();
         private readonly double[] incomeBuckets = new double[IncomeWindowSeconds];
         private readonly double[] effects = new double[Enum.GetValues(typeof(SkillEffect)).Length];
-        private readonly Func<int, int, bool> solidCheck;
+        private readonly double[] layerBonus;
+        private readonly Func<int, int, bool> solidForStepper;
         private readonly Random random;
+        private DrillUnit stepper;
         private int incomeIndex;
         private double incomeClock;
         private int incomeFilled;
@@ -75,6 +88,7 @@ namespace DeepDrill.Core
         private double comboClock;
         private double housekeepingClock;
         private double swarmMultiplier = 1;
+        private double drillBonus = 1;
         private int blastsThisChain;
         private bool insideBlast;
 
@@ -82,7 +96,8 @@ namespace DeepDrill.Core
         {
             State = state;
             random = new Random(randomSeed ?? state.seed);
-            solidCheck = IsSolid;
+            solidForStepper = SolidForStepper;
+            layerBonus = new double[GameData.Layers.Count];
             RefreshEffects();
 
             if (!state.drillPlaced)
@@ -91,7 +106,7 @@ namespace DeepDrill.Core
                 state.drillX = Balance.StartColumn;
                 state.drillY = -0.5 - DrillBody.HalfHeight;
             }
-            if (state.DrillsOwned <= 0) state.SetDrillCount(0, 1);
+            if (state.drills.Count == 0) state.drills.Add(DrillCode.Make(0, 0));
             RebuildUnits();
         }
 
@@ -102,23 +117,18 @@ namespace DeepDrill.Core
         public double BossArmor { get; private set; }
         public double BossTimeLeft { get; private set; }
 
-        /// <summary>The guardian of the current stratum, or -1 once all of them are down.</summary>
-        public int CurrentBossStratum => State.bossesDefeated < Strata.All.Length ? State.bossesDefeated : -1;
-        public string BossName => CurrentBossStratum < 0 ? "" : Strata.All[CurrentBossStratum].BossName;
-        public int BossRowNow => CurrentBossStratum < 0 ? -1 : Strata.BossRow(CurrentBossStratum);
-        public double BossMaxHp
-        {
-            get
-            {
-                int s = CurrentBossStratum;
-                return s < 0 ? 0 : Balance.BlockHp(Strata.BossRow(s)) * Strata.BossHpScale(s);
-            }
-        }
-        public double BossMaxArmor => CurrentBossStratum < 0 ? 0 : BossMaxHp * Strata.BossArmorRatio(CurrentBossStratum);
-        public double BossDuration => Balance.BossSeconds + Effect(SkillEffect.BossTime);
+        /// <summary>The layer whose guardian is next, or null once all of them are down.</summary>
+        public LayerDef CurrentBoss =>
+            State.bossesDefeated < GameData.Layers.Count ? GameData.Layers[State.bossesDefeated] : null;
+        public double BossMaxHp => CurrentBoss == null ? 0 : Balance.BlockHp(CurrentBoss.RowEnd) * CurrentBoss.BossHpMult;
+        public double BossMaxArmor => CurrentBoss == null || CurrentBoss.Index == 0 ? 0 : BossMaxHp * Balance.BossArmorRatio;
+        public double BossDuration => CurrentBoss?.BossSeconds ?? 0;
+
+        public int ReachedLayer => GameData.LayerOfRow(State.maxDepthEver);
 
         public int ShardsOnRebirth =>
-            (int)Math.Floor(Balance.ShardsForRebirth(State.maxDepth, State.totalIncome) * (1 + Effect(SkillEffect.Shards) / 100));
+            (int)Math.Floor(Balance.ShardsForRebirth(State.maxDepth, State.totalIncome)
+                * (1 + (Effect(SkillEffect.shard_pct) + 5 * AchievementCount("rebirth_")) / 100));
         public bool CanRebirth => State.AnyBossDown && ShardsOnRebirth > 0;
 
         public int Combo { get; private set; }
@@ -126,34 +136,72 @@ namespace DeepDrill.Core
         public double FrenzyTimeLeft { get; private set; }
         public bool InFrenzy => FrenzyTimeLeft > 0;
         public bool FrenzyReady => !InFrenzy && FrenzyEnergy >= 1;
-        public double FrenzyDuration => Balance.FrenzySeconds + Effect(SkillEffect.FrenzyTime);
+        public double FrenzyDuration => Balance.FrenzySeconds + Effect(SkillEffect.frenzy_time);
         public double SwarmMultiplier => swarmMultiplier;
 
         public double ComboMultiplier =>
-            1 + Math.Min(Balance.ComboBonusMax + Effect(SkillEffect.ComboCap) / 100,
+            1 + Math.Min(Balance.ComboBonusMax + (Effect(SkillEffect.combo_cap) + 10 * AchievementCount("combo_")) / 100,
                 Balance.ComboBonusPerStep * (Combo / Balance.ComboStep));
 
         public double Effect(SkillEffect effect) => effects[(int)effect];
 
-        private double GlobalDamageMultiplier =>
-            (1 + Effect(SkillEffect.Damage) / 100)
-            * (1 + Balance.ShardBonus * State.shards)
-            * (1 + Balance.AchievementBonus * State.achievements.Count)
-            * ComboMultiplier
-            * (InFrenzy ? Balance.FrenzyDamageMultiplier : 1);
-
-        /// <summary>What one swing of a drill of this tier does right now, swarm share included.</summary>
-        public double DamageOf(int tier)
+        private int AchievementCount(string prefix)
         {
-            double merge = 1 + Effect(SkillEffect.MergeBonus) / 100 * tier;
-            return DrillTiers.Damage(tier) * merge * GlobalDamageMultiplier * swarmMultiplier;
+            int n = 0;
+            foreach (string id in State.achievements)
+                if (id.StartsWith(prefix, StringComparison.Ordinal)) n++;
+            return n;
         }
 
-        public double ClickDamage => DamageOf(Lead.Tier);
+        // Each rare's bonus grows 50% per duplicate, up to ten duplicates.
+        private double RareBonus(int rank, double perRare)
+        {
+            double sum = 0;
+            foreach (var rare in GameData.Rares)
+            {
+                if (rare.Rank != rank) continue;
+                int count = State.RareCountOf(rare.Id);
+                if (count <= 0) continue;
+                int dupes = Math.Min(count - 1, Balance.RareMaxDupes);
+                sum += perRare * (1 + Balance.RareDupeBonus * dupes);
+            }
+            return sum;
+        }
 
-        public double HitsPerSecond =>
-            DrillTiers.BaseHitsPerSecond * (1 + Effect(SkillEffect.Speed) / 100)
-            * (InFrenzy ? Balance.FrenzySpeedMultiplier : 1);
+        private double GlobalDamageMultiplier
+        {
+            get
+            {
+                int layer = GameData.LayerOfRow(State.depth);
+                double frenzy = InFrenzy
+                    ? Balance.FrenzyDamageMultiplier * (1 + Effect(SkillEffect.frenzy_mult) / 100)
+                    : 1;
+                return (1 + Effect(SkillEffect.dmg_pct) / 100)
+                    * (1 + Effect(SkillEffect.swarm_pct) / 100 * (State.drills.Count / SwarmPerDrills))
+                    * (1 + layerBonus[layer] / 100)
+                    * (1 + Balance.ShardBonus * State.shards)
+                    * drillBonus
+                    * ComboMultiplier
+                    * frenzy;
+            }
+        }
+
+        public static double KindDamage(int code)
+        {
+            var family = GameData.Families[DrillCode.Family(code)];
+            return family.Damage * Math.Pow(GameData.TierDamageMult, DrillCode.Tier(code));
+        }
+
+        /// <summary>What one swing of this kind of drill does right now, swarm share included.</summary>
+        public double DamageOf(int code) => KindDamage(code) * GlobalDamageMultiplier * swarmMultiplier;
+
+        public double ClickDamage => DamageOf(Lead.Code) * (1 + Effect(SkillEffect.click_pct) / 100);
+
+        public double SpeedMultiplier =>
+            (1 + Effect(SkillEffect.speed_pct) / 100) * (InFrenzy ? Balance.FrenzySpeedMultiplier : 1);
+
+        public double HitsPerSecond(int code) =>
+            GameData.Families[DrillCode.Family(code)].HitsPerSecond * SpeedMultiplier;
 
         /// <summary>Combined damage per second of every owned drill.</summary>
         public double TotalDps
@@ -161,23 +209,24 @@ namespace DeepDrill.Core
             get
             {
                 double sum = 0;
-                for (int t = 0; t < DrillTiers.Count; t++)
-                    sum += State.DrillCount(t) * DrillTiers.Damage(t);
-                return sum * GlobalDamageMultiplier * HitsPerSecond;
+                foreach (int code in State.drills) sum += KindDamage(code) * HitsPerSecond(code);
+                return sum * GlobalDamageMultiplier;
             }
         }
 
-        public int BlastRadius => Balance.BaseBlastRadius + (int)Effect(SkillEffect.BlastRadius);
+        public int BlastRadius => Balance.BaseBlastRadius + (int)Effect(SkillEffect.blast_radius);
 
-        private double TntChance => Balance.TntChance + Effect(SkillEffect.TntRate) / 100;
-        private int ChainLimit => Balance.BaseChainLimit + (int)Effect(SkillEffect.BlastChain);
-        private double CritChance => Balance.CritChance + Effect(SkillEffect.CritChance) / 100;
-        private double CritMultiplier => Balance.CritMultiplier + Effect(SkillEffect.CritDamage) / 100;
+        private double TntChance => Balance.TntChance * (1 + Effect(SkillEffect.tnt_rate) / 100);
+        private double ChestChance => Balance.ChestChance * (1 + Effect(SkillEffect.chest_pct) / 100);
+        private int ChainLimit => Balance.BaseChainLimit + (Effect(SkillEffect.chain) > 0 ? int.MaxValue / 2 : 0);
+        private double CritChance => Balance.CritChance + Effect(SkillEffect.crit_chance) / 100;
+        private double CritMultiplier => Balance.CritMultiplier + Effect(SkillEffect.crit_mult) / 100;
 
         private double IncomeMultiplier =>
-            (1 + Effect(SkillEffect.CoinValue) / 100)
-            * (1 + Balance.RareItemBonus * State.rareItems.Count)
-            * (1 + Effect(SkillEffect.DepthValue) / 100 * State.depth / Strata.RowsPerStratum);
+            (1 + Effect(SkillEffect.gold_pct) / 100)
+            * (1 + (2 * AchievementCount("reach_") + RareBonus(2, 5)) / 100);
+
+        public int SimulationLimit => Balance.SimulatedDrills + (int)Effect(SkillEffect.hangar_slots);
 
         public Block[] Row(int row)
         {
@@ -195,7 +244,7 @@ namespace DeepDrill.Core
                 }
                 else
                 {
-                    WorldGen.Fill(block, State.seed, row, col, TntChance);
+                    WorldGen.Fill(block, State.seed, row, col, TntChance, ChestChance);
                     // only a reloaded run meets rows above the drill here: reopen the passage it stands in
                     if (row < State.depth && col == leadCol) block.Hp = 0;
                 }
@@ -207,9 +256,9 @@ namespace DeepDrill.Core
 
         private bool IsBossRow(int row)
         {
-            for (int i = State.bossesDefeated; i < Strata.All.Length; i++)
+            for (int i = State.bossesDefeated; i < GameData.Layers.Count; i++)
             {
-                int start = Strata.BossRow(i);
+                int start = GameData.Layers[i].RowEnd;
                 if (row >= start && row < start + Balance.BossRows) return true;
             }
             return false;
@@ -222,6 +271,10 @@ namespace DeepDrill.Core
             if (col < 0 || col >= Balance.Columns) return true;
             return Row(row)[col].Alive;
         }
+
+        // Two drills never share a cell: to the one being stepped, the other is a wall.
+        private bool SolidForStepper(int row, int col) =>
+            IsSolid(row, col) || (occupied.TryGetValue(CellKey(row, col), out var other) && other != stepper);
 
         public void Tick(double dt)
         {
@@ -242,7 +295,7 @@ namespace DeepDrill.Core
             var block = Row(row)[col];
             if (!block.Alive) return false;
             if (block.Type == BlockType.BossRoot && !BossActive) return false;
-            Strike(row, col, ClickDamage, true, RollCrit());
+            Strike(row, col, ClickDamage, true, RollCrit(), Lead);
             return true;
         }
 
@@ -266,36 +319,58 @@ namespace DeepDrill.Core
             State.drillY = Lead.Body.Y;
         }
 
-        public double DrillCost(int tier) =>
-            DrillTiers.Cost(tier, State.DrillCount(tier)) * (1 - Math.Min(0.5, Effect(SkillEffect.DrillDiscount) / 100));
+        public bool FamilyUnlocked(int family) => ReachedLayer >= GameData.Families[family].UnlockLayer;
 
-        public bool DrillUnlocked(int tier) =>
-            State.maxDepthEver >= DrillTiers.UnlockDepth(tier) || State.DrillCount(tier) > 0;
+        private double DiscountFraction =>
+            Math.Min(0.9, (Effect(SkillEffect.buy_discount) + 2 * AchievementCount("drills_")) / 100);
 
-        public bool CanBuyDrill(int tier) => DrillUnlocked(tier) && State.coins >= DrillCost(tier);
+        public int BuyTier => (int)Effect(SkillEffect.buy_tier);
 
-        public bool BuyDrill(int tier)
+        public double DrillPrice(int family) =>
+            Balance.DrillPrice(GameData.Families[family].BasePrice, State.BoughtOf(family), DiscountFraction, BuyTier);
+
+        public bool CanBuyDrill(int family) => FamilyUnlocked(family) && State.coins >= DrillPrice(family);
+
+        public bool BuyDrill(int family)
         {
-            if (!CanBuyDrill(tier)) return false;
-            State.coins -= DrillCost(tier);
-            State.SetDrillCount(tier, State.DrillCount(tier) + 1);
+            if (!CanBuyDrill(family)) return false;
+            State.coins -= DrillPrice(family);
+            State.AddBought(family);
+            State.drills.Add(DrillCode.Make(family, Math.Min(BuyTier, GameData.Tiers - 1)));
             RebuildUnits();
-            Events.Add(new SimEvent { Kind = SimEventKind.DrillsChanged, Amount = tier });
+            Events.Add(new SimEvent { Kind = SimEventKind.DrillsChanged, Amount = family });
             return true;
         }
 
-        public bool CanMerge(int tier) =>
-            tier + 1 < DrillTiers.Count && State.DrillCount(tier) >= Balance.MergeCost;
-
-        public bool Merge(int tier)
+        public bool CanMerge(int code)
         {
-            if (!CanMerge(tier)) return false;
-            State.SetDrillCount(tier, State.DrillCount(tier) - Balance.MergeCost);
-            State.SetDrillCount(tier + 1, State.DrillCount(tier + 1) + 1);
-            State.mergesEver++;
+            if (DrillCode.Tier(code) + 1 >= GameData.Tiers) return false;
+            int found = 0;
+            foreach (int c in State.drills)
+                if (c == code && ++found >= 2) return true;
+            return false;
+        }
+
+        /// <summary>Two drills of one kind become one of the next material, sometimes two steps up.</summary>
+        public bool Merge(int code)
+        {
+            if (!CanMerge(code)) return false;
+            MergeOnce(code);
             RebuildUnits();
-            Events.Add(new SimEvent { Kind = SimEventKind.DrillMerged, Amount = tier + 1 });
             return true;
+        }
+
+        private void MergeOnce(int code)
+        {
+            State.drills.Remove(code);
+            State.drills.Remove(code);
+            double lucky = (Effect(SkillEffect.merge_lucky) + AchievementCount("tier_")) / 100;
+            int steps = random.NextDouble() < lucky ? 2 : 1;
+            int tier = Math.Min(GameData.Tiers - 1, DrillCode.Tier(code) + steps);
+            State.drills.Add(DrillCode.Make(DrillCode.Family(code), tier));
+            State.mergesEver++;
+            State.bestTier = Math.Max(State.bestTier, tier + 1);
+            Events.Add(new SimEvent { Kind = SimEventKind.DrillMerged, Amount = DrillCode.Make(DrillCode.Family(code), tier) });
         }
 
         public bool StartFrenzy()
@@ -307,10 +382,15 @@ namespace DeepDrill.Core
             return true;
         }
 
-        public bool SkillDepthReached(SkillDef skill) => State.maxDepthEver >= skill.UnlockDepth;
+        public bool LayerReached(SkillDef skill) => ReachedLayer >= skill.RequiresLayer;
 
-        public bool IsUnlocked(SkillDef skill) =>
-            SkillDepthReached(skill) && (skill.RequiresId == null || State.LevelOf(skill.RequiresId) > 0);
+        public bool IsUnlocked(SkillDef skill)
+        {
+            if (!LayerReached(skill)) return false;
+            foreach (string id in skill.Prereq)
+                if (State.LevelOf(id) <= 0) return false;
+            return true;
+        }
 
         public bool CanBuy(SkillDef skill)
         {
@@ -320,7 +400,7 @@ namespace DeepDrill.Core
 
         public bool Buy(string skillId)
         {
-            var skill = SkillCatalog.Get(skillId);
+            var skill = GameData.Skill(skillId);
             if (skill == null || !CanBuy(skill)) return false;
             int level = State.LevelOf(skillId);
             State.coins -= skill.CostAt(level);
@@ -342,7 +422,7 @@ namespace DeepDrill.Core
         {
             if (State.lastSaveUnixSeconds <= 0) return 0;
             double earned = Balance.OfflineEarnings(State.incomePerSecond, nowUnixSeconds - State.lastSaveUnixSeconds,
-                Effect(SkillEffect.Offline) / 100);
+                Effect(SkillEffect.offline_pct) / 100, Effect(SkillEffect.offline_hours));
             State.coins += earned;
             State.totalIncome += earned;
             return earned;
@@ -353,17 +433,19 @@ namespace DeepDrill.Core
         {
             if (!CanRebirth) return false;
             int gained = ShardsOnRebirth;
+            double startGold = Balance.StartGold * Math.Max(1, Effect(SkillEffect.start_gold));
             State.shards += gained;
             State.rebirths++;
 
-            State.coins = 0;
+            State.coins = startGold;
             State.ores = 0;
             State.depth = 0;
             State.maxDepth = 0;
             State.totalIncome = 0;
             State.incomePerSecond = 0;
             State.skills.Clear();
-            State.drillCounts.Clear();
+            State.drills.Clear();
+            State.bought.Clear();
             State.bossesDefeated = 0;
             State.seed = random.Next(1, int.MaxValue);
             State.drillX = Balance.StartColumn;
@@ -381,7 +463,7 @@ namespace DeepDrill.Core
             RefreshEffects();
             Units.Clear();
             Lead = null;
-            State.SetDrillCount(0, 1);
+            State.drills.Add(DrillCode.Make(0, 0));
             RebuildUnits();
             Events.Add(new SimEvent { Kind = SimEventKind.Rebirth, Amount = gained });
             return true;
@@ -390,75 +472,115 @@ namespace DeepDrill.Core
         private void RefreshEffects()
         {
             Array.Clear(effects, 0, effects.Length);
+            Array.Clear(layerBonus, 0, layerBonus.Length);
             foreach (var level in State.skills)
             {
-                var skill = SkillCatalog.Get(level.id);
-                if (skill != null) effects[(int)skill.Effect] += skill.PerLevel * level.level;
+                var skill = GameData.Skill(level.id);
+                if (skill == null) continue;
+                double amount = skill.PerLevel * level.level;
+                if (skill.Effect == SkillEffect.layer_pct) layerBonus[skill.ForLayer] += amount;
+                effects[(int)skill.Effect] += amount;
             }
+            RefreshBonuses();
         }
 
-        // Keeps the bodies in step with the owned counts, strongest first, without moving drills
+        private void RefreshBonuses()
+        {
+            drillBonus = (1 + (3 * AchievementCount("boss_") + 2 * AchievementCount("merge_")) / 100.0)
+                * (1 + RareBonus(0, 1) / 100);
+        }
+
+        // Keeps the bodies in step with the owned list, strongest first, without moving drills
         // that stay on the field. Owned drills beyond the limit lend their power to the others.
         private void RebuildUnits()
         {
-            var wanted = new List<int>();
-            for (int t = DrillTiers.Count - 1; t >= 0 && wanted.Count < Balance.MaxSimulatedDrills; t--)
+            var sorted = new List<int>(State.drills);
+            sorted.Sort((a, b) => KindDamage(b).CompareTo(KindDamage(a)));
+            int limit = Math.Min(sorted.Count, SimulationLimit);
+
+            var spare = new Dictionary<int, Stack<DrillUnit>>();
+            foreach (var unit in Units)
             {
-                int take = Math.Min(State.DrillCount(t), Balance.MaxSimulatedDrills - wanted.Count);
-                for (int i = 0; i < take; i++) wanted.Add(t);
+                if (!spare.TryGetValue(unit.Code, out var stack)) spare[unit.Code] = stack = new Stack<DrillUnit>();
+                stack.Push(unit);
             }
 
-            var spare = new List<DrillUnit>(Units);
-            var keep = new List<DrillUnit>();
-            foreach (int tier in wanted)
+            var keep = new List<DrillUnit>(limit);
+            var fresh = new List<DrillUnit>();
+            for (int i = 0; i < limit; i++)
             {
-                int found = spare.FindIndex(u => u.Tier == tier);
-                if (found >= 0)
+                if (spare.TryGetValue(sorted[i], out var stack) && stack.Count > 0)
                 {
-                    keep.Add(spare[found]);
-                    spare.RemoveAt(found);
+                    keep.Add(stack.Pop());
+                    continue;
                 }
-                else
-                {
-                    var unit = new DrillUnit { Tier = tier };
-                    keep.Add(unit);
-                    if (spare.Count > 0)
-                    {
-                        // a merged drill takes over a spent one's spot
-                        unit.Body.Place(spare[0].Body.X, spare[0].Body.Y);
-                        spare.RemoveAt(0);
-                    }
-                    else if (Lead == null)
-                    {
-                        unit.Body.Place(State.drillX, State.drillY);
-                    }
-                    else
-                    {
-                        SpawnNearLead(unit);
-                    }
-                }
+                var unit = new DrillUnit { Code = sorted[i] };
+                keep.Add(unit);
+                fresh.Add(unit);
+            }
+
+            var leftovers = new List<DrillUnit>();
+            foreach (var stack in spare.Values) leftovers.AddRange(stack);
+
+            if (Lead != null && !keep.Contains(Lead))
+            {
+                // the lead was merged away: hand its place and the camera on
+                DrillBody old = Lead.Body;
+                if (fresh.Count > 0) fresh[0].Body.Place(old.X, old.Y);
+                Lead = fresh.Count > 0 ? fresh[0] : keep[0];
+                if (fresh.Count > 0) fresh.RemoveAt(0);
             }
 
             Units.Clear();
             Units.AddRange(keep);
-            if (Lead == null || !Units.Contains(Lead)) Lead = Units.Count > 0 ? Units[0] : null;
+            foreach (var unit in fresh)
+            {
+                if (Lead == null)
+                {
+                    unit.Body.Place(State.drillX, State.drillY);
+                    Lead = unit;
+                }
+                else if (leftovers.Count > 0)
+                {
+                    var old = leftovers[leftovers.Count - 1];
+                    leftovers.RemoveAt(leftovers.Count - 1);
+                    unit.Body.Place(old.Body.X, old.Body.Y); // a merged drill takes over a spent one's spot
+                }
+                else
+                {
+                    SpawnNearLead(unit);
+                }
+            }
 
             double ownedPower = 0, activePower = 0;
-            for (int t = 0; t < DrillTiers.Count; t++) ownedPower += State.DrillCount(t) * DrillTiers.Damage(t);
-            foreach (var unit in Units) activePower += DrillTiers.Damage(unit.Tier);
+            foreach (int code in State.drills) ownedPower += KindDamage(code) * GameData.Families[DrillCode.Family(code)].HitsPerSecond;
+            foreach (var unit in Units) activePower += KindDamage(unit.Code) * GameData.Families[unit.Family].HitsPerSecond;
             swarmMultiplier = activePower > 0 ? ownedPower / activePower : 1;
         }
 
         private void SpawnNearLead(DrillUnit unit)
         {
-            int col = Lead.Body.Column + (int)Math.Round((random.NextDouble() * 2 - 1) * Balance.SpawnSpreadColumns);
-            col = Math.Max(1, Math.Min(Balance.Columns - 2, col));
-            int row = Math.Max(0, Lead.Body.FeetRow - 1);
-            // the drill drops in from above the stand-off line, opening its own small pocket
-            if (row > 0) Carve(row - 1, col);
-            Carve(row, col);
-            unit.Body.Place(col, row - DrillBody.HalfHeight);
-            unit.HitClock = random.NextDouble();
+            // Works upward from the lead's row until it finds a free cell, so a big batch forms a crowd
+            // above the digging face instead of piling into one spot. Rows above ground are open air.
+            int width = Balance.SpawnSpreadColumns * 2 + 1;
+            int start = random.Next(width);
+            int leadRow = Lead.Body.FeetRow - 1;
+            for (int up = 0; up < MaxSpawnRowsUp; up++)
+            {
+                int row = leadRow - up;
+                for (int i = 0; i < width; i++)
+                {
+                    int offset = (start + i) % width - Balance.SpawnSpreadColumns;
+                    int col = Math.Max(1, Math.Min(Balance.Columns - 2, Lead.Body.Column + offset));
+                    if (occupied.ContainsKey(CellKey(row, col))) continue;
+                    Carve(row, col); // opens a small pocket; the drill then digs its own way down
+                    unit.Body.Place(col, row);
+                    occupied[CellKey(row, col)] = unit;
+                    unit.HitClock = random.NextDouble();
+                    return;
+                }
+            }
+            unit.Body.Place(Lead.Body.X, leadRow - MaxSpawnRowsUp);
         }
 
         private void AdvancePhysics(double dt)
@@ -467,14 +589,25 @@ namespace DeepDrill.Core
             while (physicsClock >= DrillBody.StepSeconds)
             {
                 physicsClock -= DrillBody.StepSeconds;
+                occupied.Clear();
+                foreach (var unit in Units) occupied[CellKey(unit.Body.BodyRow, unit.Body.Column)] = unit;
+
                 foreach (var unit in Units)
                 {
-                    double impact = unit.Body.Step(DrillBody.StepSeconds, solidCheck);
+                    stepper = unit;
+                    long before = CellKey(unit.Body.BodyRow, unit.Body.Column);
+                    double impact = unit.Body.Step(DrillBody.StepSeconds, solidForStepper);
+                    long after = CellKey(unit.Body.BodyRow, unit.Body.Column);
+                    if (before != after)
+                    {
+                        occupied.Remove(before);
+                        occupied[after] = unit;
+                    }
                     if (impact <= 0) continue;
                     Events.Add(new SimEvent
                     {
-                        Kind = SimEventKind.Landed, Row = unit.Body.FeetRow, Col = unit.Body.Column, Amount = impact,
-                        Crit = unit == Lead,
+                        Kind = SimEventKind.Landed, Row = unit.Body.FeetRow, Col = unit.Body.Column,
+                        Amount = impact, Lead = unit == Lead,
                     });
                 }
             }
@@ -489,12 +622,11 @@ namespace DeepDrill.Core
 
         private void AdvanceHits(double dt)
         {
-            double hits = dt * HitsPerSecond;
             foreach (var unit in Units)
             {
-                unit.HitClock += hits;
+                unit.HitClock += dt * HitsPerSecond(unit.Code);
                 int swings = 0;
-                while (unit.HitClock >= 1 && swings < MaxHitsPerUnitPerTick)
+                while (unit.HitClock >= 1 && swings < MaxSwingsPerUnitPerTick)
                 {
                     unit.HitClock -= 1;
                     swings++;
@@ -507,13 +639,7 @@ namespace DeepDrill.Core
         private void Swing(DrillUnit unit)
         {
             if (!FindTarget(unit.Body, out int row, out int col)) return;
-            double damage = DamageOf(unit.Tier);
-            bool crit = RollCrit();
-            Strike(row, col, damage, false, crit);
-
-            double pierce = Effect(SkillEffect.Pierce) / 100;
-            if (pierce > 0 && IsSolid(row + 1, col) && col >= 0 && col < Balance.Columns)
-                Strike(row + 1, col, damage * pierce, false, crit);
+            Strike(row, col, DamageOf(unit.Code), false, RollCrit(), unit);
         }
 
         /// <summary>The block the tip points at, or else the nearest one the drill can reach.</summary>
@@ -545,17 +671,18 @@ namespace DeepDrill.Core
 
         private bool RollCrit() => random.NextDouble() < CritChance;
 
-        private void Strike(int row, int col, double damage, bool fromClick, bool crit)
+        private void Strike(int row, int col, double damage, bool fromClick, bool crit, DrillUnit by)
         {
             var block = Row(row)[col];
             double amount = damage * (crit ? CritMultiplier : 1);
+            bool heavy = by.Family == HeavyFamily;
             if (block.Type == BlockType.HardRock)
-                amount *= 1 + Effect(SkillEffect.HardDamage) / 100;
+                amount *= (1 + Effect(SkillEffect.hard_pct) / 100) * (heavy ? 3 : 1);
 
             if (block.Type == BlockType.BossRoot)
             {
                 if (!BossActive) return;
-                amount *= 1 + Effect(SkillEffect.BossDamage) / 100;
+                amount *= (1 + Effect(SkillEffect.boss_pct) / 100) * (heavy ? 1.5 : 1);
                 HitBossArmor(ref amount);
                 BossHp -= amount;
                 Events.Add(new SimEvent
@@ -567,6 +694,12 @@ namespace DeepDrill.Core
                 return;
             }
 
+            ApplyDamage(row, col, block, amount, fromClick, crit, by);
+            RunBlasts();
+        }
+
+        private void ApplyDamage(int row, int col, Block block, double amount, bool fromClick, bool crit, DrillUnit by)
+        {
             block.Hp -= amount;
             Events.Add(new SimEvent
             {
@@ -575,33 +708,70 @@ namespace DeepDrill.Core
             });
             if (block.Hp > 0) return;
 
-            Break(row, col, block, fromClick, false);
-            RunBlasts();
+            double overflow = -block.Hp;
+            Break(row, col, block, fromClick, false, by);
+            PassOverflow(row, col, overflow, by);
+
+            if (by.Family != BlastFamily) return;
+            double splash = amount * Balance.BlastDrillSplash * (1 + Effect(SkillEffect.blast_dmg) / 100);
+            for (int r = row - 1; r <= row + 1; r++)
+            {
+                for (int c = col - 1; c <= col + 1; c++)
+                {
+                    if (r < 0 || c < 0 || c >= Balance.Columns || (r == row && c == col)) continue;
+                    var near = Row(r)[c];
+                    if (!near.Alive || near.Type == BlockType.BossRoot) continue;
+                    near.Hp -= splash;
+                    if (near.Hp <= 0) Break(r, c, near, false, true, by);
+                }
+            }
         }
 
-        private void Break(int row, int col, Block block, bool fromClick, bool byBlast)
+        // pierce: what was left over when a block broke carries on into the next ones down
+        private void PassOverflow(int row, int col, double overflow, DrillUnit by)
+        {
+            int layers = (int)Effect(SkillEffect.pierce);
+            for (int i = 1; i <= layers && overflow > 0; i++)
+            {
+                int next = row + i;
+                if (col < 0 || col >= Balance.Columns || !IsSolid(next, col)) continue;
+                var block = Row(next)[col];
+                if (block.Type == BlockType.BossRoot) return;
+                block.Hp -= overflow;
+                if (block.Hp > 0) return;
+                overflow = -block.Hp;
+                Break(next, col, block, false, false, by);
+            }
+        }
+
+        private void Break(int row, int col, Block block, bool fromClick, bool byBlast, DrillUnit by)
         {
             block.Hp = 0;
             bool isOre = block.Type == BlockType.Ore;
             double value = WorldGen.ValueOf(block, row) * ComboMultiplier * IncomeMultiplier;
             if (isOre)
             {
-                value *= 1 + Effect(SkillEffect.OreValue) / 100;
-                if (byBlast) value *= 1 + Effect(SkillEffect.BlastLoot) / 100;
+                value *= (1 + Effect(SkillEffect.ore_pct) / 100) * (1 + RareBonus(1, 3) / 100);
+                if (byBlast) value *= 1 + Effect(SkillEffect.blast_ore) / 100;
+                if (by.Family == MagnetFamily) value *= 2;
                 State.ores += 1;
-                State.oresEver += 1;
             }
-            if (block.Type == BlockType.Chest) value *= 1 + Effect(SkillEffect.ChestValue) / 100;
+            if (block.Type == BlockType.Chest)
+            {
+                value *= 1 + Effect(SkillEffect.chest_gold) / 100;
+                RollRareDrop(row);
+            }
 
             State.coins += value;
             State.totalIncome += value;
             incomeBuckets[incomeIndex] += value;
 
-            Combo++;
-            comboClock = Balance.ComboWindowSeconds + Effect(SkillEffect.ComboWindow);
+            Combo += by.Family == SwiftFamily ? 2 : 1;
+            State.bestCombo = Math.Max(State.bestCombo, Combo);
+            comboClock = Balance.ComboWindowSeconds + Effect(SkillEffect.combo_window);
             if (!InFrenzy && Combo >= 2)
             {
-                double charge = Balance.FrenzyChargePerBreak * (1 + Effect(SkillEffect.FrenzyCharge) / 100);
+                double charge = Balance.FrenzyChargePerBreak * (1 + Effect(SkillEffect.frenzy_charge) / 100);
                 FrenzyEnergy = Math.Min(1, FrenzyEnergy + charge);
             }
 
@@ -611,26 +781,25 @@ namespace DeepDrill.Core
                 Amount = value, FromClick = fromClick,
             });
 
-            MaybeDropRare(row);
-
             if (block.Type == BlockType.Tnt && blastsThisChain < ChainLimit)
             {
                 blastsThisChain++;
+                State.bestChain = Math.Max(State.bestChain, blastsThisChain);
                 pendingBlasts.Enqueue((row, col));
             }
         }
 
-        private void MaybeDropRare(int row)
+        private void RollRareDrop(int row)
         {
-            if (random.NextDouble() >= Balance.RareDropChance) return;
-            int stratum = Strata.OfDepth(row);
-            for (int i = 0; i < RareItems.All.Count; i++)
+            int layer = GameData.LayerOfRow(row);
+            double boost = 1 + Effect(SkillEffect.rare_pct) / 100;
+            for (int i = 0; i < GameData.Rares.Count; i++)
             {
-                var item = RareItems.All[i];
-                if (item.Stratum != stratum || State.rareItems.Contains(item.Id)) continue;
-                State.rareItems.Add(item.Id);
+                var rare = GameData.Rares[i];
+                if (rare.Layer != layer || random.NextDouble() >= rare.DropChance * boost) continue;
+                State.AddRare(rare.Id);
+                RefreshBonuses();
                 Events.Add(new SimEvent { Kind = SimEventKind.RareFound, Amount = i });
-                return;
             }
         }
 
@@ -657,7 +826,7 @@ namespace DeepDrill.Core
                     int dr = r - row, dc = c - col;
                     if (dr * dr + dc * dc > radius * radius + 1) continue;
                     var block = Row(r)[c];
-                    if (block.Alive && block.Type != BlockType.BossRoot) Break(r, c, block, false, true);
+                    if (block.Alive && block.Type != BlockType.BossRoot) Break(r, c, block, false, true, Lead);
                 }
             }
         }
@@ -667,13 +836,13 @@ namespace DeepDrill.Core
             int feet = Lead.Body.FeetRow;
             if (feet <= State.depth) return;
             for (int row = State.depth; row < feet; row++) rows.Remove(row - KeptRowsAbove);
-            int stratum = Strata.OfDepth(feet);
-            bool entered = stratum != Strata.OfDepth(State.depth);
+            int layer = GameData.LayerOfRow(feet);
+            bool entered = layer != GameData.LayerOfRow(State.depth);
             State.depth = feet;
             State.maxDepth = Math.Max(State.maxDepth, feet);
             State.maxDepthEver = Math.Max(State.maxDepthEver, feet);
             Events.Add(new SimEvent { Kind = SimEventKind.DepthChanged, Row = feet });
-            if (entered) Events.Add(new SimEvent { Kind = SimEventKind.StratumEntered, Amount = stratum });
+            if (entered) Events.Add(new SimEvent { Kind = SimEventKind.LayerEntered, Amount = layer });
         }
 
         // Loose blocks drop one cell per step, bottom row first so a whole column falls together.
@@ -690,10 +859,6 @@ namespace DeepDrill.Core
 
         private void StepLoose()
         {
-            occupiedCells.Clear();
-            foreach (var unit in Units)
-                occupiedCells.Add(CellKey(RoundToInt(unit.Body.Y), unit.Body.Column));
-
             int top = Math.Max(0, State.depth - Balance.LooseWindowRows);
             for (int row = State.depth + Balance.LooseWindowRows; row >= top; row--)
             {
@@ -701,7 +866,7 @@ namespace DeepDrill.Core
                 for (int col = 0; col < Balance.Columns; col++)
                 {
                     if (upper[col].Type != BlockType.Sand || !upper[col].Alive) continue;
-                    if (lower[col].Alive || occupiedCells.Contains(CellKey(row + 1, col))) continue;
+                    if (lower[col].Alive || occupied.ContainsKey(CellKey(row + 1, col))) continue;
                     var moved = upper[col];
                     upper[col] = lower[col];
                     lower[col] = moved;
@@ -717,39 +882,98 @@ namespace DeepDrill.Core
             if (housekeepingClock < HousekeepingSeconds) return;
             housekeepingClock = 0;
             BringBackStragglers();
+            AutoHangar();
             CheckAchievements();
         }
 
         // Drills that fall behind or wander off screen rejoin the lead, so the view stays busy.
         private void BringBackStragglers()
         {
+            occupied.Clear();
             foreach (var unit in Units)
             {
+                long cell = CellKey(unit.Body.BodyRow, unit.Body.Column);
+                bool sharing = occupied.ContainsKey(cell);
+                if (!sharing) occupied[cell] = unit;
                 if (unit == Lead) continue;
                 bool behind = Lead.Body.Y - unit.Body.Y > Balance.StragglerRows;
                 bool away = Math.Abs(Lead.Body.X - unit.Body.X) > Balance.StragglerColumns;
-                if (behind || away) SpawnNearLead(unit);
+                if (behind || away || sharing) SpawnNearLead(unit);
             }
+        }
+
+        private void AutoHangar()
+        {
+            bool changed = false;
+            if (Effect(SkillEffect.auto_merge) > 0)
+            {
+                var counts = new Dictionary<int, int>();
+                foreach (int code in State.drills)
+                    counts[code] = counts.TryGetValue(code, out int n) ? n + 1 : 1;
+                foreach (var pair in counts)
+                {
+                    if (DrillCode.Tier(pair.Key) + 1 >= GameData.Tiers) continue;
+                    for (int i = 0; i < pair.Value / 2; i++)
+                    {
+                        MergeOnce(pair.Key);
+                        changed = true;
+                    }
+                }
+            }
+
+            if (Effect(SkillEffect.auto_buy) > 0)
+            {
+                for (int i = 0; i < AutoBuysPerTick; i++)
+                {
+                    int cheapest = -1;
+                    for (int f = 0; f < GameData.Families.Count; f++)
+                        if (CanBuyDrill(f) && (cheapest < 0 || DrillPrice(f) < DrillPrice(cheapest))) cheapest = f;
+                    if (cheapest < 0) break;
+                    State.coins -= DrillPrice(cheapest);
+                    State.AddBought(cheapest);
+                    State.drills.Add(DrillCode.Make(cheapest, Math.Min(BuyTier, GameData.Tiers - 1)));
+                    changed = true;
+                }
+            }
+            if (changed) RebuildUnits();
+        }
+
+        /// <summary>The condition for an achievement, decoded from its id in the design data.</summary>
+        public bool AchievementMet(AchievementDef a)
+        {
+            string id = a.Id;
+            if (id == "center") return State.maxDepthEver >= GameData.TotalRows;
+            int number = int.Parse(id.Substring(id.IndexOf('_') + 1));
+            if (id.StartsWith("reach_", StringComparison.Ordinal)) return ReachedLayer >= number - 1;
+            if (id.StartsWith("boss_", StringComparison.Ordinal)) return State.bossesEver >= number;
+            if (id.StartsWith("drills_", StringComparison.Ordinal)) return State.drills.Count >= number;
+            if (id.StartsWith("tier_", StringComparison.Ordinal)) return State.bestTier >= number;
+            if (id.StartsWith("merge_", StringComparison.Ordinal)) return State.mergesEver >= number;
+            if (id.StartsWith("combo_", StringComparison.Ordinal)) return State.bestCombo >= number;
+            if (id.StartsWith("rebirth_", StringComparison.Ordinal)) return State.rebirths >= number;
+            if (id.StartsWith("chain_", StringComparison.Ordinal)) return State.bestChain >= number;
+            return false;
         }
 
         private void CheckAchievements()
         {
-            for (int i = 0; i < AchievementCatalog.All.Count; i++)
+            for (int i = 0; i < GameData.Achievements.Count; i++)
             {
-                var a = AchievementCatalog.All[i];
-                if (State.achievements.Contains(a.Id) || a.Progress(State) < a.Goal) continue;
+                var a = GameData.Achievements[i];
+                if (State.achievements.Contains(a.Id) || !AchievementMet(a)) continue;
                 State.achievements.Add(a.Id);
+                RefreshBonuses();
                 Events.Add(new SimEvent { Kind = SimEventKind.AchievementUnlocked, Amount = i });
             }
         }
 
         private void AdvanceBoss(double dt)
         {
-            int stratum = CurrentBossStratum;
-            if (stratum < 0) return;
+            var layer = CurrentBoss;
+            if (layer == null) return;
             if (!BossActive)
             {
-                if (Lead.Body.FeetRow < Strata.BossRow(stratum) || !Lead.Body.Grounded) return;
+                if (Lead.Body.FeetRow < layer.RowEnd || !Lead.Body.Grounded) return;
                 BossActive = true;
                 ResetBoss();
                 Events.Add(new SimEvent { Kind = SimEventKind.BossStarted });
@@ -783,8 +1007,8 @@ namespace DeepDrill.Core
 
         private void DefeatBoss()
         {
-            int stratum = CurrentBossStratum;
-            int bossRow = Strata.BossRow(stratum);
+            var layer = CurrentBoss;
+            int bossRow = layer.RowEnd;
             BossActive = false;
             State.bossesDefeated++;
             State.bossesEver = Math.Max(State.bossesEver, State.bossesDefeated);
@@ -823,10 +1047,9 @@ namespace DeepDrill.Core
 
             FrenzyTimeLeft = 0;
             Events.Add(new SimEvent { Kind = SimEventKind.FrenzyEnded });
-            int burst = (int)Effect(SkillEffect.FrenzyBurst);
-            if (burst > 0)
+            if (Effect(SkillEffect.frenzy_quake) > 0)
             {
-                Explode(RoundToInt(Lead.Body.TipY), RoundToInt(Lead.Body.TipX), Balance.FrenzyBurstRadius + burst);
+                Explode(RoundToInt(Lead.Body.TipY), RoundToInt(Lead.Body.TipX), Balance.FrenzyQuakeRadius);
                 RunBlasts();
             }
         }

@@ -10,6 +10,13 @@ namespace DeepDrill.Core
         public int level;
     }
 
+    [Serializable]
+    public sealed class RareCount
+    {
+        public string id;
+        public int count;
+    }
+
     /// <summary>Everything that goes into the save file. Fields stay public for JsonUtility.</summary>
     [Serializable]
     public sealed class GameState
@@ -31,42 +38,59 @@ namespace DeepDrill.Core
         public double drillX;
         public double drillY;
         public List<SkillLevel> skills = new List<SkillLevel>();
-        public List<int> drillCounts = new List<int>();
+        public List<int> drills = new List<int>();  // one DrillCode per owned drill
+        public List<int> bought = new List<int>();  // per family, drives the price
 
         // lifetime records: these survive a rebirth
         public int maxDepthEver;
         public int bossesEver;
         public double mergesEver;
-        public double oresEver;
+        public int bestTier;
+        public int bestCombo;
+        public int bestChain;
         public int rebirths;
-        public List<string> rareItems = new List<string>();
+        public List<RareCount> rares = new List<RareCount>();
         public List<string> achievements = new List<string>();
 
         public bool AnyBossDown => bossesDefeated > 0;
 
-        public double DrillsOwned
+        public int BoughtOf(int family) => family < bought.Count ? bought[family] : 0;
+
+        public void AddBought(int family)
         {
-            get
-            {
-                double sum = 0;
-                foreach (int n in drillCounts) sum += n;
-                return sum;
-            }
+            while (bought.Count <= family) bought.Add(0);
+            bought[family]++;
         }
 
-        public int DrillCount(int tier) => tier < drillCounts.Count ? drillCounts[tier] : 0;
-
-        public void SetDrillCount(int tier, int count)
+        public int RareCountOf(string id)
         {
-            while (drillCounts.Count <= tier) drillCounts.Add(0);
-            drillCounts[tier] = count;
+            foreach (var r in rares)
+                if (r.id == id) return r.count;
+            return 0;
+        }
+
+        public void AddRare(string id)
+        {
+            foreach (var r in rares)
+            {
+                if (r.id != id) continue;
+                r.count++;
+                return;
+            }
+            rares.Add(new RareCount { id = id, count = 1 });
         }
 
         /// <summary>Brings a loaded save up to the current version.</summary>
         public void Upgrade()
         {
-            // the skill list was replaced in version 4, so old levels point at nothing
-            if (version < 4) skills.Clear();
+            if (version < 4)
+            {
+                // version 4 replaced the skill list and the world: old progress points at nothing
+                skills.Clear();
+                depth = maxDepth = 0;
+                drillPlaced = false;
+                bossesDefeated = 0;
+            }
             version = CurrentVersion;
         }
 
@@ -87,5 +111,13 @@ namespace DeepDrill.Core
             }
             skills.Add(new SkillLevel { id = id, level = level });
         }
+    }
+
+    /// <summary>One owned drill packed into an int: family * 100 + tier (tier from zero).</summary>
+    public static class DrillCode
+    {
+        public static int Make(int family, int tier) => family * 100 + tier;
+        public static int Family(int code) => code / 100;
+        public static int Tier(int code) => code % 100;
     }
 }

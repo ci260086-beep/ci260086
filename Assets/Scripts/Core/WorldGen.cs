@@ -15,7 +15,8 @@ namespace DeepDrill.Core
     public sealed class Block
     {
         public BlockType Type;
-        public int Ore; // index into Strata.Ores when Type is Ore
+        public int Ore; // OreDef.Index when Type is Ore
+        public double OreValue;
         public double Hp;
         public double MaxHp;
         public bool Alive => Hp > 0;
@@ -25,12 +26,8 @@ namespace DeepDrill.Core
     public static class WorldGen
     {
         private const int SafeRows = 3;
-        private const int StratumHashOffset = 1000;
-        private const int OreHashOffset = 2000;
-        private const double ChestShare = 0.005;
-        private const double OreShare = 0.11;
-        private const double HardShare = 0.10;
-        private const double LooseShare = 0.16;
+        private const int LayerHashOffset = 1000;
+        private const int SandLayer = 1;
 
         public static uint Hash(int seed, int row, int col)
         {
@@ -58,78 +55,79 @@ namespace DeepDrill.Core
 
         public static double Unit(int seed, int row, int col) => Hash(seed, row, col) / (double)uint.MaxValue;
 
-        /// <summary>Which stratum a cell belongs to. The last rows of one stratum mix in the next.</summary>
-        public static int StratumAt(int seed, int row, int col)
+        /// <summary>Which layer a cell belongs to. The last rows of one layer mix in the next.</summary>
+        public static int LayerAt(int seed, int row, int col)
         {
-            int stratum = Strata.OfDepth(row);
-            if (stratum >= Strata.Last || row < 0) return stratum;
-            int intoEnd = row % Strata.RowsPerStratum - (Strata.RowsPerStratum - Strata.TransitionRows);
-            if (intoEnd < 0) return stratum;
-            double share = (intoEnd + 1) / (double)(Strata.TransitionRows + 1);
-            return Unit(seed, row, col + StratumHashOffset) < share ? stratum + 1 : stratum;
+            int layer = GameData.LayerOfRow(row);
+            if (layer >= GameData.Layers.Count - 1 || row < 0) return layer;
+            int end = GameData.Layers[layer].RowEnd;
+            int intoEnd = row - (end - Balance.TransitionRows);
+            if (intoEnd < 0) return layer;
+            double share = (intoEnd + 1) / (double)(Balance.TransitionRows + 1);
+            return Unit(seed, row, col + LayerHashOffset) < share ? layer + 1 : layer;
         }
 
-        public static void Fill(Block block, int seed, int row, int col, double tntChance)
+        public static void Fill(Block block, int seed, int row, int col, double tntChance, double chestChance)
         {
+            block.Type = BlockType.Dirt;
             block.Ore = 0;
-            block.Type = TypeAt(seed, row, col, tntChance);
-            if (block.Type == BlockType.Ore) block.Ore = OreAt(seed, row, col);
+            block.OreValue = 0;
+
+            if (row == 0) block.Type = BlockType.Grass;
+            else if (row >= SafeRows) Roll(block, seed, row, col, tntChance, chestChance);
+
             double hp = HpOf(block.Type, row);
             block.Hp = hp;
             block.MaxHp = hp;
         }
 
-        public static BlockType TypeAt(int seed, int row, int col, double tntChance = Balance.TntChance)
+        private static void Roll(Block block, int seed, int row, int col, double tntChance, double chestChance)
         {
-            if (row == 0) return BlockType.Grass;
-            if (row < SafeRows) return BlockType.Dirt;
-
+            var layer = GameData.Layers[LayerAt(seed, row, col)];
             double r = Unit(seed, row, col);
-            var stratum = Strata.All[StratumAt(seed, row, col)];
-            if (r < ChestShare) return BlockType.Chest;
-            r -= ChestShare;
-            if (r < OreShare) return BlockType.Ore;
-            r -= OreShare;
-            if (r < HardShare) return BlockType.HardRock;
-            r -= HardShare;
-            if (stratum.HasLoose)
+
+            if (r < chestChance) { block.Type = BlockType.Chest; return; }
+            r -= chestChance;
+
+            foreach (var ore in layer.Ores)
             {
-                if (r < LooseShare) return BlockType.Sand;
-                r -= LooseShare;
+                if (r < ore.Rate)
+                {
+                    block.Type = BlockType.Ore;
+                    block.Ore = ore.Index;
+                    block.OreValue = ore.ValueMult;
+                    return;
+                }
+                r -= ore.Rate;
             }
-            return r < tntChance ? BlockType.Tnt : BlockType.Dirt;
+
+            if (r < Balance.HardShare) { block.Type = BlockType.HardRock; return; }
+            r -= Balance.HardShare;
+
+            if (layer.Index == SandLayer)
+            {
+                if (r < Balance.LooseShare) { block.Type = BlockType.Sand; return; }
+                r -= Balance.LooseShare;
+            }
+
+            if (r < tntChance) block.Type = BlockType.Tnt;
         }
 
-        /// <summary>The first ore listed for a stratum is the common one; each next is half as likely.</summary>
-        public static int OreAt(int seed, int row, int col)
+        public static double HpOf(BlockType type, int row)
         {
-            int[] ores = Strata.All[StratumAt(seed, row, col)].Ores;
-            double r = Unit(seed, row, col + OreHashOffset);
-            double weight = 0.5;
-            for (int i = 0; i < ores.Length - 1; i++)
-            {
-                if (r < weight) return ores[i];
-                r -= weight;
-                weight /= 2;
-            }
-            return ores[ores.Length - 1];
-        }
-
-        public static double HpOf(BlockType type, int depth)
-        {
-            double hp = Balance.BlockHp(depth);
+            double hp = Balance.BlockHp(row);
             if (type == BlockType.HardRock) return hp * Balance.HardRockHpMultiplier;
             if (type == BlockType.Sand) return hp * Balance.LooseHpMultiplier;
             return hp;
         }
 
-        public static double ValueOf(Block block, int depth)
+        public static double ValueOf(Block block, int row)
         {
             switch (block.Type)
             {
-                case BlockType.Ore: return Balance.OreValue(depth, Strata.Ores[block.Ore].Value);
-                case BlockType.Chest: return Balance.OreValue(depth, Balance.ChestValue);
-                default: return Balance.OreValue(depth, Balance.DirtValue);
+                case BlockType.Ore: return Balance.OreValue(row, block.OreValue);
+                case BlockType.Chest: return Balance.OreValue(row, Balance.ChestValue);
+                default: return Balance.OreValue(row, Balance.DirtValue);
             }
         }
     }

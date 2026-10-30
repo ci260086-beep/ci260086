@@ -3,9 +3,9 @@ using System;
 namespace DeepDrill.Core
 {
     /// <summary>
-    /// Hand-written drill physics in tile units. X grows right, Y grows down, block (row, col) is the
-    /// unit square centred on (col, row). Angle is degrees: 0 points straight down, negative tips the
-    /// nose left, positive tips it right. Solid callbacks answer (row, col).
+    /// Hand-written physics for one small drill, in tile units. X grows right, Y grows down, block
+    /// (row, col) is the unit square centred on (col, row). Angle is degrees: 0 points straight down,
+    /// negative tips the nose left, positive right. Solid callbacks answer (row, col).
     /// </summary>
     public sealed class DrillBody
     {
@@ -17,9 +17,9 @@ namespace DeepDrill.Core
         public const double MaxTilt = 35;
         public const double TiltSpring = 70;
         public const double TiltDamping = 9;
-        public const double HalfWidth = 0.42;
-        public const double HalfHeight = 0.5;
-        public const double TipReach = 0.8;
+        public const double HalfWidth = 0.25;
+        public const double HalfHeight = 0.375;
+        public const double TipReach = 0.5;
         public const double CentreRate = 6;
         public const double StepSeconds = 1.0 / 30;
 
@@ -42,6 +42,7 @@ namespace DeepDrill.Core
         /// <summary>The row under the drill, which is its depth.</summary>
         public int FeetRow => Round(Y + HalfHeight + 0.5);
         public int Column => Round(X);
+        public int BodyRow => Round(Y);
 
         public void Place(double x, double y)
         {
