@@ -161,8 +161,10 @@ for b, (bid, bname, nodes) in enumerate(BRANCHES):
     placed = {}
     for i, (name, eff, per, mx, ring, off) in enumerate(nodes):
         nid = f"{bid}_{i+1:02d}"
-        x = round(ux * ring * 3.2 + px * off * 1.6, 2)
-        y = round(uy * ring * 3.2 + py * off * 1.6, 2)
+        rad = 4 + 3 * ring
+        th = ang - math.radians(off * (22 - (ring - 1) * 1.4))
+        x = round(rad * math.cos(th), 2)
+        y = round(rad * math.sin(th), 2)
         if off == 0 and ring not in trunk:
             trunk[ring] = nid
         placed[nid] = (ring, off)

@@ -11,7 +11,7 @@ namespace DeepDrill.Game
     /// Builds the whole UI from code: floating resources, the icon rail, the drill hangar on the
     /// right, and the full-screen skill tree and collection pages.
     /// </summary>
-    public sealed class HudView : MonoBehaviour
+    public sealed partial class HudView : MonoBehaviour
     {
         private const int FamilyCardHeight = 15;
         private const int HangarCellSize = 11;
@@ -27,11 +27,6 @@ namespace DeepDrill.Game
         private const float ToastFadeSeconds = 0.6f;
         private const int BossBarWidth = 100;
         private const float RebirthConfirmSeconds = 4f;
-        private const float TreeUnit = 18f;
-        private const int NodeSize = 15;
-        private const float MinZoom = 0.5f;
-        private const float MaxZoom = 2f;
-        private const float ZoomStep = 0.1f;
         private const int GalleryColumns = 22;
         private const int ComboFlashStep = 10;
         private const float TextSeconds = 0.1f;
@@ -39,7 +34,6 @@ namespace DeepDrill.Game
         private const int SpeedLines = 14;
         private const float BannerSeconds = 2.2f;
         private const float BannerBarHeight = 34f;
-        private const float PulseSeconds = 0.45f;
 
         private const int PageHangar = 0;
         private const int PageTree = 1;
@@ -59,8 +53,6 @@ namespace DeepDrill.Game
         private static readonly Color BuyColor = new Color32(0x4a, 0x7a, 0x2a, 0xff);
         private static readonly Color SoftText = new Color32(0xc4, 0x9a, 0x6c, 0xff);
         private static readonly Color DimText = new Color32(0x8c, 0x5f, 0x3f, 0xff);
-        private static readonly Color LineOff = new Color32(0x4a, 0x31, 0x22, 0xff);
-        private static readonly Color LineOn = new Color32(0xff, 0xd8, 0x50, 0xff);
         private static readonly Color SilhouetteColor = new Color(0, 0, 0, 1);
         private static readonly Color NotOwned = new Color(0.25f, 0.25f, 0.28f, 1f);
         private static readonly Color[] ComboColors =
@@ -85,29 +77,6 @@ namespace DeepDrill.Game
             public Image Icon;
         }
 
-        private sealed class TreeNode
-        {
-            public SkillDef Skill;
-            public Image Box;
-            public Text Level;
-            public float Pop;
-        }
-
-        private sealed class TreePulse
-        {
-            public Image Dot;
-            public Vector2 From;
-            public Vector2 To;
-            public float Time;
-        }
-
-        private sealed class TreeLink
-        {
-            public SkillDef From;
-            public SkillDef To;
-            public Image Line;
-        }
-
         /// <summary>Tells the page which element the pointer is on.</summary>
         private sealed class HoverRelay : MonoBehaviour, IPointerEnterHandler
         {
@@ -128,22 +97,11 @@ namespace DeepDrill.Game
             public void OnDrop(PointerEventData e) => Hud.DropOnCell(this);
         }
 
-        /// <summary>The tree's background: dragging pans, the wheel zooms.</summary>
-        private sealed class TreeCanvas : MonoBehaviour, IDragHandler, IScrollHandler
-        {
-            public HudView Hud;
-            public void OnDrag(PointerEventData e) => Hud.PanTree(e.delta);
-            public void OnScroll(PointerEventData e) => Hud.ZoomTree(e.scrollDelta.y);
-        }
-
         private readonly List<FamilyCard> familyCards = new List<FamilyCard>();
         private readonly List<HangarCell> hangarCells = new List<HangarCell>();
         private readonly List<GameObject> pages = new List<GameObject>();
         private readonly List<Image> railButtons = new List<Image>();
         private readonly List<string> pageTitles = new List<string>();
-        private readonly List<TreeNode> treeNodes = new List<TreeNode>();
-        private readonly List<TreeLink> treeLinks = new List<TreeLink>();
-        private readonly List<TreePulse> treePulses = new List<TreePulse>();
         private readonly List<Image> speedLines = new List<Image>();
         private readonly List<Image> achievementIcons = new List<Image>();
         private readonly List<Image> rareIcons = new List<Image>();
@@ -155,9 +113,8 @@ namespace DeepDrill.Game
         private CanvasScaler scaler;
         private RectTransform stageRoot;
         private GameObject sidePanel;
-        private RectTransform treeContent;
         private Text coinsLabel, incomeLabel, oresLabel, depthLabel, comboLabel, versionLabel, drillsLabel;
-        private Text toastLabel, guideLabel, panelTitle, footerLabel, statsLabel, treeInfo, galleryInfo, galleryCount;
+        private Text toastLabel, guideLabel, panelTitle, footerLabel, statsLabel, galleryInfo, galleryCount;
         private Image meterFill;
         private Image bossBar, bossFill, bossArmorFill;
         private Text bossLabel;
@@ -176,7 +133,6 @@ namespace DeepDrill.Game
         private float fpsAverage = 60;
         private double coinsInFlight;
         private double oresInFlight;
-        private float treeZoom = 1f;
         private float coinPulse;
         private float comboFlash;
         private float textClock;
@@ -610,141 +566,6 @@ namespace DeepDrill.Game
             sim.Merge(target.Code);
         }
 
-        // The tree: nodes sit at their design coordinates, joined by lines to their prerequisites.
-        private void BuildTreePage()
-        {
-            var page = Ui.Panel(stageRoot, "TreePage", 0, 0, Stage.Width, Stage.Height, PanelColor);
-            pages[PageTree] = page.gameObject;
-            page.gameObject.AddComponent<RectMask2D>();
-            var pan = page.gameObject.AddComponent<TreeCanvas>();
-            pan.Hud = this;
-
-            var contentGo = new GameObject("Content", typeof(RectTransform));
-            contentGo.transform.SetParent(page.transform, false);
-            treeContent = (RectTransform)contentGo.transform;
-            treeContent.anchorMin = treeContent.anchorMax = new Vector2(0.5f, 0.5f);
-            treeContent.pivot = new Vector2(0.5f, 0.5f);
-            treeContent.sizeDelta = Vector2.zero;
-            treeContent.anchoredPosition = Vector2.zero;
-
-            foreach (var skill in GameData.Skills)
-            {
-                foreach (string parentId in skill.Prereq)
-                    treeLinks.Add(BuildLink(GameData.Skill(parentId), skill));
-            }
-            foreach (var skill in GameData.Skills) treeNodes.Add(BuildNode(skill));
-
-            var title = Ui.Label(page.transform, Font, "技能树", 0, 2, Stage.Width, 12, 9, TextAnchor.MiddleCenter);
-            title.fontStyle = FontStyle.Bold;
-            treeInfo = Ui.Label(page.transform, Font, "", 6, 160, Stage.Width - 12, 18, 7, TextAnchor.MiddleLeft);
-            treeInfo.color = SoftText;
-            treeInfo.gameObject.AddComponent<Outline>().effectColor = PanelColor;
-
-            var close = Ui.Button(page.transform, Font, "关闭", Stage.Width - 34, 2, 30, 12, 7, CardBright, out _);
-            close.onClick.AddListener(() => ShowPage(PageHangar));
-        }
-
-        private static Vector2 NodePosition(SkillDef s) => new Vector2((float)s.X * TreeUnit, (float)s.Y * TreeUnit);
-
-        private TreeLink BuildLink(SkillDef from, SkillDef to)
-        {
-            Vector2 a = NodePosition(from), b = NodePosition(to);
-            var line = Ui.Panel(treeContent, "Link", 0, 0, 1, 1, LineOff);
-            line.raycastTarget = false;
-            var rt = line.rectTransform;
-            rt.anchorMin = rt.anchorMax = rt.pivot = new Vector2(0.5f, 0.5f);
-            rt.anchoredPosition = (a + b) / 2f;
-            rt.sizeDelta = new Vector2((b - a).magnitude, 1.5f);
-            rt.localRotation = Quaternion.Euler(0, 0, Mathf.Atan2(b.y - a.y, b.x - a.x) * Mathf.Rad2Deg);
-            return new TreeLink { From = from, To = to, Line = line };
-        }
-
-        private TreeNode BuildNode(SkillDef skill)
-        {
-            var box = Ui.Panel(treeContent, skill.Id, 0, 0, NodeSize, NodeSize, RailColor);
-            var rt = box.rectTransform;
-            rt.anchorMin = rt.anchorMax = rt.pivot = new Vector2(0.5f, 0.5f);
-            rt.anchoredPosition = NodePosition(skill);
-            rt.sizeDelta = new Vector2(NodeSize, NodeSize);
-
-            var level = Ui.Label(box.transform, Font, "", 0, 0, NodeSize, NodeSize, 5, TextAnchor.MiddleCenter);
-            level.gameObject.AddComponent<Outline>().effectColor = PanelColor;
-
-            var button = box.gameObject.AddComponent<Button>();
-            button.targetGraphic = box;
-            button.transition = Selectable.Transition.None;
-            var node = new TreeNode { Skill = skill, Box = box, Level = level };
-            button.onClick.AddListener(() =>
-            {
-                if (sim.Buy(skill.Id)) LightNode(node);
-                ShowNodeInfo(skill);
-            });
-            box.gameObject.AddComponent<HoverRelay>().Entered = () => ShowNodeInfo(skill);
-            return node;
-        }
-
-        // A bought node pops, and sparks of light run along its lines to whatever it opens.
-        private void LightNode(TreeNode node)
-        {
-            node.Pop = 1f;
-            foreach (var link in treeLinks)
-            {
-                if (link.From != node.Skill) continue;
-                var spark = Ui.Panel(treeContent, "Pulse", 0, 0, 3, 3, LineOn);
-                spark.raycastTarget = false;
-                var rt = spark.rectTransform;
-                rt.anchorMin = rt.anchorMax = rt.pivot = new Vector2(0.5f, 0.5f);
-                treePulses.Add(new TreePulse { Dot = spark, From = NodePosition(link.From), To = NodePosition(link.To) });
-            }
-        }
-
-        private void UpdateTreePulses(float dt)
-        {
-            for (int i = treePulses.Count - 1; i >= 0; i--)
-            {
-                var p = treePulses[i];
-                p.Time += dt / PulseSeconds;
-                p.Dot.rectTransform.anchoredPosition = Vector2.Lerp(p.From, p.To, p.Time);
-                if (p.Time < 1) continue;
-                Destroy(p.Dot.gameObject);
-                treePulses.RemoveAt(i);
-            }
-            foreach (var node in treeNodes)
-            {
-                if (node.Pop <= 0) continue;
-                node.Pop = Mathf.Max(0, node.Pop - dt * 4f);
-                node.Box.rectTransform.localScale = Vector3.one * (1 + node.Pop * 0.5f);
-            }
-        }
-
-        private void ShowNodeInfo(SkillDef skill)
-        {
-            int level = sim.State.LevelOf(skill.Id);
-            string now = $"当前 {FormatEffect(skill, level)}";
-            string next = level < skill.MaxLevel ? $"  下一级 {FormatEffect(skill, level + 1)}" : "  已满级";
-            string cost = level < skill.MaxLevel ? $"  价格 {NumberFormat.Short(skill.CostAt(level))}" : "";
-            string gate = sim.LayerReached(skill) ? "" : $"  需要到达{GameData.Layers[skill.RequiresLayer].Name}";
-            treeInfo.text = $"{skill.Name} Lv{level}/{skill.MaxLevel}  {skill.Desc}\n{now}{next}{cost}{gate}";
-        }
-
-        private static string FormatEffect(SkillDef skill, int level)
-        {
-            if (skill.Id != GameSim.RootSkill) return $"+{skill.PerLevel * level:0.##}";
-            if (level <= 0) return "手动挖掘";
-            return level == 1 ? "自动钻探" : $"自动钻探，伤害 +{skill.PerLevel * (level - 1):0.##}%";
-        }
-
-        public void PanTree(Vector2 screenDelta)
-        {
-            treeContent.anchoredPosition += screenDelta / Stage.Scale;
-        }
-
-        public void ZoomTree(float amount)
-        {
-            treeZoom = Mathf.Clamp(treeZoom + amount * ZoomStep, MinZoom, MaxZoom);
-            treeContent.localScale = Vector3.one * treeZoom;
-        }
-
         // A collection grid: everything not yet earned shows as a silhouette.
         private void BuildGalleryPage()
         {
@@ -846,7 +667,7 @@ namespace DeepDrill.Game
             UpdateDarkness();
             UpdateFrenzyOverlay();
             UpdateBanner(dt);
-            UpdateTreePulses(dt);
+            if (currentPage == PageTree) AnimateTree(dt);
             UpdateBoss();
             UpdateRebirth(dt);
 
@@ -998,26 +819,6 @@ namespace DeepDrill.Game
             sprite = art.Strip($"drill_{DrillCode.Family(code)}_{DrillCode.Tier(code)}", 8)[0];
             kindIcons[code] = sprite;
             return sprite;
-        }
-
-        private void UpdateTree()
-        {
-            foreach (var node in treeNodes)
-            {
-                var skill = node.Skill;
-                int level = sim.State.LevelOf(skill.Id);
-                bool open = sim.IsUnlocked(skill);
-                bool lit = level > 0;
-                Color branch = BranchColors[skill.Branch];
-                node.Box.color = lit ? branch : (sim.CanBuy(skill) ? BuyColor : (open ? RailSelected : RailColor));
-                node.Level.text = !sim.LayerReached(skill) ? "锁" : $"{level}/{skill.MaxLevel}";
-                node.Level.color = open ? Color.white : DimText;
-            }
-            foreach (var link in treeLinks)
-            {
-                bool lit = sim.State.LevelOf(link.From.Id) > 0 && sim.State.LevelOf(link.To.Id) > 0;
-                link.Line.color = lit ? LineOn : LineOff;
-            }
         }
 
         private void UpdateGallery()

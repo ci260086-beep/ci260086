@@ -72,9 +72,24 @@ namespace DeepDrill.Game
             sim.Buy("drill_01");
             sim.Buy("wealth_01");
             sim.Buy("blast_01");
+            sim.State.maxDepthEver = 500;
+            foreach (string id in new[] { "drill_02", "drill_03", "wealth_02", "hangar_01", "hangar_04", "frenzy_01", "strata_01", "blast_02" }) sim.Buy(id);
             root.Hud.ShowTreePage();
-            yield return new WaitForSeconds(0.3f);
+            yield return new WaitForSeconds(0.6f);
             yield return Shot("tree");
+            root.Hud.HoverSkill("drill_01");
+            yield return new WaitForSeconds(0.2f);
+            yield return Shot("tree_hover");
+            root.Hud.BurstSkill("strata_01");
+            yield return new WaitForSeconds(0.1f);
+            yield return Shot("tree_burst");
+            root.Hud.FocusBranch("hangar");
+            yield return new WaitForSeconds(1f);
+            yield return Shot("tree_focus");
+            root.Hud.CenterTree();
+            root.Hud.ZoomTree(-10);
+            yield return new WaitForSeconds(1f);
+            yield return Shot("tree_full");
 
             sim.State.AddRare("rare_1_1");
             sim.State.AddRare("rare_2_2");

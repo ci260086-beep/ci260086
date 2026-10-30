@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 
 namespace DeepDrill.Core
@@ -94,7 +94,7 @@ namespace DeepDrill.Core
     /// </summary>
     public static class GameData
     {
-        private const double OverlapStep = 1.0;
+        private const double OverlapStep = 1.6;
 
         public static List<LayerDef> Layers;
         public static List<FamilyDef> Families;

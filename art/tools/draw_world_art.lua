@@ -543,6 +543,89 @@ local plain = canvas(16, 16)
 plain:rect(0, 0, 15, 15, hex("ffffff"))
 save(plain, "Layers/plain_tile")
 
+-- skill tree: pixel octagons in white for the game to tint, in three sizes
+local function octagon(size, inset)
+  local cut = math.floor(size * 0.3)
+  local inside = function(x, y)
+    local a, b = math.min(x, size - 1 - x), math.min(y, size - 1 - y)
+    return a >= inset and b >= inset and a + b >= cut + inset
+  end
+  return inside
+end
+
+for _, size in ipairs({ 13, 17, 23 }) do
+  local outer, inner = octagon(size, 0), octagon(size, 1)
+  local fill, frame = canvas(size, size), canvas(size, size)
+  local doubled = size > 13
+  local second = octagon(size, 2)
+  local third = octagon(size, 3)
+  for y = 0, size - 1 do
+    for x = 0, size - 1 do
+      if inner(x, y) then fill:set(x, y, hex("ffffff")) end
+      if outer(x, y) and not inner(x, y) then frame:set(x, y, hex("ffffff")) end
+      if doubled and second(x, y) and not third(x, y) then frame:set(x, y, hex("ffffff", 150)) end
+    end
+  end
+  save(fill, "Items/node_fill_" .. size)
+  save(frame, "Items/node_frame_" .. size)
+end
+
+-- a soft round halo for the additive glow behind lit nodes
+local halo = canvas(32, 32)
+for y = 0, 31 do
+  for x = 0, 31 do
+    local d = math.sqrt((x - 15.5) ^ 2 + (y - 15.5) ^ 2) / 16
+    if d < 1 then halo:set(x, y, hex("ffffff", math.floor((1 - d) ^ 2 * 255))) end
+  end
+end
+save(halo, "Items/node_glow")
+
+local TREE_ICONS = {
+  drill = { "..x..", ".xxx.", "xxxxx", ".xxx.", "..x.." },
+  wealth = { ".xxx.", "x.x.x", "x.x.x", "x.x.x", ".xxx." },
+  blast = { "x.x.x", ".xxx.", "xx.xx", ".xxx.", "x.x.x" },
+  hangar = { ".x.x.", "xxxxx", ".x.x.", "xxxxx", ".x.x." },
+  frenzy = { "...x.", "..x..", ".xxx.", "..x..", ".x..." },
+  strata = { "xxxxx", ".....", "xxxxx", ".....", "xxxxx" },
+}
+for name, rows in pairs(TREE_ICONS) do
+  local g = canvas(5, 5)
+  for y, row in ipairs(rows) do
+    for x = 1, 5 do
+      if row:sub(x, x) == "x" then g:set(x - 1, y - 1, hex("ffffff")) end
+    end
+  end
+  save(g, "Items/ticon_" .. name)
+end
+
+-- the page behind the tree: a dithered radial gradient, centre 24183A to edge 0E0A1A
+local function lerpHex(t)
+  local function mix(a, b) return string.format("%02x", math.floor(a + (b - a) * t + 0.5)) end
+  return mix(0x24, 0x0e) .. mix(0x18, 0x0a) .. mix(0x3a, 0x1a)
+end
+local bg = canvas(320, 180)
+for y = 0, 179 do
+  for x = 0, 319 do
+    local d = math.sqrt(((x - 160) / 180) ^ 2 + ((y - 90) / 120) ^ 2)
+    local band = math.min(1, d) * 6
+    local step = math.floor(band + (((x + y) % 2 == 0) and 0.25 or 0))
+    bg:set(x, y, hex(lerpHex(step / 6)))
+  end
+end
+save(bg, "Items/tree_bg")
+
+-- faint dotted guide circles at every ring of the fan, radius (4 + 3 * ring) * 8 pixels
+local rings = canvas(640, 640)
+for ring = 1, 10 do
+  local r = (4 + 3 * ring) * 8
+  local steps = math.floor(r * 2 * math.pi / 5)
+  for i = 0, steps - 1 do
+    local a = i / steps * 2 * math.pi
+    rings:set(math.floor(320 + math.cos(a) * r), math.floor(320 + math.sin(a) * r), hex("6a70a0", 90))
+  end
+end
+save(rings, "Items/tree_rings")
+
 -- achievement badge: the page tints it, and shows a black silhouette until earned
 local badge = canvas(16, 16)
 for y = 2, 13 do
