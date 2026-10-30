@@ -1,6 +1,22 @@
 # 《深渊钻头》交接文档
 
-## 第二版现状（`v2` 分支，先读这一节）
+## 最新现状（2026-10-31，先读这一节）
+
+每次提交都要同步更新这一节并推送到 `origin`。旧项目（`C:\GAME\DARKLATOR` 等）一律不碰，只动 `C:\GAME\DeepDril`。
+
+- **仓库：** https://github.com/ci260086-beep/ci260086 ，主分支是 `master`。不要 force push。合并进 `master` 前先等用户确认。
+- **分支：** `master`（`de825d3`，第一版）；`v2`（`8f3b4c6`，第三阶段第 0 步）；`phase3-step2`（从 `v2` 分出，正在做第 2 步）；`terrain-pixel`（`e7d03fb`，已包含在 `v2` 里，检出在 `Builds/wtp`）；`wip-v2`（旧存档分支）。
+- **第三阶段进度：** 计划在 `tools/Design/phase3_plan.md`。第 0 步已提交。第 1 步（黄金事件、地核不稳）由另一个对话负责，这里不要做。第 2 步（钻头里程碑、岩层精通）进行中。
+- **第四阶段计划：** https://claude.ai/artifact/CKUBNxSWKeDQZEUQSTgwkF
+- **用户已定：** 横屏 320×180；逐像素地形；手动起步（解锁自动钻探前只能点击）；定价 6 元人民币；不做广告和付费加速。
+- **节奏目标：** 第一次重铸约 30 到 45 分钟；第 1 局到第 4 到 5 层；之后每层约 8 到 15 分钟；10 到 15 局到地心。
+- **代码结构：** 规则在 `Assets/Scripts/Core`（`GameSim.cs`、`GameSim.Pixels.cs`、`PixelWorld.cs`、`WorldGen.cs`、`DrillBody.cs`、`Balance.cs`、`GameData.cs`、`GameState.cs`），不能引用 UnityEngine。表现层在 `Assets/Scripts/Game`（`HudView*.cs` 是全部 UI）。测试在 `Assets/Tests/EditMode`（`CoreTests.cs`、`RuleTests.cs`、`PacingTests.cs`）。下面第 1 节的表写于第一版，以这里为准。
+- **数据：** `Assets/Resources/Data/*.json`，由 `tools/Design/gen_design_data.py` 生成，改数值改这个脚本，运行方法见下一节。`GameData.Load` 按文件名读取。
+- **编译和测试：** Unity 没开时，运行 `tools\check.ps1 -Stage 名字`（先跑 EditMode 测试，再试玩截图）。Unity 开着时用工程外命令：`dotnet build tools\outside\Check.csproj` 检查 Core 和 Game 能否编译；`dotnet build tools\outside\Run.csproj -p:NUnitDll=<nunit.framework.dll 路径>` 后运行 `tools\outside\out\run\Run.exe` 跑测试。跑 Unity 前先确认用户没开 Play 模式。列表里的 `Unity Hub\...\unity.exe serve` 是 Hub，不是编辑器，要看 `Temp\UnityLockfile`。
+- **节奏模拟：** `dotnet build tools\outside\Pace.csproj -c Release`，再运行 `tools\outside\out\pace\Pace.exe Assets\Resources\Data [模拟小时] [真实秒数上限] [种子]`。
+- **已知问题：** 第 3 至 12 层的特殊机制只有测试，没有实机看过；Windows 打包未解决（见下一节）；磁力钻的“吸取 3 格内掉落”没做；第 2 步的节奏调参还没完成。
+
+## 第二版现状（`v2` 分支）
 
 主文件夹当前检出 `v2`（`bb14124` 之后）。下面第 1 至 9 节写于第一版，结构和流程仍有参考价值，第二版有差异的地方以本节为准。
 
