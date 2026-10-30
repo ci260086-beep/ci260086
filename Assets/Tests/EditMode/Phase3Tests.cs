@@ -89,5 +89,101 @@ namespace DeepDrill.Tests
         }
 
         #endregion
+
+        #region step 3: rebirth milestones and automation
+
+        private static GameSim Rebirthed(int times)
+        {
+            var sim = CoreTests.NewSim();
+            sim.State.rebirths = times - 1;
+            sim.State.bossesDefeated = 1;
+            sim.State.maxDepth = 400;
+            sim.State.totalIncome = 1e6;
+            Assert.IsTrue(sim.Rebirth());
+            return sim;
+        }
+
+        [Test]
+        public void RebirthOne_StartsWithMoreCoins()
+        {
+            Assert.AreEqual(Balance.StartGold + 2000, Rebirthed(1).State.coins, 1e-9);
+        }
+
+        [Test]
+        public void RebirthThree_KeepsAutoDrillAndOpensRules()
+        {
+            var sim = Rebirthed(3);
+            Assert.IsTrue(sim.AutoDrillUnlocked);
+            Assert.IsTrue(sim.AutomationUnlocked);
+            Assert.IsFalse(Rebirthed(2).AutomationUnlocked);
+        }
+
+        [Test]
+        public void RebirthFive_BringsDrills()
+        {
+            var sim = Rebirthed(5);
+            Assert.AreEqual(9, sim.State.drills.Count);
+            Assert.AreEqual(8, sim.State.drills.Count(c => c == DrillCode.Make(0, 2)));
+        }
+
+        [Test]
+        public void RebirthTen_BringsTheAutoHangar()
+        {
+            var sim = Rebirthed(10);
+            Assert.Greater(sim.Effect(SkillEffect.auto_merge), 0);
+            Assert.Greater(sim.Effect(SkillEffect.auto_buy), 0);
+        }
+
+        [Test]
+        public void RebirthTwentyFive_StartsTheFirstRingAtFive()
+        {
+            Assert.AreEqual(5, Rebirthed(25).State.LevelOf("drill_01"));
+        }
+
+        [Test]
+        public void Automation_BuysNothingUntilUnlocked()
+        {
+            var sim = CoreTests.NewSim();
+            sim.State.autoSkills = true;
+            sim.State.coins = 1000;
+            sim.Tick(1.1);
+            Assert.AreEqual(1, sim.State.skills.Count);
+        }
+
+        [Test]
+        public void Automation_KeepsTheReserve()
+        {
+            var sim = Rebirthed(3);
+            sim.State.autoDrills = true;
+            sim.State.autoReservePct = 50;
+            sim.State.coins = 1000;
+            sim.Tick(1.1);
+            Assert.Greater(sim.State.drills.Count, 1);
+            Assert.GreaterOrEqual(sim.State.coins, 500);
+        }
+
+        [Test]
+        public void Automation_BuysSkillsWhenAsked()
+        {
+            var sim = Rebirthed(3);
+            sim.State.autoSkills = true;
+            sim.State.coins = 1000;
+            sim.Tick(1.1);
+            Assert.Greater(sim.State.skills.Count, 1);
+        }
+
+        [Test]
+        public void Automation_RebirthsAtTheChosenDepth()
+        {
+            var sim = Rebirthed(3);
+            sim.State.autoRebirthRow = 100;
+            sim.State.bossesDefeated = 1;
+            sim.State.maxDepth = 120;
+            sim.State.totalIncome = 1e6;
+            sim.Tick(1.1);
+            Assert.AreEqual(4, sim.State.rebirths);
+        }
+
+        #endregion
     }
 }

@@ -245,6 +245,7 @@ namespace DeepDrill.Core
                     * drillBonus
                     * ComboMultiplier
                     * DamageBuffMult
+                    * (1 + metaDamage / 100)
                     * frenzy;
             }
         }
@@ -297,7 +298,8 @@ namespace DeepDrill.Core
 
         private double IncomeMultiplier =>
             (1 + Effect(SkillEffect.gold_pct) / 100)
-            * (1 + (2 * AchievementCount("reach_") + RareBonus(2, 5)) / 100);
+            * (1 + (2 * AchievementCount("reach_") + RareBonus(2, 5)) / 100)
+            * (1 + metaIncome / 100);
 
         public int SimulationLimit => Balance.SimulatedDrills + (int)Effect(SkillEffect.hangar_slots);
 
@@ -522,10 +524,12 @@ namespace DeepDrill.Core
             BossActive = false;
             overheatLeft = heatClock = 0;
 
+            GrantRunStart();
             RefreshEffects();
             Units.Clear();
             Lead = null;
             State.drills.Add(DrillCode.Make(0, 0));
+            GrantStartDrills();
             RebuildUnits();
             Events.Add(new SimEvent { Kind = SimEventKind.Rebirth, Amount = gained });
             return true;
@@ -545,6 +549,7 @@ namespace DeepDrill.Core
                 if (skill.Effect == SkillEffect.layer_pct) layerBonus[skill.ForLayer] += amount;
                 effects[(int)skill.Effect] += amount;
             }
+            RefreshPermanent();
             RefreshBonuses();
         }
 
@@ -716,6 +721,7 @@ namespace DeepDrill.Core
             CheckAchievements();
             CheckMilestones();
             CheckMastery();
+            RunAutomation();
         }
 
         // Drills that fall behind or wander off screen rejoin the lead, so the view stays busy.

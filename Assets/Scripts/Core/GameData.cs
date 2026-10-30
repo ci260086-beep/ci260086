@@ -98,6 +98,17 @@ namespace DeepDrill.Core
         public string Desc;
     }
 
+    public enum RebirthPerk { coins, root, drills, hangar, skills }
+
+    public sealed class RebirthMilestone
+    {
+        public int Count;
+        public RebirthPerk Perk;
+        public double Amount;
+        public int Tier;
+        public string Desc;
+    }
+
     public enum EventKind { coins, frenzy, damage, speed, lose }
 
     public sealed class EventOutcome
@@ -143,6 +154,7 @@ namespace DeepDrill.Core
         public static double MasteryDamagePct;
         public static double MasteryValuePct;
         public static EventTable Events;
+        public static List<RebirthMilestone> RebirthMilestones;
 
         private static Dictionary<string, SkillDef> skillsById;
 
@@ -352,6 +364,20 @@ namespace DeepDrill.Core
         {
             var root = Obj(MiniJson.Parse(json));
             LoadEvents(Obj(root["events"]));
+
+            RebirthMilestones = new List<RebirthMilestone>();
+            foreach (var item in Arr(root["rebirthMilestones"]))
+            {
+                var o = Obj(item);
+                RebirthMilestones.Add(new RebirthMilestone
+                {
+                    Count = (int)Num(o, "count"),
+                    Perk = (RebirthPerk)Enum.Parse(typeof(RebirthPerk), Str(o, "perk")),
+                    Amount = Num(o, "amount"),
+                    Tier = (int)Num(o, "tier"),
+                    Desc = Str(o, "desc"),
+                });
+            }
         }
 
         private static void LoadEvents(Dictionary<string, object> o)

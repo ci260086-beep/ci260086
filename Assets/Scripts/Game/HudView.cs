@@ -40,6 +40,7 @@ namespace DeepDrill.Game
         private const int PageGallery = 2;
         private const int PageStats = 3;
         private const int PageSettings = 4;
+        private const int PageBase = 5;
 
         private static readonly Color PanelColor = new Color32(0x1a, 0x12, 0x10, 0xff);
         private static readonly Color RailColor = new Color32(0x2e, 0x1f, 0x17, 0xff);
@@ -190,6 +191,7 @@ namespace DeepDrill.Game
             BuildRail();
             BuildTreePage();
             BuildGalleryPage();
+            BuildBasePage();
 
             var fxGo = new GameObject("Fx", typeof(RectTransform));
             fxGo.transform.SetParent(stageRoot, false);
@@ -246,7 +248,7 @@ namespace DeepDrill.Game
                 pages[i].SetActive(i == index);
                 railButtons[i].color = i == index ? RailSelected : RailColor;
             }
-            bool fullScreen = index == PageTree || index == PageGallery;
+            bool fullScreen = index == PageTree || index == PageGallery || index == PageBase;
             sidePanel.SetActive(!fullScreen);
             FxLayer.gameObject.SetActive(!fullScreen); // digging carries on, but its numbers stay off these pages
             panelTitle.text = pageTitles[index];
@@ -394,7 +396,7 @@ namespace DeepDrill.Game
         {
             var rail = Ui.Panel(stageRoot, "Rail", Stage.DigWidth, 0, Stage.RailWidth, Stage.Height, Color.clear);
             rail.raycastTarget = false;
-            string[] icons = { "tab_drill", "tab_frenzy", "badge", "tab_stats", "tab_settings" };
+            string[] icons = { "tab_drill", "tab_frenzy", "badge", "tab_stats", "tab_settings", "icon_copper" };
             for (int i = 0; i < icons.Length; i++)
             {
                 int index = i;
@@ -435,6 +437,8 @@ namespace DeepDrill.Game
             rebirthButton.onClick.AddListener(OnRebirthClicked);
 
             var settings = NewPage(panel.transform, "设置");
+            pages.Add(new GameObject("BaseSlot"));
+            pageTitles.Add("基地");
             var save = Ui.Button(settings.transform, Font, "立即保存", 4, PanelTitleHeight + 2, Stage.PanelWidth - 8, 16, 7,
                 CardBright, out _);
             save.onClick.AddListener(() =>
@@ -666,6 +670,7 @@ namespace DeepDrill.Game
                 if (currentPage == PageTree) UpdateTree();
                 if (currentPage == PageGallery) UpdateGallery();
                 if (currentPage == PageStats) UpdateStats();
+                if (currentPage == PageBase) UpdateBase();
             }
 
             UpdateCoinPulse();

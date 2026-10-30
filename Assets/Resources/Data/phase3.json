@@ -1,4 +1,11 @@
 {
+ "rebirthMilestones": [
+  {"count": 1, "perk": "coins", "amount": 2000, "tier": 0, "desc": "开局多 2000 金币"},
+  {"count": 3, "perk": "root", "amount": 1, "tier": 0, "desc": "开局自带自动钻探，解锁自动化规则"},
+  {"count": 5, "perk": "drills", "amount": 8, "tier": 2, "desc": "开局自带 8 台铜标准钻"},
+  {"count": 10, "perk": "hangar", "amount": 1, "tier": 0, "desc": "开局自带自动合成和自动购买"},
+  {"count": 25, "perk": "skills", "amount": 5, "tier": 0, "desc": "第一圈技能开局 5 级"}
+ ],
  "events": {
   "everyMin": 150,
   "everyMax": 300,

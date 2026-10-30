@@ -66,6 +66,13 @@ namespace DeepDrill.Core
         public List<double> layerPixels = new List<double>(); // pixels ever dug per layer
         public int eventsClaimed;
 
+        // the player's automation rules
+        public bool autoSkills;
+        public bool autoDrills;
+        public bool autoDrillsFirst;
+        public int autoReservePct;
+        public int autoRebirthRow;
+
         public bool AnyBossDown => bossesDefeated > 0;
 
         public int BoughtOf(int family) => family < bought.Count ? bought[family] : 0;

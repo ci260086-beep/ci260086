@@ -346,7 +346,7 @@ namespace DeepDrill.Tests
 
             Assert.IsTrue(sim.Rebirth());
             Assert.AreEqual(48, s.shards);
-            Assert.AreEqual(Balance.StartGold, s.coins, 1e-9);
+            Assert.AreEqual(Balance.StartGold + GameData.RebirthMilestones[0].Amount, s.coins, 1e-9);
             Assert.AreEqual(0, s.depth);
             Assert.AreEqual(1, s.drills.Count);
             Assert.AreEqual(1, sim.Units.Count);
