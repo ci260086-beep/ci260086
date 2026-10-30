@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Compiles Core and Game against Unity's DLLs without opening Unity. -->
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <LangVersion>9.0</LangVersion>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <NoWarn>CS0649;CS0414</NoWarn>
+    <OutputPath>out\check</OutputPath>
+    <UnityDir Condition="'$(UnityDir)' == ''">C:\Program Files\Unity\Hub\Editor\6000.0.85f1\Editor</UnityDir>
+    <Project>$(MSBuildThisFileDirectory)..\..</Project>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="$(Project)\Assets\Scripts\Core\*.cs" />
+    <Compile Include="$(Project)\Assets\Scripts\Game\*.cs" />
+    <Reference Include="$(UnityDir)\Data\Managed\UnityEngine\*.dll" />
+    <Reference Include="$(Project)\Library\ScriptAssemblies\UnityEngine.UI.dll" />
+  </ItemGroup>
+</Project>
