@@ -14,6 +14,9 @@ namespace DeepDrill.Game
         private const int HitstopFrames = 2;
         private const float HitstopCooldown = 0.5f;
         private const int DepthMilestone = 50;
+        private const float SlowMotionSeconds = 0.5f;
+        private const float SlowMotionRate = 0.25f;
+        private const int LootFountain = 14;
         private const int BusySwarm = 50; // past this, only a third of the swings get full effects
         private const int QuietCritDrills = 20; // past this, drill crits would only be noise
         private const double HardLandingSpeed = 14;
@@ -39,6 +42,7 @@ namespace DeepDrill.Game
         private ArtLibrary art;
         private float autosave;
         private int hitstop;
+        private float slowMotion;
         private float hitstopCooldown;
 
         public GameSim Sim => sim;
@@ -104,9 +108,11 @@ namespace DeepDrill.Game
         private void Update()
         {
             hitstopCooldown -= Time.deltaTime;
+            slowMotion -= Time.unscaledDeltaTime;
+            float simStep = Time.deltaTime * (slowMotion > 0 ? SlowMotionRate : 1f);
             fx.Density = GameSettings.ParticleScale * (sim.Units.Count > BusySwarm ? 1f / 3f : 1f);
             if (hitstop > 0) hitstop--;
-            else sim.Tick(Time.deltaTime);
+            else sim.Tick(simStep);
 
             if (Input.GetMouseButtonDown(0)) HandleClick(Input.mousePosition);
             if (Input.GetKeyDown(KeyCode.Space)) sim.StartFrenzy();
@@ -179,6 +185,7 @@ namespace DeepDrill.Game
                     hud.ShowToast($"{sim.CurrentBoss.BossName}！{sim.BossDuration:0} 秒内打穿它", 3f);
                     world.Shake(0.3f, 3f);
                     sound.Play("boss", 0.8f, 0, true);
+                    hud.ShowBossBanner(sim.CurrentBoss.BossName);
                     break;
 
                 case SimEventKind.BossFailed:
@@ -204,6 +211,10 @@ namespace DeepDrill.Game
                     fx.Debris(WorldView.CellCenter(e.Row, e.Col), DirtBits, 60);
                     world.Shake(0.4f, 8f);
                     sound.Play("blast", 0.9f, -0.2f, true);
+                    slowMotion = SlowMotionSeconds;
+                    Vector2 bossStage = CellStage(e.Row, e.Col);
+                    for (int i = 0; i < LootFountain; i++)
+                        fx.FlyIcon(art.Get("icon_coin"), bossStage, hud.CoinTarget, () => hud.Land(0, 0));
                     break;
 
                 case SimEventKind.SkillBought:
@@ -211,8 +222,8 @@ namespace DeepDrill.Game
                     break;
 
                 case SimEventKind.DrillMerged:
-                    sound.Play("merge", 0.6f, 0, true);
-                    fx.Flash(world.CameraPosition, 3f);
+                    sound.Play("merge", 0.6f);
+                    OnMerged();
                     hud.ShowToast($"合成了{HudView.KindName((int)e.Amount)}", 2f);
                     break;
 
@@ -252,6 +263,15 @@ namespace DeepDrill.Game
             }
             if ((e.Block == BlockType.HardRock || e.Block == BlockType.SuperHard) && fx.Allow())
                 fx.Sparks(WorldView.CellCenter(e.Row, e.Col), 3);
+        }
+
+        // The new drill flashes where it stands, throws out a star of sparks and announces itself.
+        private void OnMerged()
+        {
+            Vector2 at = new Vector2((float)sim.Lead.Body.X, -(float)sim.Lead.Body.Y);
+            fx.Flash(at, 2.5f);
+            fx.Sparks(at, 10);
+            fx.FloatText("升级！", CellStage(sim.Lead.Body.BodyRow - 1, sim.Lead.Body.Column), CoinText, 11, FxView.Text3.Ore);
         }
 
         // A one-row drop is the normal dig rhythm; only longer falls earn a thump.

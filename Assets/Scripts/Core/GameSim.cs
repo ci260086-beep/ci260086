@@ -418,6 +418,9 @@ namespace DeepDrill.Core
             Events.Add(new SimEvent { Kind = SimEventKind.DrillMerged, Amount = DrillCode.Make(DrillCode.Family(code), tier) });
         }
 
+        /// <summary>Tops up the frenzy meter; for the demo driver.</summary>
+        public void FillFrenzy() => FrenzyEnergy = 1;
+
         public bool StartFrenzy()
         {
             if (!FrenzyReady) return false;

@@ -67,6 +67,11 @@ namespace DeepDrill.Game
             yield return MeasureFrames();
             yield return Shot("swarm");
 
+            sim.FillFrenzy();
+            sim.StartFrenzy();
+            yield return new WaitForSeconds(1f);
+            yield return Shot("frenzy");
+
             sim.State.coins = 1e30;
             sim.Buy("root");
             sim.Buy("drill_01");

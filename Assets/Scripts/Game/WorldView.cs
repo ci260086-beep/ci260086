@@ -230,12 +230,14 @@ namespace DeepDrill.Game
                 var frames = drillFrames[unit.Code];
                 sr.sprite = frames[((int)drillClock + i) % frames.Length]; // offset so they do not spin in step
                 sr.color = sim.InFrenzy ? FrenzyTint : Color.white;
+                // heat haze: a whole-pixel sideways wobble while in frenzy
+                float haze = sim.InFrenzy ? Mathf.Round(Mathf.Sin(Time.unscaledTime * 30f + i) * 1.2f) / Stage.PixelsPerUnit : 0f;
                 double age = sim.Now - unit.LastSwing;
                 bool squash = unit.LastSwing >= 0 && age < SquashSeconds;
                 sr.transform.localScale = squash ? new Vector3(SquashWidth, SquashHeight, 1) : Vector3.one;
                 // the pivot stays put and the body swings around it; positive core angles tip the nose right
                 sr.transform.SetPositionAndRotation(
-                    new Vector3(Stage.SnapToPixel(x), Stage.SnapToPixel(y - DrillPivotBelowCenter), 0),
+                    new Vector3(Stage.SnapToPixel(x) + haze, Stage.SnapToPixel(y - DrillPivotBelowCenter), 0),
                     Quaternion.Euler(0, 0, (float)unit.Body.Angle));
             }
             for (int i = used; i < drillPool.Count; i++) drillPool[i].enabled = false;

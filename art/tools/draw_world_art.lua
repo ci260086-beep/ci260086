@@ -439,6 +439,20 @@ for f = 0, 3 do
 end
 save(smoke, "Items/fx_smoke")
 
+-- a soft frame for screen-edge glows; white so the game can tint it
+local vignette = canvas(112, 90)
+for y = 0, 89 do
+  for x = 0, 111 do
+    local d = math.min(x, 111 - x, y, 89 - y)
+    if d < 12 then
+      local dither = (x + y) % 2 == 0 and 1 or 0
+      local alpha = math.floor((12 - d) / 12 * 220)
+      if d < 8 or dither == 1 then vignette:set(x, y, hex("ffffff", alpha)) end
+    end
+  end
+end
+save(vignette, "Items/fx_vignette")
+
 -- achievement badge: the page tints it, and shows a black silhouette until earned
 local badge = canvas(16, 16)
 for y = 2, 13 do

@@ -34,6 +34,10 @@ namespace DeepDrill.Game
         private const float ZoomStep = 0.1f;
         private const int GalleryColumns = 22;
         private const int ComboFlashStep = 10;
+        private const int SpeedLines = 14;
+        private const float BannerSeconds = 2.2f;
+        private const float BannerBarHeight = 34f;
+        private const float PulseSeconds = 0.45f;
 
         private const int PageHangar = 0;
         private const int PageTree = 1;
@@ -84,6 +88,15 @@ namespace DeepDrill.Game
             public SkillDef Skill;
             public Image Box;
             public Text Level;
+            public float Pop;
+        }
+
+        private sealed class TreePulse
+        {
+            public Image Dot;
+            public Vector2 From;
+            public Vector2 To;
+            public float Time;
         }
 
         private sealed class TreeLink
@@ -128,6 +141,8 @@ namespace DeepDrill.Game
         private readonly List<string> pageTitles = new List<string>();
         private readonly List<TreeNode> treeNodes = new List<TreeNode>();
         private readonly List<TreeLink> treeLinks = new List<TreeLink>();
+        private readonly List<TreePulse> treePulses = new List<TreePulse>();
+        private readonly List<Image> speedLines = new List<Image>();
         private readonly List<Image> achievementIcons = new List<Image>();
         private readonly List<Image> rareIcons = new List<Image>();
         private readonly List<Text> rareCounts = new List<Text>();
@@ -151,6 +166,9 @@ namespace DeepDrill.Game
         private Image frenzyButtonImage;
         private Text frenzyButtonLabel;
         private Image dragGhost;
+        private Image frenzyGlow, bannerTop, bannerBottom;
+        private Text bannerLabel;
+        private float bannerTime;
         private HangarCell dragSource;
         private float toastTime;
         private float fpsAverage = 60;
@@ -204,6 +222,7 @@ namespace DeepDrill.Game
             stageImage.raycastTarget = false;
             Ui.TopLeft(stageImage.rectTransform, 0, 0, Stage.Width, Stage.Height);
 
+            BuildFrenzyOverlay();
             BuildDigOverlay();
             BuildFrenzyMeter();
             BuildSidePanel();
@@ -218,6 +237,8 @@ namespace DeepDrill.Game
 
             dragGhost = Ui.Icon(stageRoot, art.Strip("drill_0_0", 8)[0], 0, 0, HangarCellSize);
             dragGhost.gameObject.SetActive(false);
+
+            BuildBossBanner();
 
             toastLabel = Floating("", 0, 140, Stage.DigWidth, 18, 13, TextAnchor.MiddleCenter);
             toastLabel.color = CoinColor;
@@ -306,6 +327,72 @@ namespace DeepDrill.Game
 
             versionLabel = Floating("", 3, 171, 90, 8, 6, TextAnchor.MiddleLeft);
             versionLabel.color = SoftText;
+        }
+
+        // Glowing edges and streaks of speed while frenzy runs.
+        private void BuildFrenzyOverlay()
+        {
+            frenzyGlow = Ui.Panel(stageRoot, "FrenzyGlow", 0, 0, Stage.DigWidth, Stage.Height, Color.white);
+            frenzyGlow.sprite = art.Get("fx_vignette");
+            frenzyGlow.raycastTarget = false;
+            for (int i = 0; i < SpeedLines; i++)
+            {
+                var line = Ui.Panel(stageRoot, "SpeedLine", 0, 0, 1, 18, new Color(1, 0.9f, 0.7f, 0.5f));
+                line.raycastTarget = false;
+                speedLines.Add(line);
+            }
+        }
+
+        private void UpdateFrenzyOverlay()
+        {
+            bool on = sim.InFrenzy;
+            frenzyGlow.gameObject.SetActive(on);
+            if (on)
+            {
+                float pulse = 0.6f + 0.4f * Mathf.Sin(Time.unscaledTime * 8f);
+                frenzyGlow.color = new Color(1f, 0.35f, 0.2f, pulse);
+            }
+            for (int i = 0; i < speedLines.Count; i++)
+            {
+                var line = speedLines[i];
+                line.gameObject.SetActive(on);
+                if (!on) continue;
+                float y = (Time.unscaledTime * (240f + i * 13f) + i * 37f) % (Stage.Height + 20f);
+                float x = (i * 53.7f) % Stage.DigWidth;
+                line.rectTransform.anchoredPosition = new Vector2(x, y - Stage.Height);
+            }
+        }
+
+        // Black bars close in, the guardian is named, then they part again.
+        private void BuildBossBanner()
+        {
+            bannerTop = Ui.Panel(stageRoot, "BannerTop", 0, 0, Stage.DigWidth, 0, Color.black);
+            bannerBottom = Ui.Panel(stageRoot, "BannerBottom", 0, Stage.Height, Stage.DigWidth, 0, Color.black);
+            bannerTop.raycastTarget = bannerBottom.raycastTarget = false;
+            bannerLabel = Floating("", 0, 74, Stage.DigWidth, 26, 18, TextAnchor.MiddleCenter);
+            bannerLabel.color = FrenzyColor;
+            bannerLabel.fontStyle = FontStyle.Bold;
+        }
+
+        public void ShowBossBanner(string name)
+        {
+            bannerLabel.text = name;
+            bannerTime = BannerSeconds;
+        }
+
+        private void UpdateBanner(float dt)
+        {
+            if (bannerTime <= 0) return;
+            bannerTime -= dt;
+            float t = Mathf.Clamp01(Mathf.Min(BannerSeconds - bannerTime, bannerTime) * 4f);
+            float height = t * BannerBarHeight;
+            bannerTop.rectTransform.sizeDelta = new Vector2(Stage.DigWidth, height);
+            bannerBottom.rectTransform.sizeDelta = new Vector2(Stage.DigWidth, height);
+            bannerBottom.rectTransform.anchoredPosition = new Vector2(0, -(Stage.Height - height));
+            var c = bannerLabel.color;
+            c.a = t;
+            bannerLabel.color = c;
+            if (bannerTime <= 0) bannerLabel.text = "";
         }
 
         private void BuildFrenzyMeter()
@@ -564,13 +651,48 @@ namespace DeepDrill.Game
             var button = box.gameObject.AddComponent<Button>();
             button.targetGraphic = box;
             button.transition = Selectable.Transition.None;
+            var node = new TreeNode { Skill = skill, Box = box, Level = level };
             button.onClick.AddListener(() =>
             {
-                sim.Buy(skill.Id);
+                if (sim.Buy(skill.Id)) LightNode(node);
                 ShowNodeInfo(skill);
             });
             box.gameObject.AddComponent<HoverRelay>().Entered = () => ShowNodeInfo(skill);
-            return new TreeNode { Skill = skill, Box = box, Level = level };
+            return node;
+        }
+
+        // A bought node pops, and sparks of light run along its lines to whatever it opens.
+        private void LightNode(TreeNode node)
+        {
+            node.Pop = 1f;
+            foreach (var link in treeLinks)
+            {
+                if (link.From != node.Skill) continue;
+                var spark = Ui.Panel(treeContent, "Pulse", 0, 0, 3, 3, LineOn);
+                spark.raycastTarget = false;
+                var rt = spark.rectTransform;
+                rt.anchorMin = rt.anchorMax = rt.pivot = new Vector2(0.5f, 0.5f);
+                treePulses.Add(new TreePulse { Dot = spark, From = NodePosition(link.From), To = NodePosition(link.To) });
+            }
+        }
+
+        private void UpdateTreePulses(float dt)
+        {
+            for (int i = treePulses.Count - 1; i >= 0; i--)
+            {
+                var p = treePulses[i];
+                p.Time += dt / PulseSeconds;
+                p.Dot.rectTransform.anchoredPosition = Vector2.Lerp(p.From, p.To, p.Time);
+                if (p.Time < 1) continue;
+                Destroy(p.Dot.gameObject);
+                treePulses.RemoveAt(i);
+            }
+            foreach (var node in treeNodes)
+            {
+                if (node.Pop <= 0) continue;
+                node.Pop = Mathf.Max(0, node.Pop - dt * 4f);
+                node.Box.rectTransform.localScale = Vector3.one * (1 + node.Pop * 0.5f);
+            }
         }
 
         private void ShowNodeInfo(SkillDef skill)
@@ -689,6 +811,9 @@ namespace DeepDrill.Game
             UpdateMeter();
             UpdateToast(dt);
             UpdateGuide();
+            UpdateFrenzyOverlay();
+            UpdateBanner(dt);
+            UpdateTreePulses(dt);
             UpdateBoss();
             UpdateRebirth(dt);
 
