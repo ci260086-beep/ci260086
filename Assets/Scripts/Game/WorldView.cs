@@ -58,7 +58,8 @@ namespace DeepDrill.Game
         private Sprite[] bossFaces;
         private Sprite[] cracks;
         private Dictionary<int, Sprite[]> drillFrames;
-        private Sprite tunnel, grass, tnt, hardOverlay, chestOverlay, bossShell, bossHide;
+        private Sprite tunnel, grass, tnt, hardOverlay, superHardOverlay, chestOverlay, bossShell, bossHide;
+        private Sprite waterBlock, magmaBlock;
         private SpriteRenderer bossFace;
         private float followX;
         private float drillClock;
@@ -97,6 +98,9 @@ namespace DeepDrill.Game
             grass = art.Get("grass");
             tnt = art.Get("tnt");
             hardOverlay = art.Get("hard_overlay");
+            superHardOverlay = art.Get("superhard_overlay");
+            waterBlock = art.Get("water_block");
+            magmaBlock = art.Get("magma_block");
             chestOverlay = art.Get("chest_overlay");
             bossShell = art.Get("boss_shell");
             bossHide = art.Get("boss_hide");
@@ -298,6 +302,15 @@ namespace DeepDrill.Game
                     break;
                 case BlockType.HardRock:
                     ShowOverlay(cell, hardOverlay);
+                    break;
+                case BlockType.SuperHard:
+                    ShowOverlay(cell, superHardOverlay);
+                    break;
+                case BlockType.Water:
+                    cell.Tile.sprite = waterBlock;
+                    break;
+                case BlockType.Magma:
+                    cell.Tile.sprite = magmaBlock;
                     break;
                 case BlockType.Chest:
                     ShowOverlay(cell, chestOverlay);

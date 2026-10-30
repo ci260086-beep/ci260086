@@ -523,6 +523,178 @@ namespace DeepDrill.Tests
             Assert.AreEqual(50, sim.Row(10)[3].Hp, 1e-9);
         }
 
+        private static int MidRow(int layer) => (GameData.Layers[layer].RowStart + GameData.Layers[layer].RowEnd) / 2;
+
+        private static GameSim SimInLayer(int layer)
+        {
+            var sim = NewSim();
+            sim.State.bossesDefeated = layer;
+            sim.Teleport(MidRow(layer), Balance.StartColumn);
+            return sim;
+        }
+
+        private static int CountType(BlockType type, int layer)
+        {
+            int n = 0;
+            for (int row = GameData.Layers[layer].RowStart + 10; row < GameData.Layers[layer].RowEnd - 10; row++)
+                for (int col = 0; col < Balance.Columns; col++)
+                {
+                    var b = new Block();
+                    WorldGen.Fill(b, 4, row, col, 0.02, 0.005);
+                    if (b.Type == type) n++;
+                }
+            return n;
+        }
+
+        [Test]
+        public void SpecialBlocks_AppearOnlyInTheirLayers()
+        {
+            EnsureData();
+            Assert.Greater(CountType(BlockType.Water, Balance.WaterLayer), 100);
+            Assert.AreEqual(0, CountType(BlockType.Water, Balance.CrystalLayer));
+            Assert.Greater(CountType(BlockType.Magma, Balance.MantleLayer), 100);
+            Assert.Greater(CountType(BlockType.SuperHard, Balance.GraniteLayer), 100);
+            Assert.AreEqual(0, CountType(BlockType.SuperHard, Balance.MantleLayer));
+        }
+
+        [Test]
+        public void Crystal_ReflectsIntoItsNeighbours()
+        {
+            var sim = SimInLayer(Balance.CrystalLayer);
+            int row = MidRow(Balance.CrystalLayer) + 6;
+            MakeBlock(sim, row, 5, BlockType.Ore, 10);
+            sim.Row(row)[5].OreValue = 16;
+            sim.Row(row)[5].Hp = 0.1;
+            double before = sim.Row(row + 2)[5].Hp;
+            sim.Click(row, 5);
+            Assert.Less(sim.Row(row + 2)[5].Hp, before);
+        }
+
+        [Test]
+        public void Water_PushesNearbyDrillsAway()
+        {
+            var sim = SimInLayer(Balance.WaterLayer);
+            int row = MidRow(Balance.WaterLayer);
+            int col = Balance.StartColumn - 2;
+            sim.Row(row)[col].Type = BlockType.Water;
+            sim.Row(row)[col].Hp = 0.01;
+            double before = sim.Lead.Body.VelocityX;
+            sim.Click(row, col);
+            Assert.Greater(sim.Lead.Body.VelocityX, before);
+        }
+
+        [Test]
+        public void Ruins_HaveHiddenRoomsWithChests()
+        {
+            EnsureData();
+            var layer = GameData.Layers[Balance.RuinsLayer];
+            int rooms = 0, chests = 0;
+            for (int row = layer.RowStart + 10; row < layer.RowEnd - 10; row++)
+                for (int col = 0; col < Balance.Columns; col++)
+                    if (WorldGen.RoomAt(6, row, col, out bool treasure))
+                    {
+                        rooms++;
+                        if (treasure) chests++;
+                        var b = new Block();
+                        WorldGen.Fill(b, 6, row, col, 0.02, 0.005);
+                        if (treasure) Assert.AreEqual(BlockType.Chest, b.Type);
+                        else Assert.IsFalse(b.Alive);
+                    }
+            Assert.Greater(chests, 3);
+            Assert.Greater(rooms, chests * 10);
+        }
+
+        [Test]
+        public void SuperHard_OnlyGivesWayToHeavyDrills()
+        {
+            var sim = SimInLayer(Balance.GraniteLayer);
+            int row = MidRow(Balance.GraniteLayer) + 6;
+            MakeBlock(sim, row, 3, BlockType.SuperHard, 1e12);
+            sim.Click(row, 3);
+            var weak = sim.Events.Find(e => e.Kind == SimEventKind.BlockHit && e.Block == BlockType.SuperHard);
+            double crit = weak.Crit ? Balance.CritMultiplier : 1;
+            Assert.AreEqual(sim.ClickDamage * crit * Balance.SuperHardWeakDamage, weak.Amount, 1e-3);
+        }
+
+        [Test]
+        public void Moho_OverheatsAndFrenzyCools()
+        {
+            var sim = SimInLayer(Balance.MohoLayer);
+            int code = DrillCode.Make(0, 0);
+            double cool = sim.HitsPerSecond(code);
+            for (int i = 0; i < 105 && !sim.Overheating; i++) sim.Tick(0.1);
+            Assert.IsTrue(sim.Overheating);
+            Assert.AreEqual(cool * Balance.OverheatSpeed, sim.HitsPerSecond(code), 1e-9);
+        }
+
+        [Test]
+        public void Magma_ErruptsInAChain()
+        {
+            var sim = SimInLayer(Balance.MantleLayer);
+            int row = MidRow(Balance.MantleLayer) + 8;
+            for (int col = 0; col < 6; col++) MakeBlock(sim, row, col, BlockType.Magma);
+            sim.Events.Clear();
+            sim.Click(row, 0);
+            Assert.AreEqual(6, sim.Events.FindAll(e => e.Kind == SimEventKind.Explosion).Count);
+        }
+
+        [Test]
+        public void PhaseLayer_AlternatesItsRockEveryThirtyRows()
+        {
+            EnsureData();
+            int Hard(int row)
+            {
+                int n = 0;
+                for (int r = row; r < row + 10; r++)
+                    for (int col = 0; col < Balance.Columns; col++)
+                    {
+                        var b = new Block();
+                        WorldGen.Fill(b, 2, r, col, 0.02, 0.005);
+                        if (b.Type == BlockType.HardRock) n++;
+                    }
+                return n;
+            }
+            var layer = GameData.Layers[Balance.PhaseLayer];
+            int band = layer.RowStart / Balance.PhaseBandRows + 2;
+            int even = band % 2 == 0 ? band : band + 1;
+            Assert.Greater(Hard(even * Balance.PhaseBandRows + 5), Hard((even + 1) * Balance.PhaseBandRows + 5) * 2);
+        }
+
+        [Test]
+        public void Convection_SlidesTheRowsAhead()
+        {
+            var sim = SimInLayer(Balance.ConvectionLayer);
+            int row = MidRow(Balance.ConvectionLayer) + 4;
+            var marked = sim.Row(row)[10];
+            for (int i = 0; i < 22; i++) sim.Tick(0.1);
+            Assert.AreNotSame(marked, sim.Row(row)[10]);
+        }
+
+        [Test]
+        public void Liquid_FlowsBackIntoDugCells()
+        {
+            var sim = SimInLayer(Balance.LiquidLayer);
+            int row = MidRow(Balance.LiquidLayer) + 8;
+            MakeBlock(sim, row, 3, BlockType.Dirt);
+            sim.Click(row, 3);
+            Assert.IsFalse(sim.Row(row)[3].Alive);
+            for (int i = 0; i < 70; i++) sim.Tick(0.1);
+            Assert.IsTrue(sim.Row(row)[3].Alive);
+        }
+
+        [Test]
+        public void Core_OnlyTakesFullDamageInFrenzy()
+        {
+            var sim = SimInLayer(Balance.CoreLayer);
+            int row = MidRow(Balance.CoreLayer) + 6;
+            MakeBlock(sim, row, 3, BlockType.Dirt, 1e12);
+            sim.Events.Clear();
+            sim.Click(row, 3);
+            var hit = sim.Events.Find(e => e.Kind == SimEventKind.BlockHit);
+            double crit = hit.Crit ? Balance.CritMultiplier : 1;
+            Assert.AreEqual(sim.ClickDamage * crit * Balance.HeatDamageRatio, hit.Amount, 1e-3);
+        }
+
         [Test]
         public void Rares_DropFromChestsAndDuplicatesStack()
         {

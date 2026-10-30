@@ -10,6 +10,9 @@ namespace DeepDrill.Core
         Chest,
         Tnt,
         BossRoot,
+        Water,
+        Magma,
+        SuperHard,
     }
 
     public sealed class Block
@@ -76,9 +79,26 @@ namespace DeepDrill.Core
             if (row == 0) block.Type = BlockType.Grass;
             else if (row >= SafeRows) Roll(block, seed, row, col, tntChance, chestChance);
 
+            bool hollow = false;
+            if (LayerAt(seed, row, col) == Balance.RuinsLayer && RoomAt(seed, row, col, out bool treasure))
+            {
+                block.Type = treasure ? BlockType.Chest : BlockType.Dirt;
+                hollow = !treasure;
+            }
+
             double hp = HpOf(block.Type, row);
-            block.Hp = hp;
+            block.Hp = hollow ? 0 : hp;
             block.MaxHp = hp;
+        }
+
+        // Hidden rooms in the ruins: one per band of rows, with a chest on the middle of the floor.
+        public static bool RoomAt(int seed, int row, int col, out bool treasure)
+        {
+            int band = row / Balance.RoomEveryRows;
+            int top = band * Balance.RoomEveryRows + 3 + (int)(Hash(seed, band, 900) % 10);
+            int left = 1 + (int)(Hash(seed, band, 901) % (uint)(Balance.Columns - Balance.RoomWidth - 2));
+            treasure = row == top + Balance.RoomHeight - 1 && col == left + Balance.RoomWidth / 2;
+            return row >= top && row < top + Balance.RoomHeight && col >= left && col < left + Balance.RoomWidth;
         }
 
         private static void Roll(Block block, int seed, int row, int col, double tntChance, double chestChance)
@@ -101,16 +121,26 @@ namespace DeepDrill.Core
                 r -= ore.Rate;
             }
 
-            if (r < Balance.HardShare) { block.Type = BlockType.HardRock; return; }
-            r -= Balance.HardShare;
+            double hard = Balance.HardShare;
+            if (layer.Index == Balance.PhaseLayer)
+                hard = row / Balance.PhaseBandRows % 2 == 0 ? Balance.PhaseHardHigh : Balance.PhaseHardLow;
+            if (r < hard) { block.Type = BlockType.HardRock; return; }
+            r -= hard;
 
-            if (layer.Index == SandLayer)
-            {
-                if (r < Balance.LooseShare) { block.Type = BlockType.Sand; return; }
-                r -= Balance.LooseShare;
-            }
+            if (TakeShare(ref r, layer.Index == SandLayer, Balance.LooseShare)) { block.Type = BlockType.Sand; return; }
+            if (TakeShare(ref r, layer.Index == Balance.WaterLayer, Balance.WaterShare)) { block.Type = BlockType.Water; return; }
+            if (TakeShare(ref r, layer.Index == Balance.MantleLayer, Balance.MagmaShare)) { block.Type = BlockType.Magma; return; }
+            if (TakeShare(ref r, layer.Index == Balance.GraniteLayer, Balance.SuperHardShare)) { block.Type = BlockType.SuperHard; return; }
 
             if (r < tntChance) block.Type = BlockType.Tnt;
+        }
+
+        private static bool TakeShare(ref double r, bool applies, double share)
+        {
+            if (!applies) return false;
+            if (r < share) return true;
+            r -= share;
+            return false;
         }
 
         public static double HpOf(BlockType type, int row)
@@ -118,6 +148,7 @@ namespace DeepDrill.Core
             double hp = Balance.BlockHp(row);
             if (type == BlockType.HardRock) return hp * Balance.HardRockHpMultiplier;
             if (type == BlockType.Sand) return hp * Balance.LooseHpMultiplier;
+            if (type == BlockType.SuperHard) return hp * Balance.SuperHardHpMultiplier;
             return hp;
         }
 

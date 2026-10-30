@@ -59,6 +59,42 @@ namespace DeepDrill.Core
         public const int RareMaxDupes = 10;
         public const double RareDupeBonus = 0.5;
 
+        // layer mechanics, indexed from zero as in GameData.Layers
+        public const int CrystalLayer = 2;
+        public const int WaterLayer = 3;
+        public const int RuinsLayer = 4;
+        public const int GraniteLayer = 5;
+        public const int MohoLayer = 6;
+        public const int MantleLayer = 7;
+        public const int PhaseLayer = 8;
+        public const int ConvectionLayer = 9;
+        public const int LiquidLayer = 10;
+        public const int CoreLayer = 11;
+
+        public const double CrystalReflectRatio = 0.5;
+        public const int CrystalReflectRadius = 2;
+        public const double WaterShare = 0.08;
+        public const double WaterPushSpeed = 3;
+        public const int WaterRadius = 3;
+        public const int RoomEveryRows = 25;
+        public const int RoomWidth = 7;
+        public const int RoomHeight = 3;
+        public const double TrapChestChance = 0.25;
+        public const double SuperHardShare = 0.15;
+        public const double SuperHardHpMultiplier = 6;
+        public const double SuperHardWeakDamage = 0.25;
+        public const double OverheatPeriodSeconds = 10;
+        public const double OverheatSeconds = 3;
+        public const double OverheatSpeed = 0.5;
+        public const double MagmaShare = 0.06;
+        public const int MagmaChainLimit = 12;
+        public const int PhaseBandRows = 30;
+        public const double PhaseHardHigh = 0.30;
+        public const double PhaseHardLow = 0.05;
+        public const double ConvectionSeconds = 2;
+        public const double RefillSeconds = 6;
+        public const double HeatDamageRatio = 0.25;
+
         public const double OfflineRate = 0.5;
         public const double OfflineCapHours = 2;
         public const double StartGold = 50;

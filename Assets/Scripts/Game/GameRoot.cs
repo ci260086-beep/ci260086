@@ -181,6 +181,10 @@ namespace DeepDrill.Game
                     world.Shake(0.3f, 4f);
                     break;
 
+                case SimEventKind.Overheated:
+                    hud.ShowToast("过热！开启狂热可以散热", 2f);
+                    break;
+
                 case SimEventKind.LayerEntered:
                     hud.ShowToast($"进入{GameData.Layers[(int)e.Amount].Name}", 3.5f);
                     break;

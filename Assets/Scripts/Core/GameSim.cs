@@ -23,6 +23,7 @@ namespace DeepDrill.Core
         DrillMerged,
         RareFound,
         AchievementUnlocked,
+        Overheated,
     }
 
     public struct SimEvent
@@ -91,6 +92,12 @@ namespace DeepDrill.Core
         private double drillBonus = 1;
         private int blastsThisChain;
         private bool insideBlast;
+        private bool reflecting;
+        private double simTime;
+        private double heatClock;
+        private double overheatLeft;
+        private double convectionClock;
+        private readonly Queue<(int row, int col, double time)> refills = new Queue<(int, int, double)>();
 
         public GameSim(GameState state, int? randomSeed = null)
         {
@@ -198,7 +205,11 @@ namespace DeepDrill.Core
         public double ClickDamage => DamageOf(Lead.Code) * (1 + Effect(SkillEffect.click_pct) / 100);
 
         public double SpeedMultiplier =>
-            (1 + Effect(SkillEffect.speed_pct) / 100) * (InFrenzy ? Balance.FrenzySpeedMultiplier : 1);
+            (1 + Effect(SkillEffect.speed_pct) / 100)
+            * (InFrenzy ? Balance.FrenzySpeedMultiplier : (Overheating ? Balance.OverheatSpeed : 1));
+
+        /// <summary>In the Moho layer drills overheat in bursts; frenzy cools them.</summary>
+        public bool Overheating => overheatLeft > 0 && !InFrenzy;
 
         public double HitsPerSecond(int code) =>
             GameData.Families[DrillCode.Family(code)].HitsPerSecond * SpeedMultiplier;
@@ -282,6 +293,7 @@ namespace DeepDrill.Core
             AdvanceCombo(dt);
             AdvanceFrenzy(dt);
             AdvanceLoose(dt);
+            AdvanceLayerMechanics(dt);
             AdvancePhysics(dt);
             AdvanceBoss(dt);
             AdvanceHits(dt);
@@ -459,6 +471,8 @@ namespace DeepDrill.Core
             Combo = 0;
             FrenzyEnergy = FrenzyTimeLeft = 0;
             BossActive = false;
+            refills.Clear();
+            overheatLeft = heatClock = convectionClock = 0;
 
             RefreshEffects();
             Units.Clear();
@@ -678,6 +692,10 @@ namespace DeepDrill.Core
             bool heavy = by.Family == HeavyFamily;
             if (block.Type == BlockType.HardRock)
                 amount *= (1 + Effect(SkillEffect.hard_pct) / 100) * (heavy ? 3 : 1);
+            if (block.Type == BlockType.SuperHard)
+                amount *= (1 + Effect(SkillEffect.hard_pct) / 100) * (heavy ? 3 : Balance.SuperHardWeakDamage);
+            if (GameData.LayerOfRow(row) == Balance.CoreLayer && !InFrenzy)
+                amount *= Balance.HeatDamageRatio;
 
             if (block.Type == BlockType.BossRoot)
             {
@@ -786,6 +804,120 @@ namespace DeepDrill.Core
                 blastsThisChain++;
                 State.bestChain = Math.Max(State.bestChain, blastsThisChain);
                 pendingBlasts.Enqueue((row, col));
+            }
+
+            ApplyLayerMechanic(row, col, block, by);
+        }
+
+        private void ApplyLayerMechanic(int row, int col, Block block, DrillUnit by)
+        {
+            int layer = GameData.LayerOfRow(row);
+            if (block.Type == BlockType.Magma && blastsThisChain < Balance.MagmaChainLimit)
+            {
+                blastsThisChain++;
+                pendingBlasts.Enqueue((row, col));
+            }
+            if (block.Type == BlockType.Water) WashAround(row, col, by);
+            if (block.Type == BlockType.Ore && layer == Balance.CrystalLayer) ReflectFrom(row, col, block, by);
+            if (block.Type == BlockType.Chest && layer == Balance.RuinsLayer
+                && WorldGen.Unit(State.seed, row, col + 3000) < Balance.TrapChestChance)
+                pendingBlasts.Enqueue((row, col));
+            if (layer == Balance.LiquidLayer) refills.Enqueue((row, col, simTime + Balance.RefillSeconds));
+        }
+
+        // Crystal ore throws half its strength at everything within two cells.
+        private void ReflectFrom(int row, int col, Block block, DrillUnit by)
+        {
+            if (reflecting) return;
+            reflecting = true;
+            double damage = block.MaxHp * Balance.CrystalReflectRatio;
+            int reach = Balance.CrystalReflectRadius;
+            for (int r = Math.Max(0, row - reach); r <= row + reach; r++)
+            {
+                for (int c = Math.Max(0, col - reach); c <= Math.Min(Balance.Columns - 1, col + reach); c++)
+                {
+                    var near = Row(r)[c];
+                    if (!near.Alive || near.Type == BlockType.BossRoot) continue;
+                    near.Hp -= damage;
+                    if (near.Hp <= 0) Break(r, c, near, false, true, by);
+                }
+            }
+            reflecting = false;
+        }
+
+        // Burst water shoves nearby drills sideways and carries off any loose blocks.
+        private void WashAround(int row, int col, DrillUnit by)
+        {
+            foreach (var unit in Units)
+            {
+                double dx = unit.Body.X - col;
+                if (Math.Abs(dx) > Balance.WaterRadius || Math.Abs(unit.Body.Y - row) > Balance.WaterRadius) continue;
+                unit.Body.VelocityX += (dx >= 0 ? 1 : -1) * Balance.WaterPushSpeed;
+            }
+            int reach = Balance.WaterRadius;
+            for (int r = Math.Max(0, row - reach); r <= row + reach; r++)
+            {
+                for (int c = Math.Max(0, col - reach); c <= Math.Min(Balance.Columns - 1, col + reach); c++)
+                {
+                    var near = Row(r)[c];
+                    if (near.Alive && near.Type == BlockType.Sand) Break(r, c, near, false, true, by);
+                }
+            }
+        }
+
+        private void AdvanceLayerMechanics(double dt)
+        {
+            simTime += dt;
+            int layer = GameData.LayerOfRow(State.depth);
+
+            if (overheatLeft > 0) overheatLeft -= dt;
+            if (layer == Balance.MohoLayer)
+            {
+                heatClock += dt;
+                if (heatClock >= Balance.OverheatPeriodSeconds)
+                {
+                    heatClock = 0;
+                    overheatLeft = Balance.OverheatSeconds;
+                    if (!InFrenzy) Events.Add(new SimEvent { Kind = SimEventKind.Overheated });
+                }
+            }
+
+            if (layer == Balance.ConvectionLayer)
+            {
+                convectionClock += dt;
+                if (convectionClock >= Balance.ConvectionSeconds)
+                {
+                    convectionClock = 0;
+                    ShiftRows();
+                }
+            }
+
+            while (refills.Count > 0 && refills.Peek().time <= simTime)
+            {
+                var (row, col, _) = refills.Dequeue();
+                if (!rows.TryGetValue(row, out var blocks) || occupied.ContainsKey(CellKey(row, col))) continue;
+                if (!blocks[col].Alive) WorldGen.Fill(blocks[col], State.seed, row, col, 0, 0);
+            }
+        }
+
+        // The rows ahead of the drills creep sideways, alternate rows in opposite directions.
+        private void ShiftRows()
+        {
+            for (int row = State.depth + 2; row <= State.depth + Balance.LooseWindowRows; row++)
+            {
+                if (IsBossRow(row) || !rows.TryGetValue(row, out var blocks)) continue;
+                if (row % 2 == 0)
+                {
+                    var last = blocks[Balance.Columns - 1];
+                    Array.Copy(blocks, 0, blocks, 1, Balance.Columns - 1);
+                    blocks[0] = last;
+                }
+                else
+                {
+                    var first = blocks[0];
+                    Array.Copy(blocks, 1, blocks, 0, Balance.Columns - 1);
+                    blocks[Balance.Columns - 1] = first;
+                }
             }
         }
 

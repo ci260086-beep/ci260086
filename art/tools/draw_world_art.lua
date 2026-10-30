@@ -182,6 +182,40 @@ chest:rect(7, 7, 8, 10, GOLD) chest:set(7, 7, GOLD_HI)
 outline(chest, INK)
 save(chest, "Layers/chest_overlay")
 
+-- blocks with their own behaviour, drawn to read at a glance
+local superHard = canvas(16, 16)
+local Q1, Q2, Q3 = hex("3a3648"), hex("6a6480"), hex("a8a0c0")
+for y = 1, 14 do
+  for x = 1, 14 do
+    local c = ((x + y) % 5 == 0) and Q3 or (((x * 2 + y) % 7 == 0) and Q1 or Q2)
+    superHard:set(x, y, c)
+  end
+end
+superHard:rect(1, 1, 14, 1, Q3)
+superHard:rect(14, 2, 14, 14, Q1)
+outline(superHard, INK)
+save(superHard, "Layers/superhard_overlay")
+
+local water = canvas(16, 16)
+water:rect(0, 0, 15, 15, hex("2a6ab0"))
+for y = 0, 15 do
+  for x = 0, 15 do
+    if (x + y * 2) % 8 == 0 then water:set(x, y, hex("70b8e8")) end
+    if (x * 2 + y) % 11 == 0 then water:set(x, y, hex("1a4a88")) end
+  end
+end
+save(water, "Layers/water_block")
+
+local magma = canvas(16, 16)
+magma:rect(0, 0, 15, 15, hex("7a1a10"))
+for y = 0, 15 do
+  for x = 0, 15 do
+    if (x * 3 + y * 2) % 7 < 2 then magma:set(x, y, hex("f07a20")) end
+    if (x + y * 3) % 13 == 0 then magma:set(x, y, hex("ffe27a")) end
+  end
+end
+save(magma, "Layers/magma_block")
+
 -- neutral shells the game tints per guardian
 local shell = canvas(16, 16)
 shell:rect(0, 0, 15, 15, hex("9a9a9a"))
