@@ -1,4 +1,18 @@
 {
+ "schools": [
+  {"id": "blast", "name": "爆破派", "branch": "blast", "branchDiscount": 30, "desc": "爆炸伤害 +200%，炸药 +100%，爆炸半径 +1",
+   "bonuses": [{"effect": "blast_dmg", "amount": 200}, {"effect": "tnt_rate", "amount": 100}, {"effect": "blast_radius", "amount": 1}],
+   "reward": {"effect": "blast_dmg", "amount": 100, "desc": "永久爆炸伤害 +100%"}},
+  {"id": "swarm", "name": "机群派", "branch": "hangar", "branchDiscount": 30, "desc": "钻头价格 -20%，模拟上限 +60，每 10 台伤害 +5%",
+   "bonuses": [{"effect": "buy_discount", "amount": 20}, {"effect": "hangar_slots", "amount": 60}, {"effect": "swarm_pct", "amount": 5}],
+   "reward": {"effect": "buy_discount", "amount": 5, "desc": "永久钻头价格 -5%"}},
+  {"id": "craft", "name": "精工派", "branch": "drill", "branchDiscount": 30, "desc": "全部伤害 +100%，暴击率 +10%，暴击伤害 +100%",
+   "bonuses": [{"effect": "dmg_pct", "amount": 100}, {"effect": "crit_chance", "amount": 10}, {"effect": "crit_mult", "amount": 100}],
+   "reward": {"effect": "dmg_pct", "amount": 50, "desc": "永久全部伤害 +50%"}},
+  {"id": "rich", "name": "富矿派", "branch": "wealth", "branchDiscount": 30, "desc": "全部收入 +100%，矿物价值 +100%，宝箱 +100%",
+   "bonuses": [{"effect": "gold_pct", "amount": 100}, {"effect": "ore_pct", "amount": 100}, {"effect": "chest_pct", "amount": 100}],
+   "reward": {"effect": "gold_pct", "amount": 50, "desc": "永久全部收入 +50%"}}
+ ],
  "rebirthMilestones": [
   {"count": 1, "perk": "coins", "amount": 2000, "tier": 0, "desc": "开局多 2000 金币"},
   {"count": 3, "perk": "root", "amount": 1, "tier": 0, "desc": "开局自带自动钻探，解锁自动化规则"},

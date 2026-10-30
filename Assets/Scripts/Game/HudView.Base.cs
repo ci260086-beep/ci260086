@@ -44,6 +44,7 @@ namespace DeepDrill.Game
             baseInfo.color = SoftText;
 
             BuildAutomationTab();
+            BuildSchoolTab();
             ShowBaseTab(0);
         }
 
@@ -132,6 +133,21 @@ namespace DeepDrill.Game
                 () => s.autoReservePct = (s.autoReservePct + 10) % 100, open);
             AddBaseRow(top + 4, () => s.autoRebirthRow > 0 ? $"到 {GameData.FormatDepth(s.autoRebirthRow)} 自动重铸" : "自动重铸：关闭",
                 () => "下一层", CycleAutoRebirth, open);
+        }
+
+        private void BuildSchoolTab()
+        {
+            NewBaseTab("流派");
+            AddBaseRow(0, () => !sim.SchoolsUnlocked ? "第一次重铸后解锁，每局选一派，重铸后可以重选"
+                : sim.CurrentSchool != null ? $"本局流派：{sim.CurrentSchool.Name}，下次重铸后可以换" : "本局还没选流派");
+            for (int i = 0; i < GameData.Schools.Count; i++)
+            {
+                int index = i;
+                var school = GameData.Schools[i];
+                AddBaseRow(1 + i * 2, () => $"{school.Name}：{school.Desc}", () => sim.State.school == index ? "本局" : "选择",
+                    () => sim.ChooseSchool(index), () => sim.CanChooseSchool(index));
+                AddBaseRow(2 + i * 2, () => $"  本派技能分支价格 -{school.BranchDiscount:0}%；{(sim.SchoolCleared(index) ? "已通关" : "通关奖励")}：{school.Reward.Desc}");
+            }
         }
 
         // Steps through the layer bottoms, then off again.

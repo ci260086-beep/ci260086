@@ -30,6 +30,7 @@ namespace DeepDrill.Core
         MasteryUp,
         SurfaceEventAppeared,
         SurfaceEventClaimed,
+        SchoolCleared,
     }
 
     public struct SimEvent
@@ -436,7 +437,7 @@ namespace DeepDrill.Core
         public bool CanBuy(SkillDef skill)
         {
             int level = State.LevelOf(skill.Id);
-            return IsUnlocked(skill) && level < skill.MaxLevel && State.coins >= skill.CostAt(level);
+            return IsUnlocked(skill) && level < skill.MaxLevel && State.coins >= SkillCost(skill);
         }
 
         public bool Buy(string skillId)
@@ -444,7 +445,7 @@ namespace DeepDrill.Core
             var skill = GameData.Skill(skillId);
             if (skill == null || !CanBuy(skill)) return false;
             int level = State.LevelOf(skillId);
-            State.coins -= skill.CostAt(level);
+            State.coins -= SkillCost(skill);
             State.SetLevel(skillId, level + 1);
             RefreshEffects();
             Events.Add(new SimEvent { Kind = SimEventKind.SkillBought, Amount = level + 1 });
@@ -511,6 +512,7 @@ namespace DeepDrill.Core
             State.dug.Clear();
             State.bossesDefeated = 0;
             State.seed = random.Next(1, int.MaxValue);
+            State.school = -1;
             State.drillX = Balance.StartColumn;
             State.drillY = -0.5 - DrillBody.HalfHeight;
 
@@ -721,6 +723,7 @@ namespace DeepDrill.Core
             CheckAchievements();
             CheckMilestones();
             CheckMastery();
+            CheckSchoolCleared();
             RunAutomation();
         }
 

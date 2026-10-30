@@ -98,6 +98,24 @@ namespace DeepDrill.Core
         public string Desc;
     }
 
+    public sealed class BonusDef
+    {
+        public SkillEffect Effect;
+        public double Amount;
+        public string Desc;
+    }
+
+    public sealed class SchoolDef
+    {
+        public string Id;
+        public string Name;
+        public string Branch;
+        public double BranchDiscount;
+        public string Desc;
+        public List<BonusDef> Bonuses = new List<BonusDef>();
+        public BonusDef Reward;
+    }
+
     public enum RebirthPerk { coins, root, drills, hangar, skills }
 
     public sealed class RebirthMilestone
@@ -155,6 +173,7 @@ namespace DeepDrill.Core
         public static double MasteryValuePct;
         public static EventTable Events;
         public static List<RebirthMilestone> RebirthMilestones;
+        public static List<SchoolDef> Schools;
 
         private static Dictionary<string, SkillDef> skillsById;
 
@@ -365,6 +384,23 @@ namespace DeepDrill.Core
             var root = Obj(MiniJson.Parse(json));
             LoadEvents(Obj(root["events"]));
 
+            Schools = new List<SchoolDef>();
+            foreach (var item in Arr(root["schools"]))
+            {
+                var o = Obj(item);
+                var school = new SchoolDef
+                {
+                    Id = Str(o, "id"),
+                    Name = Str(o, "name"),
+                    Branch = Str(o, "branch"),
+                    BranchDiscount = Num(o, "branchDiscount"),
+                    Desc = Str(o, "desc"),
+                    Reward = LoadBonus(o["reward"]),
+                };
+                foreach (var bonus in Arr(o["bonuses"])) school.Bonuses.Add(LoadBonus(bonus));
+                Schools.Add(school);
+            }
+
             RebirthMilestones = new List<RebirthMilestone>();
             foreach (var item in Arr(root["rebirthMilestones"]))
             {
@@ -378,6 +414,17 @@ namespace DeepDrill.Core
                     Desc = Str(o, "desc"),
                 });
             }
+        }
+
+        private static BonusDef LoadBonus(object item)
+        {
+            var o = Obj(item);
+            return new BonusDef
+            {
+                Effect = (SkillEffect)Enum.Parse(typeof(SkillEffect), Str(o, "effect")),
+                Amount = Num(o, "amount"),
+                Desc = o.TryGetValue("desc", out var desc) ? (string)desc : "",
+            };
         }
 
         private static void LoadEvents(Dictionary<string, object> o)

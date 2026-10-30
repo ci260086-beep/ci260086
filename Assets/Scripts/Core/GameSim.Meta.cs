@@ -42,6 +42,7 @@ namespace DeepDrill.Core
         private void RefreshPermanent()
         {
             metaDamage = metaIncome = 0;
+            ApplySchools();
         }
 
         // The gifts a new run starts with, once enough rebirths are behind the player.
@@ -111,8 +112,8 @@ namespace DeepDrill.Core
                 SkillDef best = null;
                 foreach (var skill in GameData.Skills)
                 {
-                    if (!CanBuy(skill) || State.coins - skill.CostAt(State.LevelOf(skill.Id)) < floor) continue;
-                    if (best == null || skill.CostAt(State.LevelOf(skill.Id)) < best.CostAt(State.LevelOf(best.Id))) best = skill;
+                    if (!CanBuy(skill) || State.coins - SkillCost(skill) < floor) continue;
+                    if (best == null || SkillCost(skill) < SkillCost(best)) best = skill;
                 }
                 if (best == null) return;
                 Buy(best.Id);

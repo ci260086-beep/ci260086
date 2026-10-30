@@ -393,7 +393,7 @@ namespace DeepDrill.Game
             }
             else
             {
-                double cost = skill.CostAt(level);
+                double cost = sim.SkillCost(skill);
                 tooltipPrice.text = "价格 " + NumberFormat.Short(cost);
                 tooltipPrice.color = sim.State.coins >= cost ? CoinColor : PriceRed;
             }

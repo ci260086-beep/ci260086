@@ -185,5 +185,86 @@ namespace DeepDrill.Tests
         }
 
         #endregion
+
+        #region step 4: schools
+
+        private static int School(string id) => GameData.Schools.FindIndex(s => s.Id == id);
+
+        [Test]
+        public void School_NeedsARebirthFirst()
+        {
+            var sim = CoreTests.NewSim();
+            Assert.IsFalse(sim.ChooseSchool(0));
+        }
+
+        [Test]
+        public void School_IsPickedOncePerRun()
+        {
+            var sim = Rebirthed(1);
+            Assert.IsTrue(sim.ChooseSchool(School("blast")));
+            Assert.IsFalse(sim.ChooseSchool(School("rich")));
+        }
+
+        [Test]
+        public void School_AddsItsBonuses()
+        {
+            var sim = Rebirthed(1);
+            double before = sim.Effect(SkillEffect.blast_dmg);
+            sim.ChooseSchool(School("blast"));
+            Assert.AreEqual(before + 200, sim.Effect(SkillEffect.blast_dmg), 1e-9);
+        }
+
+        [Test]
+        public void School_DamageStacksAsItsOwnFactor()
+        {
+            var sim = Rebirthed(1);
+            int code = DrillCode.Make(0, 0);
+            double before = sim.DamageOf(code);
+            sim.ChooseSchool(School("craft"));
+            Assert.AreEqual(before * 2, sim.DamageOf(code), 1e-9);
+        }
+
+        [Test]
+        public void School_MakesItsBranchCheaper()
+        {
+            var sim = Rebirthed(1);
+            var drill = GameData.Skills.First(s => s.Branch == "drill");
+            var other = GameData.Skills.First(s => s.Branch == "wealth");
+            double full = sim.SkillCost(drill), otherFull = sim.SkillCost(other);
+            sim.ChooseSchool(School("craft"));
+            Assert.AreEqual(full * 0.7, sim.SkillCost(drill), 1e-9);
+            Assert.AreEqual(otherFull, sim.SkillCost(other), 1e-9);
+        }
+
+        [Test]
+        public void School_EndsWithTheRun()
+        {
+            var sim = Rebirthed(1);
+            sim.ChooseSchool(0);
+            sim.State.bossesDefeated = 1;
+            sim.State.maxDepth = 400;
+            sim.State.totalIncome = 1e6;
+            Assert.IsTrue(sim.Rebirth());
+            Assert.IsNull(sim.CurrentSchool);
+        }
+
+        [Test]
+        public void School_ClearingPaysPermanently()
+        {
+            var sim = Rebirthed(1);
+            int code = DrillCode.Make(0, 0);
+            double before = sim.DamageOf(code);
+            sim.ChooseSchool(School("craft"));
+            sim.State.maxDepth = GameData.TotalRows;
+            sim.Tick(1.1);
+            Assert.IsTrue(sim.SchoolCleared(School("craft")));
+
+            sim.State.bossesDefeated = 1;
+            sim.State.totalIncome = 1e6;
+            Assert.IsTrue(sim.Rebirth());
+            Assert.Greater(sim.DamageOf(code), before);
+        }
+
+        #endregion
     }
 }

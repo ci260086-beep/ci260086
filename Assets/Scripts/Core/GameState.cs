@@ -73,6 +73,9 @@ namespace DeepDrill.Core
         public int autoReservePct;
         public int autoRebirthRow;
 
+        public int school = -1;  // this run's school, picked after a rebirth
+        public List<int> schoolsCleared = new List<int>();
+
         public bool AnyBossDown => bossesDefeated > 0;
 
         public int BoughtOf(int family) => family < bought.Count ? bought[family] : 0;

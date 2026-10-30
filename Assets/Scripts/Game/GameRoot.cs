@@ -285,6 +285,10 @@ namespace DeepDrill.Game
                     world.Shake(0.15f, 2f);
                     break;
 
+                case SimEventKind.SchoolCleared:
+                    hud.ShowToast($"{GameData.Schools[(int)e.Amount].Name}通关：{GameData.Schools[(int)e.Amount].Reward.Desc}", 5f);
+                    break;
+
                 case SimEventKind.MilestoneReached:
                     hud.ShowToast($"里程碑：{GameData.Milestones[(int)e.Amount][e.Row].Desc}", 3f);
                     break;

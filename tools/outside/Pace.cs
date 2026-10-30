@@ -41,6 +41,7 @@ public static class Pace
             if ((decide += Step) >= DecideSeconds)
             {
                 decide = 0;
+                sim.ChooseSchool(rebirths % GameData.Schools.Count);
                 Spend(sim);
                 sim.StartFrenzy();
                 sim.ClaimEvent();
@@ -81,7 +82,7 @@ public static class Pace
             bought = false;
             SkillDef best = null;
             foreach (var skill in GameData.Skills)
-                if (sim.CanBuy(skill) && (best == null || skill.CostAt(sim.State.LevelOf(skill.Id)) < best.CostAt(sim.State.LevelOf(best.Id))))
+                if (sim.CanBuy(skill) && (best == null || sim.SkillCost(skill) < sim.SkillCost(best)))
                     best = skill;
             if (best != null) bought = sim.Buy(best.Id);
         }
