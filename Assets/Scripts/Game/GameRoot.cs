@@ -20,6 +20,7 @@ namespace DeepDrill.Game
         private static readonly Color CopperBits = new Color32(0xe0, 0x8a, 0x4a, 0xff);
         private static readonly Color GrassBits = new Color32(0x76, 0xa8, 0x3a, 0xff);
         private static readonly Color ChestBits = new Color32(0xff, 0xe2, 0x7a, 0xff);
+        private static readonly Color TntBits = new Color32(0xb8, 0x2c, 0x2c, 0xff);
         private static readonly Color HitText = Color.white;
         private static readonly Color CoinText = new Color32(0xff, 0xe2, 0x7a, 0xff);
 
@@ -92,6 +93,7 @@ namespace DeepDrill.Game
             else sim.Tick(Time.deltaTime);
 
             if (Input.GetMouseButtonDown(0)) HandleClick(Input.mousePosition);
+            if (Input.GetKeyDown(KeyCode.Space)) sim.StartFrenzy();
 
             DrainEvents();
 
@@ -130,18 +132,43 @@ namespace DeepDrill.Game
             switch (e.Kind)
             {
                 case SimEventKind.BlockHit:
-                    world.NoteHit(e.Row, e.Col);
-                    if (e.FromClick)
-                    {
-                        fx.FloatText(NumberFormat.Short(e.Amount), CellStage(e.Row, e.Col), HitText, 8);
-                        fx.Debris(WorldView.CellCenter(e.Row, e.Col), BitsColor(e.Block), 2);
-                    }
+                    OnHit(e);
                     break;
 
                 case SimEventKind.BlockBroken:
                     OnBroken(e);
                     break;
+
+                case SimEventKind.Explosion:
+                    fx.Explosion(WorldView.CellCenter(e.Row, e.Col), (int)e.Amount);
+                    fx.Debris(WorldView.CellCenter(e.Row, e.Col), CopperBits, 16);
+                    world.Shake(0.2f, 3f);
+                    break;
+
+                case SimEventKind.FrenzyStarted:
+                    hud.ShowNotice("狂热模式！", 1.5f);
+                    world.Shake(0.25f, 2f);
+                    break;
+
+                case SimEventKind.FrenzyEnded:
+                    hud.ShowNotice("", 0f);
+                    break;
             }
+        }
+
+        private void OnHit(in SimEvent e)
+        {
+            world.NoteHit(e.Row, e.Col);
+            if (e.Crit)
+            {
+                fx.FloatText(NumberFormat.Short(e.Amount) + "!", CellStage(e.Row, e.Col), CoinText, 13);
+                world.Shake(0.14f, 2f);
+            }
+            else if (e.FromClick)
+            {
+                fx.FloatText(NumberFormat.Short(e.Amount), CellStage(e.Row, e.Col), HitText, 8);
+            }
+            if (e.FromClick) fx.Debris(WorldView.CellCenter(e.Row, e.Col), BitsColor(e.Block), 2);
         }
 
         private void OnBroken(in SimEvent e)
@@ -184,6 +211,7 @@ namespace DeepDrill.Game
                 case BlockType.Coal: return CoalBits;
                 case BlockType.Copper: return CopperBits;
                 case BlockType.Chest: return ChestBits;
+                case BlockType.Tnt: return TntBits;
                 default: return DirtBits;
             }
         }

@@ -16,12 +16,20 @@ namespace DeepDrill.Game
         private const float FloatSeconds = 0.65f;
         private const float FloatRise = 18f;
         private const int MaxFlyers = 40;
+        private const int BlastCount = 12;
+        private const float BlastSeconds = 0.3f;
 
         private sealed class Bit
         {
             public SpriteRenderer Sprite;
             public Vector2 Velocity;
             public float Life;
+        }
+
+        private sealed class Blast
+        {
+            public SpriteRenderer Sprite;
+            public float Time;
         }
 
         private sealed class Flyer
@@ -41,6 +49,7 @@ namespace DeepDrill.Game
         }
 
         private readonly List<Bit> bits = new List<Bit>();
+        private readonly List<Blast> blasts = new List<Blast>();
         private readonly List<Flyer> flyers = new List<Flyer>();
         private readonly List<Flyer> flyerPool = new List<Flyer>();
         private readonly List<Floater> floaters = new List<Floater>();
@@ -50,12 +59,23 @@ namespace DeepDrill.Game
         private RectTransform layer;
         private Font font;
         private Sprite whitePixel;
+        private Sprite[] blastFrames;
 
         public void Init(ArtLibrary art, RectTransform fxLayer, Font uiFont)
         {
             layer = fxLayer;
             font = uiFont;
             whitePixel = art.Get("pixel");
+            blastFrames = art.Strip("explosion", 32);
+            for (int i = 0; i < BlastCount; i++)
+            {
+                var go = new GameObject("blast");
+                go.transform.SetParent(transform, false);
+                var sr = go.AddComponent<SpriteRenderer>();
+                sr.sortingOrder = 7;
+                sr.enabled = false;
+                blasts.Add(new Blast { Sprite = sr });
+            }
             for (int i = 0; i < DebrisCount; i++)
             {
                 var go = new GameObject("bit");
@@ -65,6 +85,21 @@ namespace DeepDrill.Game
                 sr.sortingOrder = 8;
                 sr.enabled = false;
                 bits.Add(new Bit { Sprite = sr });
+            }
+        }
+
+        /// <summary>Plays the explosion sized to cover a blast of the given tile radius.</summary>
+        public void Explosion(Vector2 world, int radius)
+        {
+            foreach (var blast in blasts)
+            {
+                if (blast.Sprite.enabled) continue;
+                blast.Time = 0;
+                blast.Sprite.enabled = true;
+                blast.Sprite.sprite = blastFrames[0];
+                blast.Sprite.transform.position = world;
+                blast.Sprite.transform.localScale = Vector3.one * (radius * 2 + 1) * 0.5f;
+                return;
             }
         }
 
@@ -150,6 +185,18 @@ namespace DeepDrill.Game
                 }
                 bit.Velocity.y -= DebrisGravity * dt;
                 bit.Sprite.transform.position += (Vector3)(bit.Velocity * dt);
+            }
+
+            foreach (var blast in blasts)
+            {
+                if (!blast.Sprite.enabled) continue;
+                blast.Time += dt / BlastSeconds;
+                if (blast.Time >= 1)
+                {
+                    blast.Sprite.enabled = false;
+                    continue;
+                }
+                blast.Sprite.sprite = blastFrames[(int)(blast.Time * blastFrames.Length)];
             }
 
             for (int i = flyers.Count - 1; i >= 0; i--)

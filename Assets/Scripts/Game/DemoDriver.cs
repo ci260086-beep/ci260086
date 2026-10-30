@@ -11,7 +11,7 @@ namespace DeepDrill.Game
     /// </summary>
     public sealed class DemoDriver : MonoBehaviour
     {
-        private static readonly float[] ShotTimes = { 1.5f, 6f, 14f, 25f };
+        private static readonly float[] ShotTimes = { 8f, 20f, 32f, 44f };
         private const float SecondsPerTap = 0.25f;
 
         private GameRoot root;
@@ -73,6 +73,7 @@ namespace DeepDrill.Game
         {
             var sim = root.Sim;
             foreach (var skill in SkillCatalog.All) sim.Buy(skill.Id);
+            sim.StartFrenzy();
             int row = sim.State.depth + Random.Range(0, 5);
             root.ClickCell(row, Random.Range(1, Balance.Columns - 1));
         }

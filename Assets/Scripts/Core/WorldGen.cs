@@ -8,6 +8,7 @@ namespace DeepDrill.Core
         Coal,
         Copper,
         Chest,
+        Tnt,
     }
 
     public sealed class Block
@@ -47,7 +48,7 @@ namespace DeepDrill.Core
             }
         }
 
-        public static BlockType TypeAt(int seed, int row, int col)
+        public static BlockType TypeAt(int seed, int row, int col, double tntChance = Balance.TntChance)
         {
             if (row == 0) return BlockType.Grass;
             if (row < SafeRows) return BlockType.Dirt;
@@ -57,6 +58,7 @@ namespace DeepDrill.Core
             if (r < 0.085) return BlockType.Coal;
             if (r < 0.145) return BlockType.Copper;
             if (r < 0.245) return BlockType.HardRock;
+            if (r < 0.245 + tntChance) return BlockType.Tnt;
             return BlockType.Dirt;
         }
 

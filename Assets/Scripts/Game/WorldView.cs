@@ -34,8 +34,9 @@ namespace DeepDrill.Game
         private Sprite[] dirt;
         private Sprite[] cracks;
         private Sprite[] drillFrames;
+        private Sprite[] frenzyFrames;
         private Sprite tunnel;
-        private Sprite grass, hardRock, coal, copper, chest;
+        private Sprite grass, hardRock, coal, copper, chest, tnt;
         private SpriteRenderer drill;
         private float displayDepth;
         private float drillClock;
@@ -51,6 +52,8 @@ namespace DeepDrill.Game
             dirt = new[] { art.Get("dirt_a"), art.Get("dirt_b"), art.Get("dirt_c") };
             cracks = art.Strip("crack_overlay", 16);
             drillFrames = art.Strip("drill_spin", 32);
+            frenzyFrames = art.Strip("drill_frenzy", 32);
+            tnt = art.Get("tnt");
             tunnel = art.Get("tunnel_bg");
             grass = art.Get("grass");
             hardRock = art.Get("hard_rock");
@@ -121,7 +124,8 @@ namespace DeepDrill.Game
             cam.transform.position = new Vector3(target.x + shake.x, target.y + shake.y, -10);
 
             drillClock += dt * DrillFramesPerSecond;
-            drill.sprite = drillFrames[(int)drillClock % drillFrames.Length];
+            var frames = sim.InFrenzy ? frenzyFrames : drillFrames;
+            drill.sprite = frames[(int)(drillClock * (sim.InFrenzy ? 2f : 1f)) % frames.Length];
             drill.transform.position = new Vector3(0, Stage.SnapToPixel(drillY), 0);
 
             StepWobble(dt);
@@ -180,6 +184,7 @@ namespace DeepDrill.Game
                 case BlockType.Coal: return coal;
                 case BlockType.Copper: return copper;
                 case BlockType.Chest: return chest;
+                case BlockType.Tnt: return tnt;
                 default: return dirt[WorldGen.Hash(sim.State.seed + 7, row, col) % dirt.Length];
             }
         }

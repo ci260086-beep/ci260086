@@ -362,6 +362,29 @@ for _, v in ipairs({ { "drill_spin", false }, { "drill_frenzy", true } }) do
   save(sheet, "Drill/" .. v[1])
 end
 
+-- explosion: 4 frames, 32x32, a hot core that turns into scattered smoke
+local blast = canvas(128, 32)
+local HOT, MID, COOL, SMOKE = hex("fff0c0"), O2, hex("b8432a"), K2
+local RADII = { 7, 12, 15, 15 }
+for f = 0, 3 do
+  local r = RADII[f + 1]
+  for y = 0, 31 do
+    for x = 0, 31 do
+      local d = math.sqrt((x - 15.5) ^ 2 + (y - 15.5) ^ 2)
+      local speckle = (x * 13 + y * 7 + f * 5) % 5
+      if d <= r and not (f >= 2 and speckle < f - 1) then
+        local t = d / r
+        local c
+        if f == 3 then c = t < 0.6 and COOL or SMOKE
+        elseif f == 2 then c = t < 0.45 and MID or (t < 0.8 and COOL or SMOKE)
+        else c = t < 0.5 and HOT or (t < 0.8 and MID or COOL) end
+        blast:set(x + f * 32, y, c)
+      end
+    end
+  end
+end
+save(blast, "Items/explosion")
+
 local white = canvas(1, 1)
 white:set(0, 0, hex("ffffff"))
 save(white, "Items/pixel")

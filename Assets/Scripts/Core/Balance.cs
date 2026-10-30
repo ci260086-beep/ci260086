@@ -20,6 +20,30 @@ namespace DeepDrill.Core
         public const double CopperValue = 2;
         public const double ChestValue = 25;
 
+        public const double CritChance = 0.1;
+        public const double CritMultiplier = 3;
+
+        public const double ComboWindowSeconds = 3;
+        public const int ComboStep = 10;
+        public const double ComboBonusPerStep = 0.1;
+        public const double ComboBonusMax = 1.0; // without a cap long chains compound into runaway income
+
+        public const double FrenzySeconds = 10;
+        public const double FrenzySpeedMultiplier = 5;
+        public const double FrenzyDamageMultiplier = 2;
+        public const double FrenzyChargePerBreak = 0.02;
+        public const double FrenzyChargePerLevel = 0.1;
+        public const int FrenzyBurstRadius = 3;
+
+        public const double HardRockBonusPerLevel = 0.2;
+        public const double PierceRatioPerLevel = 0.25;
+
+        public const double TntChance = 0.02;
+        public const double TntChancePerLevel = 0.005;
+        public const int BaseBlastRadius = 1;
+        public const int BaseChainLimit = 2;
+        public const int ChainLimitPerLevel = 2;
+
         public const double OfflineRate = 0.5;
         public const double OfflineCapSeconds = 2 * 60 * 60;
 

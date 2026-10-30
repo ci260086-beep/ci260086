@@ -132,6 +132,177 @@ namespace DeepDrill.Tests
             Assert.AreEqual(Balance.BaseHitsPerSecond * 1.05, sim.HitsPerSecond, 1e-9);
         }
 
+        private static void MakeBlock(GameSim sim, int row, int col, BlockType type, double hp = 0.1)
+        {
+            var b = sim.Row(row)[col];
+            b.Type = type;
+            b.Hp = hp;
+            b.MaxHp = hp;
+        }
+
+        [Test]
+        public void Combo_GrowsResetsAndBoostsPerTenBreaks()
+        {
+            var sim = NewSim();
+            for (int col = 0; col < 10; col++)
+            {
+                MakeBlock(sim, 8, col, BlockType.Dirt);
+                sim.Click(8, col);
+            }
+            Assert.AreEqual(10, sim.Combo);
+            Assert.AreEqual(1.1, sim.ComboMultiplier, 1e-9);
+            // the drill must not break anything while the window runs out
+            for (int col = 0; col < Balance.Columns; col++) sim.Row(0)[col].Hp = 1e12;
+            sim.Tick(Balance.ComboWindowSeconds + 0.01);
+            Assert.AreEqual(0, sim.Combo);
+        }
+
+        [Test]
+        public void Crits_HappenAtAboutTheConfiguredRateAndMultiply()
+        {
+            var sim = NewSim();
+            int crits = 0;
+            for (int i = 0; i < 4000; i++)
+            {
+                MakeBlock(sim, 8, 0, BlockType.Dirt, 1e12);
+                sim.Click(8, 0);
+            }
+            foreach (var e in sim.Events)
+            {
+                if (e.Kind != SimEventKind.BlockHit) continue;
+                if (e.Crit)
+                {
+                    crits++;
+                    Assert.AreEqual(sim.DamagePerHit * Balance.CritMultiplier, e.Amount, 1e-9);
+                }
+            }
+            Assert.That(crits, Is.InRange(320, 480));
+        }
+
+        [Test]
+        public void Frenzy_ChargesFromCombosRunsThenStops()
+        {
+            var sim = NewSim();
+            Assert.IsFalse(sim.StartFrenzy());
+            for (int i = 0; i < 60; i++)
+            {
+                MakeBlock(sim, 8, 0, BlockType.Dirt);
+                sim.Click(8, 0);
+            }
+            Assert.IsTrue(sim.FrenzyReady);
+            double normalSpeed = sim.HitsPerSecond;
+            Assert.IsTrue(sim.StartFrenzy());
+            Assert.AreEqual(normalSpeed * 5, sim.HitsPerSecond, 1e-9);
+            Assert.AreEqual(0, sim.FrenzyEnergy, 1e-9);
+            sim.Tick(Balance.FrenzySeconds + 0.01);
+            Assert.IsFalse(sim.InFrenzy);
+            Assert.AreEqual(normalSpeed, sim.HitsPerSecond, 1e-9);
+        }
+
+        [Test]
+        public void FrenzyBurst_ExplodesWhenFrenzyEnds()
+        {
+            var sim = NewSim();
+            sim.State.SetLevel(SkillCatalog.FrenzyBurst, 1);
+            for (int i = 0; i < 60; i++)
+            {
+                MakeBlock(sim, 8, 0, BlockType.Dirt);
+                sim.Click(8, 0);
+            }
+            sim.StartFrenzy();
+            sim.Events.Clear();
+            sim.Tick(Balance.FrenzySeconds + 0.01);
+            Assert.IsTrue(sim.Events.Exists(e => e.Kind == SimEventKind.Explosion));
+        }
+
+        [Test]
+        public void Tnt_BreaksNeighboursAndPaysForThem()
+        {
+            var sim = NewSim();
+            MakeBlock(sim, 10, 2, BlockType.Tnt);
+            sim.Row(10)[3].Type = BlockType.Dirt;
+            sim.Click(10, 2);
+            Assert.IsFalse(sim.Row(10)[3].Alive, "right neighbour");
+            Assert.IsFalse(sim.Row(9)[2].Alive, "above");
+            Assert.IsFalse(sim.Row(11)[2].Alive, "below");
+            Assert.IsTrue(sim.Row(10)[5].Alive, "outside the radius");
+            Assert.Greater(sim.State.coins, 0);
+        }
+
+        [Test]
+        public void Tnt_ChainsUpToTheLimit()
+        {
+            var sim = NewSim();
+            for (int col = 0; col < 8; col++) MakeBlock(sim, 10, col, BlockType.Tnt);
+            sim.Click(10, 0);
+            int blasts = sim.Events.FindAll(e => e.Kind == SimEventKind.Explosion).Count;
+            Assert.AreEqual(Balance.BaseChainLimit, blasts);
+
+            sim = NewSim();
+            sim.State.SetLevel(SkillCatalog.BlastChain, 1);
+            for (int col = 0; col < 8; col++) MakeBlock(sim, 10, col, BlockType.Tnt);
+            sim.Click(10, 0);
+            blasts = sim.Events.FindAll(e => e.Kind == SimEventKind.Explosion).Count;
+            Assert.AreEqual(Balance.BaseChainLimit + Balance.ChainLimitPerLevel, blasts);
+        }
+
+        [Test]
+        public void BlastLoot_DoublesOreFromExplosions()
+        {
+            var sim = NewSim();
+            sim.State.SetLevel(SkillCatalog.BlastLoot, 1);
+            MakeBlock(sim, 10, 2, BlockType.Tnt);
+            for (int r = 9; r <= 11; r++)
+                for (int c = 1; c <= 3; c++)
+                    if (r != 10 || c != 2) sim.Row(r)[c].Type = BlockType.Dirt;
+            sim.Row(10)[3].Type = BlockType.Copper;
+            sim.Click(10, 2);
+            Assert.AreEqual(2, sim.State.ores, 1e-9);
+        }
+
+        [Test]
+        public void TwinDrill_HitsTwoBlocksPerSwing()
+        {
+            var sim = NewSim();
+            sim.State.SetLevel(SkillCatalog.DrillTwin, 1);
+            sim.Tick(1.001 / Balance.BaseHitsPerSecond);
+            Assert.AreEqual(2, sim.Events.FindAll(e => e.Kind == SimEventKind.BlockHit).Count);
+        }
+
+        [Test]
+        public void Pierce_AlsoDamagesTheBlockBelow()
+        {
+            var sim = NewSim();
+            sim.State.SetLevel(SkillCatalog.DrillPierce, 2);
+            double full = sim.Row(1)[Balance.ShaftCenter].MaxHp;
+            sim.Tick(1.001 / Balance.BaseHitsPerSecond);
+            Assert.Less(sim.Row(1)[Balance.ShaftCenter].Hp, full);
+        }
+
+        [Test]
+        public void HardRockSkill_RaisesDamageOnHardRockOnly()
+        {
+            var sim = NewSim();
+            sim.State.SetLevel(SkillCatalog.DrillHard, 5);
+            MakeBlock(sim, 8, 0, BlockType.HardRock, 1e12);
+            sim.Click(8, 0);
+            var hit = sim.Events.Find(e => e.Kind == SimEventKind.BlockHit);
+            double crit = hit.Crit ? Balance.CritMultiplier : 1;
+            Assert.AreEqual(sim.DamagePerHit * crit * 2, hit.Amount, 1e-6);
+        }
+
+        [Test]
+        public void EverySkillRequirement_PointsAtARealSkill()
+        {
+            foreach (var skill in SkillCatalog.All)
+            {
+                if (skill.RequiresId == null) continue;
+                var parent = SkillCatalog.Get(skill.RequiresId);
+                Assert.IsNotNull(parent, skill.Id);
+                Assert.LessOrEqual(skill.RequiresLevel, parent.MaxLevel, skill.Id);
+            }
+        }
+
         [Test]
         public void Offline_PaysHalfAndCapsAtTwoHours()
         {
