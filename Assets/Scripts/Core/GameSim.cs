@@ -24,6 +24,7 @@ namespace DeepDrill.Core
         RareFound,
         AchievementUnlocked,
         Overheated,
+        DrillBoosted,
     }
 
     public struct SimEvent
@@ -46,6 +47,11 @@ namespace DeepDrill.Core
         public int Code;
         public double HitClock;
         public double LastSwing = -1;
+        public bool PrefersLeft;
+
+        /// <summary>Stacked with nowhere to go: this drill hammers the one below instead.</summary>
+        public bool Boosting;
+        public DrillUnit Below;
 
         public int Family => DrillCode.Family(Code);
         public int Tier => DrillCode.Tier(Code);
@@ -63,7 +69,10 @@ namespace DeepDrill.Core
         private const double HousekeepingSeconds = 1;
         private const int SwarmPerDrills = 10;
         private const int AutoBuysPerTick = 5;
-        private const int MaxSpawnRowsUp = 40;
+        private const int MaxSpawnRowsUp = 60;
+        private const int SpawnDropRows = 6;
+        private const int SlideSearchColumns = 8;
+        private const int MaxBoostChain = 400;
         public const string RootSkill = "root";
         private const int SwiftFamily = 1;
         private const int HeavyFamily = 2;
@@ -418,6 +427,9 @@ namespace DeepDrill.Core
             Events.Add(new SimEvent { Kind = SimEventKind.DrillMerged, Amount = DrillCode.Make(DrillCode.Family(code), tier) });
         }
 
+        /// <summary>Brings the bodies on the field in line with the owned list.</summary>
+        public void SyncDrills() => RebuildUnits();
+
         /// <summary>Tops up the frenzy meter; for the demo driver.</summary>
         public void FillFrenzy() => FrenzyEnergy = 1;
 
@@ -568,7 +580,7 @@ namespace DeepDrill.Core
                     keep.Add(stack.Pop());
                     continue;
                 }
-                var unit = new DrillUnit { Code = sorted[i] };
+                var unit = new DrillUnit { Code = sorted[i], PrefersLeft = random.Next(2) == 0 };
                 keep.Add(unit);
                 fresh.Add(unit);
             }
@@ -614,28 +626,83 @@ namespace DeepDrill.Core
 
         private void SpawnNearLead(DrillUnit unit)
         {
-            // Works upward from the lead's row until it finds a free cell, so a big batch forms a crowd
-            // above the digging face instead of piling into one spot. Rows above ground are open air.
+            // Drops in above the digging face, in whichever nearby column has the fewest drills,
+            // so a batch spreads out instead of landing on itself. A shaft is opened for the fall.
+            int col = EmptiestColumn();
+            int floor = Lead.Body.FeetRow - 1;
+            for (int up = SpawnDropRows; up < MaxSpawnRowsUp; up++)
+            {
+                int row = floor - up;
+                if (occupied.ContainsKey(CellKey(row, col))) continue;
+                for (int r = row; r <= floor; r++) Carve(r, col);
+                unit.Body.Place(col, row);
+                occupied[CellKey(row, col)] = unit;
+                unit.HitClock = random.NextDouble();
+                return;
+            }
+            unit.Body.Place(col, floor - MaxSpawnRowsUp);
+        }
+
+        private int EmptiestColumn()
+        {
+            int best = Lead.Body.Column, fewest = int.MaxValue;
             int width = Balance.SpawnSpreadColumns * 2 + 1;
             int start = random.Next(width);
-            int leadRow = Lead.Body.FeetRow - 1;
-            for (int up = 0; up < MaxSpawnRowsUp; up++)
+            for (int i = 0; i < width; i++)
             {
-                int row = leadRow - up;
-                for (int i = 0; i < width; i++)
-                {
-                    int offset = (start + i) % width - Balance.SpawnSpreadColumns;
-                    int col = Math.Max(1, Math.Min(Balance.Columns - 2, Lead.Body.Column + offset));
-                    if (occupied.ContainsKey(CellKey(row, col))) continue;
-                    Carve(row, col); // opens a small pocket; the drill then digs its own way down
-                    unit.Body.Place(col, row);
-                    occupied[CellKey(row, col)] = unit;
-                    unit.HitClock = random.NextDouble();
-                    return;
-                }
+                int offset = (start + i) % width - Balance.SpawnSpreadColumns;
+                int col = Math.Max(1, Math.Min(Balance.Columns - 2, Lead.Body.Column + offset));
+                int count = 0;
+                foreach (var other in Units)
+                    if (other.Body.Column == col) count++;
+                if (count >= fewest) continue;
+                fewest = count;
+                best = col;
             }
-            unit.Body.Place(Lead.Body.X, leadRow - MaxSpawnRowsUp);
+            return best;
         }
+
+        // A drill resting on a drill slides to the nearest column it can dig in. With nowhere to go
+        // it stays on top as a booster, so no drill is ever idle.
+        private void UpdateFooting(DrillUnit unit)
+        {
+            var body = unit.Body;
+            body.Nudge = 0;
+            unit.Boosting = false;
+            unit.Below = null;
+            int feet = body.FeetRow;
+            int col = body.Column;
+            if (!occupied.TryGetValue(CellKey(feet, col), out var below) || below == unit) return;
+            if (IsSolid(feet, col)) return;
+
+            int side = OpenSide(body.BodyRow, feet, col, unit.PrefersLeft);
+            if (side != 0)
+            {
+                body.Nudge = side;
+                return;
+            }
+            unit.Boosting = true;
+            unit.Below = below;
+        }
+
+        private int OpenSide(int bodyRow, int feet, int col, bool prefersLeft)
+        {
+            bool leftClear = true, rightClear = true;
+            for (int d = 1; d <= SlideSearchColumns; d++)
+            {
+                leftClear = leftClear && Passable(bodyRow, col - d);
+                rightClear = rightClear && Passable(bodyRow, col + d);
+                bool left = leftClear && !occupied.ContainsKey(CellKey(feet, col - d));
+                bool right = rightClear && !occupied.ContainsKey(CellKey(feet, col + d));
+                if (left && right) return prefersLeft ? -1 : 1;
+                if (left) return -1;
+                if (right) return 1;
+                if (!leftClear && !rightClear) return 0;
+            }
+            return 0;
+        }
+
+        private bool Passable(int row, int col) => !IsSolid(row, col) && !occupied.ContainsKey(CellKey(row, col));
 
         private void AdvancePhysics(double dt)
         {
@@ -649,6 +716,7 @@ namespace DeepDrill.Core
                 foreach (var unit in Units)
                 {
                     stepper = unit;
+                    UpdateFooting(unit);
                     long before = CellKey(unit.Body.BodyRow, unit.Body.Column);
                     double impact = unit.Body.Step(DrillBody.StepSeconds, solidForStepper);
                     long after = CellKey(unit.Body.BodyRow, unit.Body.Column);
@@ -693,8 +761,13 @@ namespace DeepDrill.Core
 
         private void Swing(DrillUnit unit)
         {
-            if (!FindTarget(unit.Body, out int row, out int col)) return;
+            var digger = unit;
+            for (int hops = 0; digger.Boosting && digger.Below != null && hops < MaxBoostChain; hops++)
+                digger = digger.Below;
+            if (!FindTarget(digger.Body, out int row, out int col)) return;
             unit.LastSwing = simTime;
+            if (digger != unit)
+                Events.Add(new SimEvent { Kind = SimEventKind.DrillBoosted, Row = unit.Body.BodyRow, Col = unit.Body.Column });
             Strike(row, col, DamageOf(unit.Code), false, RollCrit(), unit);
         }
 

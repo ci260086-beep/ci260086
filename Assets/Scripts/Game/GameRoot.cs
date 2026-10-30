@@ -200,6 +200,10 @@ namespace DeepDrill.Game
                     world.Shake(0.3f, 4f);
                     break;
 
+                case SimEventKind.DrillBoosted:
+                    if (fx.Allow()) fx.Sparks(WorldView.CellCenter(e.Row, e.Col) + Vector2.down * 0.4f, 1);
+                    break;
+
                 case SimEventKind.Overheated:
                     hud.ShowToast("过热！开启狂热可以散热", 2f);
                     break;

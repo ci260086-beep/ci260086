@@ -801,6 +801,89 @@ namespace DeepDrill.Tests
             Assert.AreEqual(sim.ClickDamage * crit * Balance.HeatDamageRatio, hit.Amount, 1e-3);
         }
 
+        // An open floor at row 13, or with walls either side of column 20 when asked for a well.
+        private static GameSim Arena(int drills, bool well)
+        {
+            var sim = NewSim();
+            for (int r = 0; r < 13; r++)
+                for (int c = 0; c < Balance.Columns; c++)
+                {
+                    sim.Row(r)[c].Hp = 0;
+                    if (well && c != 20) MakeBlock(sim, r, c, BlockType.Dirt, 1e15);
+                }
+            for (int r = 13; r < 16; r++)
+                for (int c = 0; c < Balance.Columns; c++)
+                    MakeBlock(sim, r, c, BlockType.Dirt, 1e15);
+            for (int i = 1; i < drills; i++) sim.State.drills.Add(DrillCode.Make(0, 0));
+            sim.SyncDrills();
+            return sim;
+        }
+
+        private static void Stack(GameSim sim)
+        {
+            for (int i = 0; i < sim.Units.Count; i++)
+                sim.Units[i].Body.Place(20, 12.5 - DrillBody.HalfHeight - i);
+            sim.Units[0].HitClock = 0;
+        }
+
+        [Test]
+        public void DrillOnADrill_SlidesOffAndDigs()
+        {
+            var sim = Arena(2, false);
+            Stack(sim);
+            for (int i = 0; i < 40; i++) sim.Tick(0.05);
+            var a = sim.Units[0].Body;
+            var b = sim.Units[1].Body;
+            Assert.AreNotEqual(a.Column, b.Column, "no longer stacked");
+            Assert.IsTrue(sim.Units.TrueForAll(u => !u.Boosting));
+            Assert.IsTrue(sim.IsSolid(b.FeetRow, b.Column), "standing on rock");
+        }
+
+        [Test]
+        public void NoRoom_TopDrillBoostsTheOneBelow()
+        {
+            var sim = Arena(2, true);
+            Stack(sim);
+            sim.Tick(0.05);
+            Assert.IsTrue(sim.Units.Exists(u => u.Boosting));
+
+            var floor = sim.Row(13)[20];
+            double before = floor.Hp;
+            sim.Events.Clear();
+            for (int i = 0; i < 20; i++) sim.Tick(0.05);
+            double perSwing = sim.DamageOf(DrillCode.Make(0, 0));
+            var hits = sim.Events.FindAll(e => e.Kind == SimEventKind.BlockHit);
+            Assert.GreaterOrEqual(hits.Count, 5, "both drills swing at 3 a second");
+            Assert.IsTrue(hits.TrueForAll(e => e.Row == 13 && e.Col == 20), "all on the block under the bottom drill");
+            Assert.Less(floor.Hp, before - perSwing * 4);
+        }
+
+        [Test]
+        public void Stacking_LosesNoDamage()
+        {
+            double Dealt(int drills)
+            {
+                var sim = Arena(drills, true);
+                Stack(sim);
+                sim.Tick(0.05);
+                foreach (var u in sim.Units) u.HitClock = 0;
+                sim.Events.Clear();
+                for (int i = 0; i < 40; i++) sim.Tick(0.05);
+                return sim.Events.FindAll(e => e.Kind == SimEventKind.BlockHit).Count;
+            }
+            Assert.AreEqual(Dealt(1) * 3, Dealt(3), 3, "three stacked drills swing three times as often");
+        }
+
+        [Test]
+        public void NewDrills_SpreadAcrossColumns()
+        {
+            var sim = NewSim();
+            for (int i = 0; i < 12; i++) sim.State.drills.Add(DrillCode.Make(0, 0));
+            sim.SyncDrills();
+            int columns = sim.Units.Select(u => u.Body.Column).Distinct().Count();
+            Assert.Greater(columns, 9);
+        }
+
         [Test]
         public void Rares_DropFromChestsAndDuplicatesStack()
         {

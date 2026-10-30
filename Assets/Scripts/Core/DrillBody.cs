@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 
 namespace DeepDrill.Core
 {
@@ -32,6 +32,9 @@ namespace DeepDrill.Core
         public double Angle;
         public double AngularVelocity;
 
+        /// <summary>Set by the sim while standing on another drill: -1 slide left, 1 slide right.</summary>
+        public int Nudge;
+
         public bool Grounded { get; private set; }
 
         public double DirectionX => Math.Sin(Angle * Math.PI / 180);
@@ -64,14 +67,14 @@ namespace DeepDrill.Core
                 bool left = solid(row, col - 1);
                 bool right = solid(row, col + 1);
                 VelocityY = 0;
-                if (left == right)
+                if (left == right && Nudge == 0)
                 {
                     VelocityX = Approach(VelocityX, 0, GroundFriction * dt);
                 }
                 else
                 {
-                    // standing beside a hole: the body tips and slides towards it
-                    double side = left ? 1 : -1;
+                    // standing beside a hole, or on another drill: the body tips and slides off
+                    double side = Nudge != 0 ? Nudge : (left ? 1 : -1);
                     targetAngle = side * MaxTilt;
                     VelocityX += side * SlideAcceleration * dt;
                 }
