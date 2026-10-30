@@ -1,0 +1,17 @@
+{
+    "name": "DeepDrill.Game",
+    "rootNamespace": "DeepDrill.Game",
+    "references": [
+        "DeepDrill.Core",
+        "UnityEngine.UI"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
