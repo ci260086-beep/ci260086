@@ -87,14 +87,19 @@ namespace DeepDrill.Game
             var live = root.Sim.State;
             root.SaveNow();
             var loaded = root.Saves.Load();
-            bool same = loaded.depth == live.depth && loaded.coins == live.coins && loaded.seed == live.seed
-                && loaded.drillX == live.drillX && loaded.drillY == live.drillY
+            bool same = loaded.depth == live.depth && Close(loaded.coins, live.coins) && loaded.seed == live.seed
+                && Close(loaded.drillX, live.drillX) && Close(loaded.drillY, live.drillY)
                 && loaded.skills.Count == live.skills.Count && loaded.version == GameState.CurrentVersion;
+            Debug.Log($"[demo] coins {live.coins:R}/{loaded.coins:R} x {live.drillX:R}/{loaded.drillX:R} " +
+                $"y {live.drillY:R}/{loaded.drillY:R} skills {live.skills.Count}/{loaded.skills.Count}");
             double before = loaded.coins;
             double offline = new GameSim(loaded).ApplyOffline(loaded.lastSaveUnixSeconds + 3600);
             Debug.Log($"[demo] save roundtrip same={same} depth={loaded.depth} incomePerSec={loaded.incomePerSecond:0.00} " +
                 $"offline1h={offline:0.0} coins {before:0.0}->{loaded.coins:0.0}");
         }
+
+        // JsonUtility may round a double's last digit; anything larger is a real loss
+        private static bool Close(double a, double b) => System.Math.Abs(a - b) <= System.Math.Abs(a) * 1e-12;
 
         private void Play()
         {
