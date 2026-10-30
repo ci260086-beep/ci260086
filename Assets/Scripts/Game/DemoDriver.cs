@@ -6,13 +6,16 @@ using UnityEngine;
 namespace DeepDrill.Game
 {
     /// <summary>
-    /// Started only by the --shots command line flag. Plays the game unattended, buying upgrades
-    /// and tapping blocks, then writes screenshots and quits so a build can be checked by script.
+    /// Started only by the --shots command line flag. Plays the game unattended, then writes
+    /// screenshots of normal digging and of the drill tipping into a carved hole, and quits, so
+    /// the game can be checked by script.
     /// </summary>
     public sealed class DemoDriver : MonoBehaviour
     {
-        private static readonly float[] ShotTimes = { 8f, 20f, 32f, 44f };
         private const float SecondsPerTap = 0.25f;
+        private const float NormalPlaySeconds = 12f;
+        private const double TiltShotAngle = -15;
+        private const float TiltTimeout = 10f;
 
         private GameRoot root;
         private string folder;
@@ -28,31 +31,54 @@ namespace DeepDrill.Game
         private IEnumerator Run()
         {
             float start = Time.time;
-            int shot = 0;
             float nextTap = 0;
-            while (shot < ShotTimes.Length)
+            while (Time.time - start < NormalPlaySeconds)
             {
-                float t = Time.time - start;
-                if (t >= nextTap)
+                if (Time.time >= nextTap)
                 {
-                    nextTap = t + SecondsPerTap;
+                    nextTap = Time.time + SecondsPerTap;
                     Play();
-                }
-                if (t >= ShotTimes[shot])
-                {
-                    shot++;
-                    ScreenCapture.CaptureScreenshot(Path.Combine(folder, $"shot_{shot:00}.png"));
-                    Debug.Log($"[demo] shot {shot} depth={root.Sim.State.depth} coins={root.Sim.State.coins:0.0}");
                 }
                 yield return null;
             }
-            yield return new WaitForSeconds(0.5f);
+            yield return Shot("normal");
+
+            CarveLeftPocket();
+            float tiltStart = Time.time;
+            while (root.Sim.Drill.Angle > TiltShotAngle && Time.time - tiltStart < TiltTimeout)
+                yield return null;
+            Debug.Log($"[demo] tilt angle={root.Sim.Drill.Angle:0.0} x={root.Sim.Drill.X:0.00} vx={root.Sim.Drill.VelocityX:0.00}");
+            yield return Shot("tilt");
+
+            yield return new WaitForSeconds(2.5f);
+            Debug.Log($"[demo] after hole x={root.Sim.Drill.X:0.00} depth={root.Sim.State.depth}");
+            yield return Shot("after_hole");
+
             VerifySaveRoundTrip();
 #if UNITY_EDITOR
             UnityEditor.EditorApplication.Exit(0);
 #else
             Application.Quit();
 #endif
+        }
+
+        private IEnumerator Shot(string name)
+        {
+            ScreenCapture.CaptureScreenshot(Path.Combine(folder, name + ".png"));
+            yield return null;
+            yield return null;
+            Debug.Log($"[demo] shot {name} depth={root.Sim.State.depth} coins={root.Sim.State.coins:0.0}");
+        }
+
+        // Opens the floor under the left foot and the rows below it.
+        private void CarveLeftPocket()
+        {
+            var sim = root.Sim;
+            int feet = sim.Drill.FeetRow;
+            int col = Mathf.RoundToInt((float)sim.Drill.X);
+            for (int row = feet; row < feet + 4; row++)
+                for (int c = col - 5; c < col; c++)
+                    if (c >= 0) sim.Carve(row, c);
         }
 
         // Writes the real save file, reads it back and prices an hour offline on the loaded copy.
@@ -62,6 +88,7 @@ namespace DeepDrill.Game
             root.SaveNow();
             var loaded = root.Saves.Load();
             bool same = loaded.depth == live.depth && loaded.coins == live.coins && loaded.seed == live.seed
+                && loaded.drillX == live.drillX && loaded.drillY == live.drillY
                 && loaded.skills.Count == live.skills.Count && loaded.version == GameState.CurrentVersion;
             double before = loaded.coins;
             double offline = new GameSim(loaded).ApplyOffline(loaded.lastSaveUnixSeconds + 3600);
@@ -73,9 +100,10 @@ namespace DeepDrill.Game
         {
             var sim = root.Sim;
             foreach (var skill in SkillCatalog.All) sim.Buy(skill.Id);
-            sim.StartFrenzy();
-            int row = sim.State.depth + Random.Range(0, 5);
-            root.ClickCell(row, Random.Range(1, Balance.Columns - 1));
+            // tap away from the drill's path so the normal shot shows it digging upright
+            int row = sim.State.depth + Random.Range(4, 8);
+            int col = Mathf.RoundToInt((float)sim.Drill.X) + Random.Range(3, 7) * (Random.value < 0.5f ? -1 : 1);
+            root.ClickCell(row, col);
         }
     }
 }

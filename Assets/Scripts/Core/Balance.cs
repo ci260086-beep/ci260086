@@ -5,12 +5,11 @@ namespace DeepDrill.Core
     /// <summary>Every tunable number and formula from the design brief.</summary>
     public static class Balance
     {
-        public const int Columns = 13;
-        public const int ShaftCenter = 6;
-        public const int ShaftHalfWidth = 1;
+        public const int Columns = 40;
+        public const int StartColumn = 20;
 
         public const double BaseDamage = 4;
-        public const double BaseHitsPerSecond = 6;
+        public const double BaseHitsPerSecond = 3; // each swing hits three blocks
         public const double SpeedPerLevel = 0.05;
         public const double ShardBonus = 0.02;
 
@@ -31,7 +30,7 @@ namespace DeepDrill.Core
         public const double FrenzySeconds = 10;
         public const double FrenzySpeedMultiplier = 5;
         public const double FrenzyDamageMultiplier = 2;
-        public const double FrenzyChargePerBreak = 0.02;
+        public const double FrenzyChargePerBreak = 0.008;
         public const double FrenzyChargePerLevel = 0.1;
         public const int FrenzyBurstRadius = 3;
 

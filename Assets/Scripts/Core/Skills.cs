@@ -44,7 +44,7 @@ namespace DeepDrill.Core
             Skill(DrillDamage, SkillTree.Drill, "钻头强化", "伤害+1", 100, 8, 1.10),
             Skill(DrillSpeed, SkillTree.Drill, "涡轮马达", "钻速+5%", 50, 25, 1.13, DrillDamage, 3),
             Skill(DrillHard, SkillTree.Drill, "硬质合金", "硬岩伤害+20%", 20, 60, 1.14, DrillSpeed, 2),
-            Skill(DrillTwin, SkillTree.Drill, "双钻头", "一次打两块", 1, 500, 1.15, DrillSpeed, 5),
+            Skill(DrillTwin, SkillTree.Drill, "双钻头", "每次打两轮", 1, 500, 1.15, DrillSpeed, 5),
             Skill(DrillPierce, SkillTree.Drill, "穿透", "下一格+25%", 5, 300, 1.15, DrillHard, 3),
 
             Skill(BlastRate, SkillTree.Blast, "多埋炸药", "出现率+0.5%", 10, 40, 1.13),

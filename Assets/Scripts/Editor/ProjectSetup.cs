@@ -30,9 +30,10 @@ namespace DeepDrill.Editor
             EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene(ScenePath, true) };
 
             PlayerSettings.productName = "Deep Drill";
+            PlayerSettings.bundleVersion = "0.1";
             PlayerSettings.companyName = "DeepDrill";
-            PlayerSettings.defaultScreenWidth = 540;
-            PlayerSettings.defaultScreenHeight = 960;
+            PlayerSettings.defaultScreenWidth = 1280;
+            PlayerSettings.defaultScreenHeight = 720;
             PlayerSettings.fullScreenMode = FullScreenMode.Windowed;
             PlayerSettings.resizableWindow = true;
             PlayerSettings.runInBackground = true;
@@ -61,7 +62,7 @@ namespace DeepDrill.Editor
         public static void PlayAndCapture()
         {
             PlayModeWindow.SetViewType(PlayModeWindow.PlayModeViewTypes.GameView);
-            PlayModeWindow.SetCustomRenderingResolution(540, 960, "DeepDrill");
+            PlayModeWindow.SetCustomRenderingResolution(1280, 720, "DeepDrill");
             EditorSceneManager.OpenScene(ScenePath);
             EditorApplication.EnterPlaymode();
         }

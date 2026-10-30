@@ -60,11 +60,11 @@ namespace DeepDrill.Tests
         {
             int matches = 0, total = 0;
             for (int row = 3; row < 400; row++)
-                for (int col = 0; col < Balance.ShaftCenter; col++)
+                for (int col = 1; col < Balance.StartColumn; col++)
                 {
                     total++;
                     var a = WorldGen.TypeAt(5, row, col);
-                    var b = WorldGen.TypeAt(5, row, Balance.Columns - 1 - col);
+                    var b = WorldGen.TypeAt(5, row, 2 * Balance.StartColumn - col);
                     if (a != BlockType.Dirt && a == b) matches++;
                 }
             Assert.Less(matches, total * 0.03);
@@ -86,20 +86,151 @@ namespace DeepDrill.Tests
             Assert.AreEqual(sim.State.depth, sim.State.maxDepth);
         }
 
+        // A flat floor one row below the body, with no blocks anywhere else near it.
+        private static DrillBody BodyOnFloor(out System.Func<int, int, bool> solid, bool left, bool right)
+        {
+            var body = new DrillBody { X = 20, Y = 8.5 - DrillBody.HalfHeight };
+            solid = (row, col) =>
+            {
+                if (row < 9) return false;
+                if (col < 20) return left;
+                if (col > 20) return right;
+                return left && right;
+            };
+            return body;
+        }
+
+        private static void Run(DrillBody body, System.Func<int, int, bool> solid, double seconds)
+        {
+            for (double t = 0; t < seconds; t += DrillBody.StepSeconds)
+                body.Step(DrillBody.StepSeconds, solid);
+        }
+
         [Test]
-        public void DepthAdvances_OnlyWhenTheWholeShaftRowIsGone()
+        public void Physics_LeftHole_TiltsAndSlidesLeft()
+        {
+            var body = BodyOnFloor(out var solid, false, true);
+            Run(body, solid, 0.3);
+            Assert.Less(body.Angle, -10, "tips towards the hole");
+            Assert.Less(body.X, 20, "slides towards the hole");
+            Assert.Less(body.TipX, body.X, "the tip now points down and left");
+        }
+
+        [Test]
+        public void Physics_RightHole_TiltsAndSlidesRight()
+        {
+            var body = BodyOnFloor(out var solid, true, false);
+            Run(body, solid, 0.3);
+            Assert.Greater(body.Angle, 10);
+            Assert.Greater(body.X, 20);
+        }
+
+        [Test]
+        public void Physics_NoSupport_FallsWithACappedSpeed()
+        {
+            var body = new DrillBody { X = 20, Y = 0 };
+            Run(body, (row, col) => false, 2);
+            Assert.Greater(body.Y, 5);
+            Assert.AreEqual(DrillBody.MaxFallSpeed, body.VelocityY, 1e-9);
+        }
+
+        [Test]
+        public void Physics_BothSupported_StandsAndReturnsUpright()
+        {
+            var body = BodyOnFloor(out var solid, true, true);
+            body.Angle = 30;
+            double y = body.Y;
+            Run(body, solid, 3);
+            Assert.AreEqual(0, body.Angle, 0.5);
+            Assert.AreEqual(y, body.Y, 1e-9);
+            Assert.AreEqual(20, body.X, 1e-9);
+        }
+
+        [Test]
+        public void Physics_TiltNeverSnapsAndStaysNearTheLimit()
+        {
+            var body = BodyOnFloor(out var solid, false, true);
+            body.Step(DrillBody.StepSeconds, solid);
+            Assert.Greater(body.Angle, -5, "one step must not jump to full tilt");
+
+            double most = 0;
+            for (double t = 0; t < 2; t += DrillBody.StepSeconds)
+            {
+                body.Step(DrillBody.StepSeconds, solid);
+                most = System.Math.Min(most, body.Angle);
+            }
+            Assert.Greater(most, -DrillBody.MaxTilt * 1.4, "spring overshoot stays small");
+        }
+
+        [Test]
+        public void Physics_LandingReportsImpact()
+        {
+            var body = new DrillBody { X = 20, Y = 0 };
+            double impact = 0;
+            for (int i = 0; i < 300 && impact == 0; i++)
+                impact = body.Step(DrillBody.StepSeconds, (row, col) => row >= 8);
+            Assert.Greater(impact, 10);
+            Assert.AreEqual(7.5 - DrillBody.HalfHeight, body.Y, 1e-9);
+        }
+
+        [Test]
+        public void Physics_WallStopsSideways()
+        {
+            var body = BodyOnFloor(out var floor, false, true);
+            System.Func<int, int, bool> solid = (row, col) => col <= 18 || floor(row, col);
+            Run(body, solid, 1);
+            Assert.AreEqual(0, body.VelocityX, 1e-9);
+            Assert.Greater(body.X - DrillBody.HalfWidth, 18.4);
+        }
+
+        [Test]
+        public void Tilted_DrillDigsTheBlockItsTipPointsAt()
         {
             var sim = NewSim();
-            var row = sim.Row(0);
-            row[Balance.ShaftCenter].Hp = 0.1;
-            row[Balance.ShaftCenter - 1].Hp = 0.1;
-            double oneHit = 1.001 / Balance.BaseHitsPerSecond;
-            sim.Tick(oneHit);
-            sim.Tick(oneHit);
-            Assert.AreEqual(0, sim.State.depth);
-            row[Balance.ShaftCenter + 1].Hp = 0.1;
-            sim.Tick(oneHit);
-            Assert.AreEqual(1, sim.State.depth);
+            for (int r = 0; r < 12; r++) // a floor at row 12, with a hole to the left of the body
+                for (int c = 10; c < 30; c++)
+                    sim.Row(r)[c].Hp = 0;
+            sim.Drill.X = 20;
+            sim.Drill.Y = 11.5 - DrillBody.HalfHeight;
+            sim.Drill.Angle = -30;
+            Assert.IsTrue(sim.FindTarget(out int row, out int col));
+            Assert.AreEqual(12, row);
+            Assert.Less(col, 20, "digs down and left");
+
+            sim.Drill.Angle = 30;
+            Assert.IsTrue(sim.FindTarget(out _, out col));
+            Assert.Greater(col, 20, "digs down and right");
+        }
+
+        [Test]
+        public void BlastHole_BesideTheDrill_MakesItTilt()
+        {
+            var sim = NewSim();
+            MakeBlock(sim, 1, 18, BlockType.Tnt);
+            sim.Row(0)[19].Hp = 0;
+            sim.Row(0)[18].Hp = 0;
+            sim.Row(0)[17].Hp = 0;
+            sim.Click(1, 18);
+            sim.Tick(0.05);
+            for (int i = 0; i < 20; i++)
+            {
+                for (int c = 20; c <= 23; c++) sim.Row(0)[c].Hp = 1e12; // the right foot stays planted
+                sim.Tick(0.02);
+            }
+            Assert.Less(sim.Drill.Angle, -5);
+        }
+
+        [Test]
+        public void Drill_WalksRoundACarvedPocketAndKeepsGoing()
+        {
+            var sim = NewSim();
+            for (int r = 3; r < 7; r++)
+                for (int c = 15; c < 20; c++)
+                    sim.Carve(r, c);
+            double startX = sim.Drill.X;
+            for (int i = 0; i < 1500; i++) sim.Tick(0.1);
+            Assert.Greater(sim.State.depth, 10, "never wedges");
+            Assert.AreNotEqual(startX, sim.Drill.X, "the tunnel bent");
         }
 
         [Test]
@@ -184,7 +315,7 @@ namespace DeepDrill.Tests
         {
             var sim = NewSim();
             Assert.IsFalse(sim.StartFrenzy());
-            for (int i = 0; i < 60; i++)
+            for (int i = 0; i < 140; i++)
             {
                 MakeBlock(sim, 8, 0, BlockType.Dirt);
                 sim.Click(8, 0);
@@ -204,7 +335,7 @@ namespace DeepDrill.Tests
         {
             var sim = NewSim();
             sim.State.SetLevel(SkillCatalog.FrenzyBurst, 1);
-            for (int i = 0; i < 60; i++)
+            for (int i = 0; i < 140; i++)
             {
                 MakeBlock(sim, 8, 0, BlockType.Dirt);
                 sim.Click(8, 0);
@@ -261,12 +392,39 @@ namespace DeepDrill.Tests
         }
 
         [Test]
-        public void TwinDrill_HitsTwoBlocksPerSwing()
+        public void TwinDrill_SwingsTwice()
         {
             var sim = NewSim();
+            sim.Tick(1.001 / Balance.BaseHitsPerSecond);
+            Assert.AreEqual(3, sim.Events.FindAll(e => e.Kind == SimEventKind.BlockHit).Count);
+
+            sim = NewSim();
             sim.State.SetLevel(SkillCatalog.DrillTwin, 1);
             sim.Tick(1.001 / Balance.BaseHitsPerSecond);
-            Assert.AreEqual(2, sim.Events.FindAll(e => e.Kind == SimEventKind.BlockHit).Count);
+            Assert.AreEqual(6, sim.Events.FindAll(e => e.Kind == SimEventKind.BlockHit).Count);
+        }
+
+        [Test]
+        public void EvenGround_IsDugStraightDown()
+        {
+            var sim = NewSim();
+            for (int r = 0; r < 30; r++) // plain dirt with no holes to fall into
+                for (int c = 0; c < Balance.Columns; c++)
+                    MakeBlock(sim, r, c, BlockType.Dirt, Balance.BlockHp(r));
+            while (sim.State.depth < 20) sim.Tick(0.05);
+            Assert.AreEqual(Balance.StartColumn, sim.Drill.X, 1e-9);
+        }
+
+        [Test]
+        public void ToughBlockUnderOneFoot_BendsTheTunnelAwayFromIt()
+        {
+            var sim = NewSim();
+            for (int r = 0; r < 12; r++)
+                for (int c = 0; c < Balance.Columns; c++)
+                    MakeBlock(sim, r, c, BlockType.Dirt, Balance.BlockHp(r));
+            MakeBlock(sim, 3, Balance.StartColumn + 1, BlockType.HardRock, 1e6);
+            for (int i = 0; i < 400 && sim.State.depth < 8; i++) sim.Tick(0.05);
+            Assert.Less(sim.Drill.X, Balance.StartColumn, "slid off the rock into the left side of the hole");
         }
 
         [Test]
@@ -274,9 +432,9 @@ namespace DeepDrill.Tests
         {
             var sim = NewSim();
             sim.State.SetLevel(SkillCatalog.DrillPierce, 2);
-            double full = sim.Row(1)[Balance.ShaftCenter].MaxHp;
+            double full = sim.Row(1)[Balance.StartColumn].MaxHp;
             sim.Tick(1.001 / Balance.BaseHitsPerSecond);
-            Assert.Less(sim.Row(1)[Balance.ShaftCenter].Hp, full);
+            Assert.Less(sim.Row(1)[Balance.StartColumn].Hp, full);
         }
 
         [Test]
@@ -322,7 +480,9 @@ namespace DeepDrill.Tests
             var sim = NewSim();
             while (sim.State.depth < 5) sim.Tick(0.1);
             var reloaded = new GameSim(sim.State);
-            Assert.IsFalse(reloaded.Row(2)[Balance.ShaftCenter].Alive);
+            Assert.AreEqual(sim.Drill.X, reloaded.Drill.X, 1e-9);
+            Assert.AreEqual(sim.Drill.Y, reloaded.Drill.Y, 1e-9);
+            Assert.IsFalse(reloaded.Row(2)[(int)System.Math.Round(reloaded.Drill.X)].Alive);
             Assert.IsTrue(reloaded.Row(2)[0].Alive);
             Assert.AreEqual(sim.Row(40)[3].Type, reloaded.Row(40)[3].Type);
         }

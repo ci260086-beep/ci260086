@@ -4,13 +4,19 @@ using UnityEngine;
 
 namespace DeepDrill.Game
 {
-    /// <summary>Draws the ground, the crack overlays and the drill. The camera does the scrolling.</summary>
+    /// <summary>
+    /// Draws the ground, crack overlays and the drill. World x is the column, world y is minus the
+    /// row, so a block sits at (col, -row). The camera follows the drill through the dig area.
+    /// </summary>
     public sealed class WorldView : MonoBehaviour
     {
-        private const int VisibleRows = 23;
-        private const float DrillScreenOffset = 53f / Stage.PixelsPerUnit; // drill sits in the upper third
+        private const int VisibleRows = 14;
+        private const int VisibleCols = 23;
         private const float WobbleSeconds = 0.08f;
         private const float DrillFramesPerSecond = 16f;
+        private const float CameraFollowRate = 6f;
+        private const float DrillPivotBelowCenter = 0.92f; // the sprite turns about a point near its tip
+        private const float DrillPivotY = 1.5f / 32f;
 
         private sealed class Cell
         {
@@ -38,7 +44,7 @@ namespace DeepDrill.Game
         private Sprite tunnel;
         private Sprite grass, hardRock, coal, copper, chest, tnt;
         private SpriteRenderer drill;
-        private float displayDepth;
+        private float followX;
         private float drillClock;
         private float shakeTime;
         private float shakeStrength;
@@ -50,9 +56,9 @@ namespace DeepDrill.Game
             sim = simulation;
             cam = camera;
             dirt = new[] { art.Get("dirt_a"), art.Get("dirt_b"), art.Get("dirt_c") };
-            cracks = art.Strip("crack_overlay", 16);
-            drillFrames = art.Strip("drill_spin", 32);
-            frenzyFrames = art.Strip("drill_frenzy", 32);
+            cracks = art.Strip("crack_overlay", 16, 0.5f);
+            drillFrames = art.Strip("drill_spin", 32, DrillPivotY);
+            frenzyFrames = art.Strip("drill_frenzy", 32, DrillPivotY);
             tnt = art.Get("tnt");
             tunnel = art.Get("tunnel_bg");
             grass = art.Get("grass");
@@ -61,10 +67,10 @@ namespace DeepDrill.Game
             copper = art.Get("ore_copper");
             chest = art.Get("chest");
 
-            cells = new Cell[VisibleRows, Balance.Columns];
+            cells = new Cell[VisibleRows, VisibleCols];
             for (int r = 0; r < VisibleRows; r++)
             {
-                for (int c = 0; c < Balance.Columns; c++)
+                for (int c = 0; c < VisibleCols; c++)
                 {
                     var tile = MakeRenderer("tile", 1, transform);
                     var cell = new Cell
@@ -84,7 +90,7 @@ namespace DeepDrill.Game
             }
 
             drill = MakeRenderer("drill", 5, transform);
-            displayDepth = sim.State.depth;
+            followX = (float)sim.Drill.X;
         }
 
         public void Shake(float seconds, float strength)
@@ -95,23 +101,24 @@ namespace DeepDrill.Game
 
         public void NoteHit(int row, int col) => wobble[Key(row, col)] = WobbleSeconds;
 
-        public static Vector2 CellCenter(int row, int col) => new Vector2(col - Balance.ShaftCenter, -row);
+        public static Vector2 CellCenter(int row, int col) => new Vector2(col, -row);
 
         public bool TryCellAt(Vector2 world, out int row, out int col)
         {
             row = Mathf.RoundToInt(-world.y);
-            col = Mathf.RoundToInt(world.x) + Balance.ShaftCenter;
+            col = Mathf.RoundToInt(world.x);
             return row >= 0 && col >= 0 && col < Balance.Columns;
         }
 
         private void LateUpdate()
         {
             float dt = Time.deltaTime;
-            float gap = sim.State.depth - displayDepth;
-            displayDepth = Mathf.MoveTowards(displayDepth, sim.State.depth, Mathf.Max(5f, gap * 8f) * dt);
+            var body = sim.Drill;
+            float drillX = (float)body.X;
+            float drillY = -(float)body.Y;
 
-            float drillY = -displayDepth + 0.5f + 1f;
-            Vector2 target = new Vector2(0, Stage.SnapToPixel(drillY - DrillScreenOffset));
+            followX = Mathf.Lerp(followX, drillX, 1f - Mathf.Exp(-CameraFollowRate * dt));
+            Vector2 target = CameraFor(followX, drillY);
             CameraPosition = target;
 
             Vector2 shake = Vector2.zero;
@@ -126,32 +133,53 @@ namespace DeepDrill.Game
             drillClock += dt * DrillFramesPerSecond;
             var frames = sim.InFrenzy ? frenzyFrames : drillFrames;
             drill.sprite = frames[(int)(drillClock * (sim.InFrenzy ? 2f : 1f)) % frames.Length];
-            drill.transform.position = new Vector3(0, Stage.SnapToPixel(drillY), 0);
+
+            // the pivot stays put and the body swings around it; positive core angles tip the nose right
+            float angle = (float)body.Angle;
+            drill.transform.SetPositionAndRotation(
+                new Vector3(Stage.SnapToPixel(drillX), Stage.SnapToPixel(drillY - DrillPivotBelowCenter), 0),
+                Quaternion.Euler(0, 0, angle));
 
             StepWobble(dt);
-            DrawCells(target.y);
+            DrawCells(target);
         }
 
-        private void DrawCells(float cameraY)
+        // Puts the drill in the middle of the dig area and a third of the way down it, then keeps
+        // the view inside the world so the side walls never show empty space.
+        private static Vector2 CameraFor(float drillX, float drillY)
         {
-            int topRow = Mathf.FloorToInt(-(cameraY + 10.5f));
+            float digCenter = Stage.DigWidth / 2f;
+            float drillStageY = Stage.Height / 3f;
+            float x = drillX + (Stage.Width / 2f - digCenter) / Stage.PixelsPerUnit;
+            float y = drillY - (Stage.Height / 2f - drillStageY) / Stage.PixelsPerUnit;
+
+            float halfWidth = Stage.Width / 2f / Stage.PixelsPerUnit;
+            float digUnits = Stage.DigWidth / Stage.PixelsPerUnit;
+            x = Mathf.Clamp(x, -0.5f + halfWidth, Balance.Columns - 0.5f - digUnits + halfWidth);
+            return new Vector2(Stage.SnapToPixel(x), Stage.SnapToPixel(y));
+        }
+
+        private void DrawCells(Vector2 camera)
+        {
+            float halfWidth = Stage.Width / 2f / Stage.PixelsPerUnit;
+            float halfHeight = Stage.Height / 2f / Stage.PixelsPerUnit;
+            int leftCol = Mathf.FloorToInt(camera.x - halfWidth) - 1;
+            int topRow = Mathf.FloorToInt(-(camera.y + halfHeight)) - 1;
             for (int r = 0; r < VisibleRows; r++)
-            {
-                int row = topRow + r;
-                for (int c = 0; c < Balance.Columns; c++)
-                    DrawCell(cells[r, c], row, c);
-            }
+                for (int c = 0; c < VisibleCols; c++)
+                    DrawCell(cells[r, c], topRow + r, leftCol + c);
         }
 
         private void DrawCell(Cell cell, int row, int col)
         {
-            Vector3 pos = new Vector3(col - Balance.ShaftCenter, -row, 0);
+            Vector3 pos = new Vector3(col, -row, 0);
             cell.Back.transform.position = pos;
             cell.Tile.transform.position = pos;
 
-            bool solid = row >= 0 && sim.Row(row)[col].Alive;
+            bool inWorld = row >= 0 && col >= 0 && col < Balance.Columns;
+            bool solid = inWorld && sim.Row(row)[col].Alive;
             // solid cells keep ground behind them so a nudged tile never shows the sky through the gap
-            cell.Back.enabled = row >= 0;
+            cell.Back.enabled = inWorld;
             cell.Back.sprite = solid ? dirt[0] : tunnel;
             cell.Tile.enabled = solid;
             cell.Crack.enabled = false;
@@ -171,7 +199,7 @@ namespace DeepDrill.Game
             cell.Crack.sprite = cracks[ratio > 0.33 ? 0 : ratio > 0.1 ? 1 : 2];
         }
 
-        // The sky and the map sides do not count as holes, so grass and the screen edge stay borderless.
+        // The sky and the map sides do not count as holes, so grass and the world edge stay borderless.
         private bool IsHole(int row, int col) =>
             row >= 0 && col >= 0 && col < Balance.Columns && !sim.Row(row)[col].Alive;
 

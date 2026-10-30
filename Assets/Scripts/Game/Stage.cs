@@ -3,18 +3,23 @@ using UnityEngine;
 namespace DeepDrill.Game
 {
     /// <summary>
-    /// The 180x320 pixel stage. Coordinates named "stage" are in art pixels from the top left;
+    /// The 320x180 pixel stage. Coordinates named "stage" are in art pixels from the top left;
     /// the whole stage is shown at an integer scale in the middle of the window.
     /// </summary>
     public static class Stage
     {
-        public const int Width = 180;
-        public const int Height = 320;
+        public const int Width = 320;
+        public const int Height = 180;
         public const float PixelsPerUnit = 16f;
-        public const int TopBarHeight = 32;
-        public const int BottomPanelTop = 224;
+        public const int DigWidth = 224;
+        public const int RailWidth = 20;
+        public const int PanelX = DigWidth + RailWidth;
+        public const int PanelWidth = Width - PanelX;
 
         public static int Scale => Mathf.Max(1, Mathf.Min(Screen.width / Width, Screen.height / Height));
+
+        public static bool InDigArea(Vector2 stage) =>
+            stage.x >= 0 && stage.x < DigWidth && stage.y >= 0 && stage.y < Height;
 
         public static Vector2 ScreenToStage(Vector2 screen)
         {

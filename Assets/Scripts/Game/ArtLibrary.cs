@@ -25,7 +25,7 @@ namespace DeepDrill.Game
         }
 
         /// <summary>Cuts a horizontal strip into equal frames.</summary>
-        public Sprite[] Strip(string name, int frameWidth)
+        public Sprite[] Strip(string name, int frameWidth, float pivotY = 0.5f)
         {
             var sheet = Get(name).texture;
             int count = sheet.width / frameWidth;
@@ -33,7 +33,7 @@ namespace DeepDrill.Game
             for (int i = 0; i < count; i++)
             {
                 frames[i] = Sprite.Create(sheet, new Rect(i * frameWidth, 0, frameWidth, sheet.height),
-                    new Vector2(0.5f, 0.5f), PixelsPerUnit, 0, SpriteMeshType.FullRect);
+                    new Vector2(0.5f, pivotY), PixelsPerUnit, 0, SpriteMeshType.FullRect);
             }
             return frames;
         }

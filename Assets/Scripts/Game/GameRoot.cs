@@ -13,6 +13,9 @@ namespace DeepDrill.Game
         private const float AutosaveSeconds = 30f;
         private const int HitstopFrames = 2;
         private const float HitstopCooldown = 0.12f;
+        private const int DepthMilestone = 50;
+        private const double SoftLandingSpeed = 10;
+        private const double HardLandingSpeed = 14;
 
         private static readonly Color DirtBits = new Color32(0x8c, 0x5f, 0x3f, 0xff);
         private static readonly Color RockBits = new Color32(0x8a, 0x8a, 0x98, 0xff);
@@ -68,7 +71,8 @@ namespace DeepDrill.Game
             fx = new GameObject("Fx").AddComponent<FxView>();
             fx.Init(art, hud.FxLayer, hud.Font);
 
-            if (offline > 0) hud.ShowNotice($"离线收益 +{NumberFormat.Short(offline)}", 5f);
+            hud.SaveRequested += SaveNow;
+            if (offline > 0) hud.ShowToast($"离线收益 +{NumberFormat.Short(offline)}", 5f);
 
             string shots = CommandLine.Value("--shots");
             if (shots != null) gameObject.AddComponent<DemoDriver>().Init(this, shots);
@@ -112,7 +116,7 @@ namespace DeepDrill.Game
         {
             if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject()) return;
             Vector2 stage = Stage.ScreenToStage(screen);
-            if (stage.y < Stage.TopBarHeight || stage.y >= Stage.BottomPanelTop) return;
+            if (!Stage.InDigArea(stage)) return;
             Vector2 worldPos = Stage.StageToWorld(stage, world.CameraPosition);
             if (world.TryCellAt(worldPos, out int row, out int col)) sim.Click(row, col);
         }
@@ -146,14 +150,28 @@ namespace DeepDrill.Game
                     break;
 
                 case SimEventKind.FrenzyStarted:
-                    hud.ShowNotice("狂热模式！", 1.5f);
+                    hud.ShowToast("狂热模式！", 1.5f);
                     world.Shake(0.25f, 2f);
                     break;
 
-                case SimEventKind.FrenzyEnded:
-                    hud.ShowNotice("", 0f);
+                case SimEventKind.DepthChanged:
+                    if (e.Row % DepthMilestone == 0) hud.ShowToast($"挖到 {e.Row} 米了", 3f);
+                    break;
+
+                case SimEventKind.Landed:
+                    OnLanded(e);
                     break;
             }
+        }
+
+        // A one-row drop is the normal dig rhythm; only longer falls earn a thump.
+        private void OnLanded(in SimEvent e)
+        {
+            if (e.Amount < SoftLandingSpeed) return;
+            bool hard = e.Amount >= HardLandingSpeed;
+            var feet = new Vector2((float)sim.Drill.X, -(float)sim.Drill.Y - 1f);
+            fx.Debris(feet, DirtBits, hard ? 22 : 8);
+            world.Shake(hard ? 0.28f : 0.12f, hard ? 4f : 2f);
         }
 
         private void OnHit(in SimEvent e)

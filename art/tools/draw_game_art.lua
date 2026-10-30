@@ -385,6 +385,82 @@ for f = 0, 3 do
 end
 save(blast, "Items/explosion")
 
+-- 16x16 rail and card icons, each with an ink outline
+local function icon(name, draw)
+  local g = canvas(16, 16)
+  draw(g)
+  local out = {}
+  for y = 0, 15 do
+    for x = 0, 15 do
+      if not g:get(x, y) then
+        local near = (x > 0 and g:get(x - 1, y)) or (x < 15 and g:get(x + 1, y))
+          or (y > 0 and g:get(x, y - 1)) or (y < 15 and g:get(x, y + 1))
+        if near then out[#out + 1] = { x, y } end
+      end
+    end
+  end
+  for _, p in ipairs(out) do g:set(p[1], p[2], INK) end
+  save(g, "Items/tab_" .. name)
+end
+
+icon("drill", function(g)
+  g:rect(4, 1, 11, 5, GOLD)
+  g:rect(4, 1, 11, 1, GOLD_HI)
+  g:rect(4, 2, 5, 5, GOLD_HI)
+  for y = 6, 14 do
+    local half = math.floor((14 - y) * 0.48 + 0.5)
+    for x = 8 - half - 1, 7 + half do
+      g:set(x, y, x < 8 and S3 or S2)
+    end
+  end
+  g:set(7, 8, S1) g:set(8, 9, S1) g:set(9, 7, S1) g:set(6, 10, S1)
+end)
+
+icon("blast", function(g)
+  for y = 4, 14 do
+    for x = 2, 12 do
+      local d = math.sqrt((x - 7) ^ 2 + (y - 9) ^ 2)
+      if d <= 5.2 then g:set(x, y, (x + y < 13) and S1 or K2) end
+    end
+  end
+  g:set(5, 7, S3) g:set(5, 6, S3) g:set(6, 6, S3)
+  g:rect(9, 3, 10, 3, D6) g:set(11, 2, D6) g:set(12, 1, GOLD_HI) g:set(13, 2, O2) g:set(12, 3, O2)
+end)
+
+icon("frenzy", function(g)
+  for y = 1, 14 do
+    local t = (y - 1) / 13
+    local half = math.floor(6.5 * math.sin(t ^ 1.6 * math.pi * 0.72) + 0.5)
+    for x = 7 - half, 8 + half - 1 do g:set(x + (y < 6 and 1 or 0), y, hex("e8402e")) end
+  end
+  for y = 6, 14 do
+    local half = math.floor(3.5 * math.sin(((y - 6) / 8) ^ 1.4 * math.pi * 0.75) + 0.5)
+    for x = 7 - half, 8 + half - 1 do g:set(x, y, GOLD) end
+  end
+  g:rect(7, 11, 8, 13, GOLD_HI)
+end)
+
+icon("stats", function(g)
+  g:rect(2, 9, 4, 14, G3)
+  g:rect(7, 5, 9, 14, GOLD)
+  g:rect(12, 2, 14, 14, O2)
+  g:rect(2, 9, 2, 14, G4)
+  g:rect(7, 5, 7, 14, GOLD_HI)
+end)
+
+icon("settings", function(g)
+  for y = 1, 14 do
+    for x = 1, 14 do
+      local dx, dy = x - 7.5, y - 7.5
+      local d = math.sqrt(dx * dx + dy * dy)
+      local tooth = math.cos(math.atan(dy, dx) * 8) > 0
+      if d > 2.6 and (d <= 4.8 or (d <= 6.8 and tooth)) then
+        g:set(x, y, (dx + dy < 0) and S3 or S2)
+      end
+    end
+  end
+end)
+
 local white = canvas(1, 1)
 white:set(0, 0, hex("ffffff"))
 save(white, "Items/pixel")

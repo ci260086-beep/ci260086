@@ -14,7 +14,7 @@ namespace DeepDrill.Core
     [Serializable]
     public sealed class GameState
     {
-        public const int CurrentVersion = 1;
+        public const int CurrentVersion = 2;
 
         public int version = CurrentVersion;
         public int seed = 1;
@@ -26,6 +26,9 @@ namespace DeepDrill.Core
         public double incomePerSecond;
         public int shards;
         public long lastSaveUnixSeconds;
+        public bool drillPlaced;
+        public double drillX;
+        public double drillY;
         public List<SkillLevel> skills = new List<SkillLevel>();
 
         public int LevelOf(string id)
