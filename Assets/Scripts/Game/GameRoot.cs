@@ -14,6 +14,7 @@ namespace DeepDrill.Game
         private const int HitstopFrames = 2;
         private const float HitstopCooldown = 0.5f;
         private const int DepthMilestone = 50;
+        private const int MaxBitsPerSwing = 4;
         private const float SlowMotionSeconds = 0.5f;
         private const float SlowMotionRate = 0.25f;
         private const int LootFountain = 14;
@@ -139,11 +140,12 @@ namespace DeepDrill.Game
             Vector2 stage = Stage.ScreenToStage(screen);
             if (!Stage.InDigArea(stage)) return;
             Vector2 worldPos = Stage.StageToWorld(stage, world.CameraPosition);
-            if (world.TryCellAt(worldPos, out int row, out int col)) sim.Click(row, col);
+            sim.ClickPixel(Mathf.FloorToInt((worldPos.x + 0.5f) * Stage.PixelsPerUnit),
+                Mathf.FloorToInt((-worldPos.y + 0.5f) * Stage.PixelsPerUnit));
         }
 
         /// <summary>Taps a block by grid position; used by the screenshot driver.</summary>
-        public void ClickCell(int row, int col) => sim.Click(row, col);
+        public void ClickCell(int row, int col) => sim.ClickPixel(col * 16 + 8, row * 16 + 8);
 
         private void DrainEvents()
         {
@@ -200,8 +202,8 @@ namespace DeepDrill.Game
                     world.Shake(0.3f, 4f);
                     break;
 
-                case SimEventKind.DrillBoosted:
-                    if (fx.Allow()) fx.Sparks(WorldView.CellCenter(e.Row, e.Col) + Vector2.down * 0.4f, 1);
+                case SimEventKind.PixelsDug:
+                    OnPixelsDug(e);
                     break;
 
                 case SimEventKind.Overheated:
@@ -270,6 +272,15 @@ namespace DeepDrill.Game
             }
             if ((e.Block == BlockType.HardRock || e.Block == BlockType.SuperHard) && fx.Allow())
                 fx.Sparks(WorldView.CellCenter(e.Row, e.Col), 3);
+        }
+
+        // Dug pixels fly off in the colour of what they were.
+        private void OnPixelsDug(in SimEvent e)
+        {
+            if (!fx.Allow()) return;
+            int bits = Mathf.Min(MaxBitsPerSwing, 1 + (int)e.Amount / 8);
+            var at = new Vector2(e.Col / 16f - 0.5f, -(e.Row / 16f - 0.5f));
+            fx.Debris(at, PixelPainter.ColorOf((byte)e.Ore, GameData.LayerOfRow(e.Row / 16), e.Col, e.Row), bits);
         }
 
         // The new drill flashes where it stands, throws out a star of sparks and announces itself.

@@ -285,6 +285,13 @@ namespace DeepDrill.Core
             return best;
         }
 
+        /// <summary>Sets off a charge at a tile; for the demo driver.</summary>
+        public void Detonate(int row, int col)
+        {
+            Explode(row, col, BlastRadius);
+            RunBlasts();
+        }
+
         /// <summary>Moves the lead drill to stand on the given row, clearing room for it.</summary>
         public void Teleport(int row, int col)
         {

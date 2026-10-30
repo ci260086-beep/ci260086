@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using System.IO;
 using DeepDrill.Core;
 using UnityEngine;
@@ -51,12 +51,7 @@ namespace DeepDrill.Game
             yield return Shot("unlocked");
 
             // set off a charge beside the drill to catch the explosion mid-air
-            int blastRow = sim.Lead.Body.FeetRow + 2;
-            int blastCol = sim.Lead.Body.Column + 3;
-            var charge = sim.Row(blastRow)[blastCol];
-            charge.Type = BlockType.Tnt;
-            charge.Hp = 0.01;
-            sim.Click(blastRow, blastCol);
+            sim.Detonate(sim.Lead.Body.FeetRow + 3, sim.Lead.Body.Column + 4);
             yield return new WaitForSeconds(0.12f);
             yield return Shot("blast");
 
@@ -94,6 +89,14 @@ namespace DeepDrill.Game
                 sim.State.bossesDefeated = s;
                 sim.Teleport((layer.RowStart + layer.RowEnd) / 2, Balance.StartColumn);
                 root.SnapCamera();
+                if (s == 1)
+                {
+                    // open the sand from below and catch it pouring
+                    int mid = (layer.RowStart + layer.RowEnd) / 2 + 2;
+                    sim.World.CarveRect(16 * 16, (mid + 1) * 16, 24 * 16, (mid + 5) * 16);
+                    yield return new WaitForSeconds(0.5f);
+                    yield return Shot("sand");
+                }
                 yield return new WaitForSeconds(LayerSeconds);
                 yield return Shot($"layer_{s + 1:00}");
             }

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 
 namespace DeepDrill.Core
@@ -27,6 +27,22 @@ namespace DeepDrill.Core
         public readonly float[] Hp = new float[Size * Size];
         public bool Dirty = true;
         public bool SandAwake;
+        public int MinX = 0, MinY = 0, MaxX = Size - 1, MaxY = Size - 1;
+
+        /// <summary>Grows the repaint rectangle, with a pixel of margin for the neighbours' outlines.</summary>
+        public void Touch(int x, int y)
+        {
+            if (!Dirty)
+            {
+                MinX = MaxX = x;
+                MinY = MaxY = y;
+                Dirty = true;
+            }
+            MinX = System.Math.Max(0, System.Math.Min(MinX, x - 1));
+            MinY = System.Math.Max(0, System.Math.Min(MinY, y - 1));
+            MaxX = System.Math.Min(Size - 1, System.Math.Max(MaxX, x + 1));
+            MaxY = System.Math.Min(Size - 1, System.Math.Max(MaxY, y + 1));
+        }
     }
 
     /// <summary>
@@ -106,7 +122,7 @@ namespace DeepDrill.Core
             int i = y % PixelChunk.Size * PixelChunk.Size + x % PixelChunk.Size;
             c.Mats[i] = mat;
             c.Hp[i] = hp;
-            c.Dirty = true;
+            c.Touch(x % PixelChunk.Size, y % PixelChunk.Size);
         }
 
         private void WakeSandAround(int x, int y)

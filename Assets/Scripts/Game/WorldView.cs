@@ -1,18 +1,17 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using DeepDrill.Core;
 using UnityEngine;
 
 namespace DeepDrill.Game
 {
     /// <summary>
-    /// Draws the ground, overlays, cracks and the swarm of drills. World x is the column, world y is
-    /// minus the row, so a block sits at (col, -row). The camera follows the deepest drill.
+    /// Draws the pixel ground as one texture per chunk, repainting only what changed, plus the
+    /// parallax behind it and the swarm of drills. World x is the column, world y is minus the row.
     /// </summary>
     public sealed class WorldView : MonoBehaviour
     {
-        private const int VisibleRows = 14;
-        private const int VisibleCols = 23;
-        private const float WobbleSeconds = 0.08f;
+        private const int ChunkCols = 8;
+        private const int ChunkRows = 5;
         private const float DrillFramesPerSecond = 14f;
         private const float CameraFollowRate = 6f;
         private const float DrillPivotBelowCenter = 0.33f; // sprites turn about a point near the tip
@@ -20,8 +19,6 @@ namespace DeepDrill.Game
         private const int DrillPool = 400;
         private const int GlowCount = 60;
         private const float ParallaxTileUnits = 4f; // 64 pixels
-        private const float TwinkleSeconds = 0.5f;
-        private const uint DecalOdds = 9;
         private const float MaxShakePixels = 6f;
         private const float TraumaDecay = 1.8f;
         private const float TraumaPerStrength = 0.11f;
@@ -29,53 +26,34 @@ namespace DeepDrill.Game
         private const double SquashSeconds = 0.09;
         private const float SquashWidth = 1.15f;
         private const float SquashHeight = 0.85f;
+        private const float ChunkUnits = PixelChunk.Size / Stage.PixelsPerUnit;
 
-        private sealed class Cell
-        {
-            public SpriteRenderer Back;
-            public SpriteRenderer Tile;
-            public SpriteRenderer Overlay;
-            public SpriteRenderer Crack;
-            public SpriteRenderer Flash;
-            public SpriteRenderer[] Edges;
-        }
-
-        // top, bottom, left, right
-        private static readonly string[] EdgeNames = { "top", "bottom", "left", "right" };
-        private static readonly int[] EdgeRowOffset = { -1, 1, 0, 0 };
-        private static readonly int[] EdgeColOffset = { 0, 0, -1, 1 };
-        private static readonly string[] GroundVariants = { "a", "b", "c" };
         private static readonly Color FrenzyTint = new Color(1f, 0.55f, 0.5f);
-
         private static readonly float[] ParallaxRates = { 0.2f, 0.45f, 0.7f };
         private static readonly string[] ParallaxNames = { "far", "mid", "near" };
         private static readonly Color SkyColor = new Color32(0x8f, 0xc9, 0xe6, 0xff);
 
-        private readonly Dictionary<long, float> wobble = new Dictionary<long, float>();
-        private readonly List<long> wobbleKeys = new List<long>();
-        private readonly HashSet<long> flashing = new HashSet<long>();
+        private sealed class ChunkSlot
+        {
+            public SpriteRenderer Renderer;
+            public Texture2D Texture;
+            public Color32[] Pixels;
+            public long Key = long.MinValue;
+        }
+
+        private readonly List<ChunkSlot> slots = new List<ChunkSlot>();
+        private readonly Dictionary<long, ChunkSlot> slotByChunk = new Dictionary<long, ChunkSlot>();
         private readonly List<SpriteRenderer> drillPool = new List<SpriteRenderer>();
+        private readonly List<SpriteRenderer> glows = new List<SpriteRenderer>();
 
         private GameSim sim;
         private Camera cam;
-        private Cell[,] cells;
-        private Sprite[][] ground;
-        private Sprite[][] edgeSprites;
-        private Sprite[] loose;
-        private Sprite[] oreOverlays;
         private Sprite[] bossFaces;
-        private Sprite[] cracks;
         private Dictionary<int, Sprite[]> drillFrames;
-        private Sprite tunnel, grass, tnt, hardOverlay, superHardOverlay, chestOverlay, bossShell, bossHide;
-        private Sprite waterBlock, magmaBlock;
         private SpriteRenderer bossFace;
+        private SpriteRenderer sky;
         private SpriteRenderer[] parallax;
         private Sprite[][] parallaxSprites;
-        private Sprite[] decals;
-        private Sprite plainTile;
-        private readonly List<SpriteRenderer> glows = new List<SpriteRenderer>();
-        private readonly List<Vector2> visibleOres = new List<Vector2>();
-        private float twinkleClock;
         private float followX;
         private float drillClock;
         private float trauma;
@@ -86,45 +64,17 @@ namespace DeepDrill.Game
         {
             sim = simulation;
             cam = camera;
-
             int layers = GameData.Layers.Count;
-            ground = new Sprite[layers][];
-            edgeSprites = new Sprite[layers][];
-            loose = new Sprite[layers];
-            for (int s = 0; s < layers; s++)
-            {
-                ground[s] = new Sprite[GroundVariants.Length];
-                for (int v = 0; v < GroundVariants.Length; v++) ground[s][v] = art.Get($"ground_{s}_{GroundVariants[v]}");
-                edgeSprites[s] = new Sprite[EdgeNames.Length];
-                for (int e = 0; e < EdgeNames.Length; e++) edgeSprites[s][e] = art.Get($"edge_{s}_{EdgeNames[e]}");
-                loose[s] = art.Get($"loose_{s}");
-            }
-            oreOverlays = new Sprite[GameData.OreCount];
-            for (int i = 0; i < oreOverlays.Length; i++) oreOverlays[i] = art.Get($"ore_{i}");
 
             drillFrames = new Dictionary<int, Sprite[]>();
             for (int f = 0; f < GameData.Families.Count; f++)
                 for (int t = 0; t < GameData.Tiers; t++)
                     drillFrames[DrillCode.Make(f, t)] = art.Strip($"drill_{f}_{t}", 8, DrillPivotY);
 
-            cracks = art.Strip("crack_overlay", 16, 0.5f);
-            tunnel = art.Get("tunnel_neutral");
-            grass = art.Get("grass");
-            tnt = art.Get("tnt");
-            hardOverlay = art.Get("hard_overlay");
-            superHardOverlay = art.Get("superhard_overlay");
-            waterBlock = art.Get("water_block");
-            magmaBlock = art.Get("magma_block");
-            chestOverlay = art.Get("chest_overlay");
-            bossShell = art.Get("boss_shell");
-            bossHide = art.Get("boss_hide");
             bossFaces = new Sprite[layers];
             for (int s = 0; s < layers; s++) bossFaces[s] = art.Get($"boss_face_{s}");
-
             bossFace = MakeRenderer("bossFace", 4, transform);
 
-            plainTile = art.Get("plain_tile");
-            decals = new[] { art.Get("decal_0"), art.Get("decal_1"), art.Get("decal_2"), art.Get("decal_3") };
             parallaxSprites = new Sprite[layers][];
             for (int s = 0; s < layers; s++)
             {
@@ -139,6 +89,15 @@ namespace DeepDrill.Game
                 sr.drawMode = SpriteDrawMode.Tiled;
                 parallax[p] = sr;
             }
+
+            sky = MakeRenderer("sky", 0, transform);
+            sky.sprite = art.Get("plain_tile");
+            sky.color = SkyColor;
+            sky.drawMode = SpriteDrawMode.Tiled;
+            sky.size = new Vector2(60, 30);
+
+            for (int i = 0; i < ChunkCols * ChunkRows; i++) slots.Add(MakeSlot());
+
             for (int i = 0; i < GlowCount; i++)
             {
                 var glow = MakeRenderer("glow", 5, transform);
@@ -148,31 +107,6 @@ namespace DeepDrill.Game
                 glow.enabled = false;
                 glows.Add(glow);
             }
-
-            cells = new Cell[VisibleRows, VisibleCols];
-            for (int r = 0; r < VisibleRows; r++)
-            {
-                for (int c = 0; c < VisibleCols; c++)
-                {
-                    var tile = MakeRenderer("tile", 1, transform);
-                    var cell = new Cell
-                    {
-                        Back = MakeRenderer("back", 0, transform),
-                        Tile = tile,
-                        Overlay = MakeRenderer("overlay", 2, tile.transform),
-                        Crack = MakeRenderer("crack", 4, tile.transform),
-                        Flash = MakeRenderer("flash", 5, tile.transform),
-                        Edges = new SpriteRenderer[EdgeNames.Length],
-                    };
-                    for (int e = 0; e < EdgeNames.Length; e++)
-                        cell.Edges[e] = MakeRenderer("edge", 3, tile.transform);
-                    cell.Flash.sprite = art.Get("pixel");
-                    cell.Flash.transform.localScale = new Vector3(Stage.PixelsPerUnit, Stage.PixelsPerUnit, 1);
-                    cell.Flash.color = new Color(1, 1, 1, 0.8f);
-                    cells[r, c] = cell;
-                }
-            }
-
             for (int i = 0; i < DrillPool; i++)
             {
                 var sr = MakeRenderer("drill", 6, transform);
@@ -182,29 +116,34 @@ namespace DeepDrill.Game
             followX = (float)sim.Lead.Body.X;
         }
 
+        private ChunkSlot MakeSlot()
+        {
+            int size = PixelChunk.Size;
+            var texture = new Texture2D(size, size, TextureFormat.RGBA32, false) { filterMode = FilterMode.Point, wrapMode = TextureWrapMode.Clamp };
+            var slot = new ChunkSlot { Texture = texture, Pixels = new Color32[size * size] };
+            slot.Renderer = MakeRenderer("chunk", 1, transform);
+            slot.Renderer.sprite = Sprite.Create(texture, new Rect(0, 0, size, size), new Vector2(0, 1), Stage.PixelsPerUnit, 0, SpriteMeshType.FullRect);
+            return slot;
+        }
+
         /// <summary>Adds trauma; the screen moves by its square, so small hits stay subtle.</summary>
         public void Shake(float seconds, float strength)
         {
             trauma = Mathf.Min(1f, trauma + strength * TraumaPerStrength * Mathf.Clamp(seconds * 8f, 0.5f, 1.5f));
         }
 
-        public void NoteHit(int row, int col)
-        {
-            long key = Key(row, col);
-            wobble[key] = WobbleSeconds;
-            flashing.Add(key);
-        }
+        public void NoteHit(int row, int col) { }
 
         /// <summary>Jumps the camera to the lead drill, for when it moves further than a pan should show.</summary>
         public void SnapToDrill() => followX = (float)sim.Lead.Body.X;
 
         public static Vector2 CellCenter(int row, int col) => new Vector2(col, -row);
 
-        public bool TryCellAt(Vector2 world, out int row, out int col)
+        /// <summary>Nothing to report in pixel ground yet; kept for the gem glints.</summary>
+        public bool TryTwinkle(float dt, out Vector2 at)
         {
-            row = Mathf.RoundToInt(-world.y);
-            col = Mathf.RoundToInt(world.x);
-            return col >= 0 && col < Balance.Columns; // rows above ground stay valid: drills start up there
+            at = default;
+            return false;
         }
 
         private void LateUpdate()
@@ -231,6 +170,9 @@ namespace DeepDrill.Game
             drillClock += dt * DrillFramesPerSecond * (sim.InFrenzy ? 2f : 1f);
             DrawDrills(target);
             DrawParallax(target);
+            DrawChunks(target);
+
+            sky.transform.position = new Vector3(target.x, 15f - 0.5f, 0);
 
             var boss = sim.CurrentBoss;
             bossFace.enabled = boss != null;
@@ -239,10 +181,72 @@ namespace DeepDrill.Game
                 bossFace.sprite = bossFaces[boss.Index];
                 bossFace.transform.position = new Vector3(Mathf.Round(leadX), -(boss.RowEnd + 0.5f), 0);
             }
+        }
 
-            StepWobble(dt);
-            DrawCells(target);
-            flashing.Clear();
+        // Chunks on screen each take a slot; a slot only repaints what changed in its chunk.
+        private void DrawChunks(Vector2 camera)
+        {
+            float left = camera.x + 0.5f - Stage.Width / 2f / Stage.PixelsPerUnit;
+            float top = -camera.y + 0.5f - Stage.Height / 2f / Stage.PixelsPerUnit;
+            int firstCol = Mathf.FloorToInt(left / ChunkUnits);
+            int firstRow = Mathf.FloorToInt(top / ChunkUnits);
+
+            foreach (var slot in slots) slot.Renderer.enabled = false;
+            int used = 0;
+            for (int cy = Mathf.Max(0, firstRow); cy < firstRow + ChunkRows; cy++)
+            {
+                for (int cx = Mathf.Max(0, firstCol); cx < firstCol + ChunkCols; cx++)
+                {
+                    if (cx * PixelChunk.Size >= PixelWorld.Width) continue;
+                    long key = PixelWorld.ChunkKey(cx, cy);
+                    if (!slotByChunk.TryGetValue(key, out var slot) || slot.Key != key)
+                    {
+                        slot = FreeSlot(firstCol, firstRow);
+                        if (slot == null) continue;
+                        Assign(slot, key, cx, cy);
+                    }
+                    used++;
+                    Refresh(slot, cx, cy);
+                }
+            }
+        }
+
+        private ChunkSlot FreeSlot(int firstCol, int firstRow)
+        {
+            foreach (var slot in slots)
+            {
+                if (slot.Key == long.MinValue) return slot;
+                int cy = (int)(slot.Key / 4096), cx = (int)(slot.Key % 4096);
+                if (cx < firstCol || cx >= firstCol + ChunkCols || cy < firstRow || cy >= firstRow + ChunkRows)
+                {
+                    slotByChunk.Remove(slot.Key);
+                    return slot;
+                }
+            }
+            return null;
+        }
+
+        private void Assign(ChunkSlot slot, long key, int cx, int cy)
+        {
+            slot.Key = key;
+            slotByChunk[key] = slot;
+            slot.Renderer.transform.position = new Vector3(cx * ChunkUnits - 0.5f, -(cy * ChunkUnits - 0.5f), 0);
+            var chunk = sim.World.ChunkAt(cx, cy);
+            PixelPainter.Paint(sim.World, cx, cy, chunk, slot.Pixels, sim.State.seed, 0, 0, PixelChunk.Size - 1, PixelChunk.Size - 1);
+            chunk.Dirty = false;
+            slot.Texture.SetPixels32(slot.Pixels);
+            slot.Texture.Apply(false);
+        }
+
+        private void Refresh(ChunkSlot slot, int cx, int cy)
+        {
+            slot.Renderer.enabled = true;
+            var chunk = sim.World.ChunkAt(cx, cy);
+            if (!chunk.Dirty) return;
+            PixelPainter.Paint(sim.World, cx, cy, chunk, slot.Pixels, sim.State.seed, chunk.MinX, chunk.MinY, chunk.MaxX, chunk.MaxY);
+            chunk.Dirty = false;
+            slot.Texture.SetPixels32(slot.Pixels);
+            slot.Texture.Apply(false);
         }
 
         // Three backdrops slide at different rates and show wherever the ground has been dug away.
@@ -281,10 +285,8 @@ namespace DeepDrill.Game
                 sr.color = sim.InFrenzy ? FrenzyTint : Color.white;
                 // heat haze: a whole-pixel sideways wobble while in frenzy
                 float haze = sim.InFrenzy ? Mathf.Round(Mathf.Sin(Time.unscaledTime * 30f + i) * 1.2f) / Stage.PixelsPerUnit : 0f;
-                double age = sim.Now - unit.LastSwing;
-                bool squash = unit.LastSwing >= 0 && age < SquashSeconds;
+                bool squash = unit.LastSwing >= 0 && sim.Now - unit.LastSwing < SquashSeconds;
                 sr.transform.localScale = squash ? new Vector3(SquashWidth, SquashHeight, 1) : Vector3.one;
-                // the pivot stays put and the body swings around it; positive core angles tip the nose right
                 sr.transform.SetPositionAndRotation(
                     new Vector3(Stage.SnapToPixel(x) + haze, Stage.SnapToPixel(y - DrillPivotBelowCenter), 0),
                     Quaternion.Euler(0, 0, (float)unit.Body.Angle));
@@ -314,138 +316,6 @@ namespace DeepDrill.Game
             return new Vector2(Stage.SnapToPixel(x), Stage.SnapToPixel(y));
         }
 
-        /// <summary>A random ore on screen, for the odd glint of light.</summary>
-        public bool TryTwinkle(float dt, out Vector2 at)
-        {
-            at = default;
-            twinkleClock += dt;
-            if (twinkleClock < TwinkleSeconds || visibleOres.Count == 0) return false;
-            twinkleClock = 0;
-            at = visibleOres[Random.Range(0, visibleOres.Count)] + Random.insideUnitCircle * 0.4f;
-            return true;
-        }
-
-        private void DrawCells(Vector2 camera)
-        {
-            visibleOres.Clear();
-            float halfWidth = Stage.Width / 2f / Stage.PixelsPerUnit;
-            float halfHeight = Stage.Height / 2f / Stage.PixelsPerUnit;
-            int leftCol = Mathf.FloorToInt(camera.x - halfWidth) - 1;
-            int topRow = Mathf.FloorToInt(-(camera.y + halfHeight)) - 1;
-            for (int r = 0; r < VisibleRows; r++)
-                for (int c = 0; c < VisibleCols; c++)
-                    DrawCell(cells[r, c], topRow + r, leftCol + c);
-        }
-
-        private void DrawCell(Cell cell, int row, int col)
-        {
-            Vector3 pos = new Vector3(col, -row, 0);
-            cell.Back.transform.position = pos;
-            cell.Tile.transform.position = pos;
-
-            bool inWorld = row >= 0 && col >= 0 && col < Balance.Columns;
-            bool solid = inWorld && sim.Row(row)[col].Alive;
-            int layer = inWorld ? WorldGen.LayerAt(sim.State.seed, row, col) : 0;
-            // solid cells keep ground behind them so a nudged tile never shows the sky through the gap;
-            // dug cells show the parallax, and open air above ground shows sky
-            cell.Back.enabled = solid || row < 0;
-            cell.Back.sprite = solid ? ground[layer][0] : plainTile;
-            cell.Back.color = solid ? Color.white : SkyColor;
-            cell.Tile.enabled = solid;
-            cell.Crack.enabled = false;
-            cell.Flash.enabled = false;
-            cell.Overlay.enabled = false;
-            for (int e = 0; e < cell.Edges.Length; e++)
-            {
-                cell.Edges[e].enabled = solid && IsHole(row + EdgeRowOffset[e], col + EdgeColOffset[e]);
-                cell.Edges[e].sprite = edgeSprites[layer][e];
-            }
-            if (!solid) return;
-
-            var block = sim.Row(row)[col];
-            DrawBlock(cell, block, row, col, layer);
-
-            cell.Flash.enabled = flashing.Contains(Key(row, col));
-            if (wobble.ContainsKey(Key(row, col)))
-                cell.Tile.transform.position = pos + new Vector3(0, -1f / Stage.PixelsPerUnit, 0);
-
-            double ratio = block.Hp / block.MaxHp;
-            if (block.Type == BlockType.BossRoot) ratio = sim.BossActive ? sim.BossHp / sim.BossMaxHp : 1;
-            if (ratio > 0.66) return;
-            cell.Crack.enabled = true;
-            cell.Crack.sprite = cracks[ratio > 0.33 ? 0 : ratio > 0.1 ? 1 : 2];
-        }
-
-        private void DrawBlock(Cell cell, Block block, int row, int col, int layer)
-        {
-            cell.Tile.color = Color.white;
-            var plain = ground[layer];
-            cell.Tile.sprite = plain[WorldGen.Hash(sim.State.seed + 7, row, col) % plain.Length];
-
-            switch (block.Type)
-            {
-                case BlockType.Grass:
-                    cell.Tile.sprite = grass;
-                    break;
-                case BlockType.Tnt:
-                    cell.Tile.sprite = tnt;
-                    break;
-                case BlockType.Sand:
-                    cell.Tile.sprite = loose[layer];
-                    break;
-                case BlockType.Ore:
-                    ShowOverlay(cell, oreOverlays[block.Ore]);
-                    visibleOres.Add(new Vector2(col, -row));
-                    break;
-                case BlockType.Dirt:
-                    uint roll = WorldGen.Hash(sim.State.seed + 11, row, col);
-                    if (roll % DecalOdds == 0) ShowOverlay(cell, decals[(roll >> 8) % (uint)decals.Length]);
-                    break;
-                case BlockType.HardRock:
-                    ShowOverlay(cell, hardOverlay);
-                    break;
-                case BlockType.SuperHard:
-                    ShowOverlay(cell, superHardOverlay);
-                    break;
-                case BlockType.Water:
-                    cell.Tile.sprite = waterBlock;
-                    break;
-                case BlockType.Magma:
-                    cell.Tile.sprite = magmaBlock;
-                    break;
-                case BlockType.Chest:
-                    ShowOverlay(cell, chestOverlay);
-                    break;
-                case BlockType.BossRoot:
-                    bool armored = sim.BossMaxArmor > 0 && (!sim.BossActive || sim.BossArmor > 0);
-                    cell.Tile.sprite = armored ? bossShell : bossHide;
-                    cell.Tile.color = Color.Lerp(Palette.Dark(layer), Color.white, 0.45f);
-                    break;
-            }
-        }
-
-        private static void ShowOverlay(Cell cell, Sprite sprite)
-        {
-            cell.Overlay.enabled = true;
-            cell.Overlay.sprite = sprite;
-        }
-
-        // The sky and the map sides do not count as holes, so grass and the world edge stay borderless.
-        private bool IsHole(int row, int col) =>
-            row >= 0 && col >= 0 && col < Balance.Columns && !sim.Row(row)[col].Alive;
-
-        private void StepWobble(float dt)
-        {
-            wobbleKeys.Clear();
-            wobbleKeys.AddRange(wobble.Keys);
-            foreach (long key in wobbleKeys)
-            {
-                float left = wobble[key] - dt;
-                if (left <= 0) wobble.Remove(key);
-                else wobble[key] = left;
-            }
-        }
-
         private static SpriteRenderer MakeRenderer(string goName, int order, Transform parent)
         {
             var go = new GameObject(goName);
@@ -454,7 +324,5 @@ namespace DeepDrill.Game
             sr.sortingOrder = order;
             return sr;
         }
-
-        private static long Key(int row, int col) => row * 64L + col;
     }
 }
