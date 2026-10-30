@@ -43,6 +43,7 @@ namespace DeepDrill.Core
         {
             metaDamage = metaIncome = 0;
             ApplySchools();
+            ApplyFactory();
         }
 
         // The gifts a new run starts with, once enough rebirths are behind the player.

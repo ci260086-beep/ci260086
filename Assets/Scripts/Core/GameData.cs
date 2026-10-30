@@ -116,6 +116,18 @@ namespace DeepDrill.Core
         public BonusDef Reward;
     }
 
+    public sealed class FactoryDef
+    {
+        public string Id;
+        public string Name;
+        public SkillEffect Effect;
+        public double PerLevel;
+        public int MaxLevel;
+        public double OreCost;
+        public double OreGrowth;
+        public string Desc;
+    }
+
     public enum RebirthPerk { coins, root, drills, hangar, skills }
 
     public sealed class RebirthMilestone
@@ -174,6 +186,10 @@ namespace DeepDrill.Core
         public static EventTable Events;
         public static List<RebirthMilestone> RebirthMilestones;
         public static List<SchoolDef> Schools;
+        public static double CrystalSeconds;
+        public static double CrystalCap;
+        public static int FactoryCrystalEvery;
+        public static List<FactoryDef> Factory;
 
         private static Dictionary<string, SkillDef> skillsById;
 
@@ -383,6 +399,27 @@ namespace DeepDrill.Core
         {
             var root = Obj(MiniJson.Parse(json));
             LoadEvents(Obj(root["events"]));
+
+            var crystals = Obj(root["crystals"]);
+            CrystalSeconds = Num(crystals, "seconds");
+            CrystalCap = Num(crystals, "cap");
+            FactoryCrystalEvery = (int)Num(crystals, "factoryEvery");
+            Factory = new List<FactoryDef>();
+            foreach (var item in Arr(root["factory"]))
+            {
+                var o = Obj(item);
+                Factory.Add(new FactoryDef
+                {
+                    Id = Str(o, "id"),
+                    Name = Str(o, "name"),
+                    Effect = (SkillEffect)Enum.Parse(typeof(SkillEffect), Str(o, "effect")),
+                    PerLevel = Num(o, "perLevel"),
+                    MaxLevel = (int)Num(o, "maxLevel"),
+                    OreCost = Num(o, "oreCost"),
+                    OreGrowth = Num(o, "oreGrowth"),
+                    Desc = Str(o, "desc"),
+                });
+            }
 
             Schools = new List<SchoolDef>();
             foreach (var item in Arr(root["schools"]))

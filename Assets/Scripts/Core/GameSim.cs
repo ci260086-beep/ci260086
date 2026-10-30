@@ -327,6 +327,7 @@ namespace DeepDrill.Core
             AdvanceHits(dt);
             AdvanceHousekeeping(dt);
             AdvanceEvents(dt);
+            GrowCrystals(dt);
         }
 
         public bool FamilyUnlocked(int family) => ReachedLayer >= GameData.Families[family].UnlockLayer;
@@ -464,6 +465,7 @@ namespace DeepDrill.Core
         {
             if (State.lastSaveUnixSeconds <= 0 || !AutoDrillUnlocked) return 0;
             double away = nowUnixSeconds - State.lastSaveUnixSeconds;
+            if (away > 0) GrowCrystals(away);
             double extraRate = Effect(SkillEffect.offline_pct) / 100, extraHours = Effect(SkillEffect.offline_hours);
             double earned = Balance.OfflineEarnings(State.incomePerSecond, away, extraRate, extraHours);
             State.coins += earned;

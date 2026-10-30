@@ -13,7 +13,7 @@ namespace DeepDrill.Game
     public sealed partial class HudView
     {
         private const int BaseTabWidth = 38;
-        private const int BaseRowHeight = 16;
+        private const int BaseRowHeight = 15;
         private const int BaseTop = 17;
         private const int BaseButtonWidth = 54;
 
@@ -45,6 +45,7 @@ namespace DeepDrill.Game
 
             BuildAutomationTab();
             BuildSchoolTab();
+            BuildFactoryTab();
             ShowBaseTab(0);
         }
 
@@ -148,6 +149,23 @@ namespace DeepDrill.Game
                     () => sim.ChooseSchool(index), () => sim.CanChooseSchool(index));
                 AddBaseRow(2 + i * 2, () => $"  本派技能分支价格 -{school.BranchDiscount:0}%；{(sim.SchoolCleared(index) ? "已通关" : "通关奖励")}：{school.Reward.Desc}");
             }
+        }
+
+        private void BuildFactoryTab()
+        {
+            NewBaseTab("工厂");
+            AddBaseRow(0, () => $"矿物 {NumberFormat.Short(sim.State.ores)}   地心结晶 {sim.Crystals}/{GameData.CrystalCap:0}" +
+                (sim.CrystalsFull ? "（已满）" : $"   下一颗 {sim.CrystalProgress * 100:0}%"));
+            for (int i = 0; i < GameData.Factory.Count; i++)
+            {
+                int index = i;
+                var def = GameData.Factory[i];
+                AddBaseRow(1 + i, () => $"{def.Name} {sim.FactoryLevel(index)}/{def.MaxLevel}：{def.Desc}",
+                    () => sim.FactoryLevel(index) >= def.MaxLevel ? "满级"
+                        : $"{NumberFormat.Short(sim.FactoryOreCost(index))} 矿" + (sim.FactoryCrystalCost(index) > 0 ? " +结晶" : ""),
+                    () => sim.UpgradeFactory(index), () => sim.CanUpgradeFactory(index));
+            }
+            AddBaseRow(2 + GameData.Factory.Count, () => $"结晶每 {GameData.CrystalSeconds / 3600:0} 小时长一颗，离线也在长，每 {GameData.FactoryCrystalEvery} 级工厂要用一颗");
         }
 
         // Steps through the layer bottoms, then off again.

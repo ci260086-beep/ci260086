@@ -266,5 +266,83 @@ namespace DeepDrill.Tests
         }
 
         #endregion
+
+        #region step 5: factory and crystals
+
+        [Test]
+        public void Crystal_GrowsWithTime()
+        {
+            var sim = CoreTests.NewSim();
+            sim.Tick(GameData.CrystalSeconds / 2);
+            Assert.AreEqual(0, sim.Crystals);
+            Assert.AreEqual(0.5, sim.CrystalProgress, 1e-3);
+        }
+
+        [Test]
+        public void Crystal_GrowsWhileAway()
+        {
+            var sim = CoreTests.NewSim();
+            sim.State.lastSaveUnixSeconds = 1000;
+            sim.ApplyOffline(1000 + (long)GameData.CrystalSeconds * 3);
+            Assert.AreEqual(3, sim.Crystals);
+        }
+
+        [Test]
+        public void Crystal_StopsAtTheCap()
+        {
+            var sim = CoreTests.NewSim();
+            sim.State.lastSaveUnixSeconds = 1000;
+            sim.ApplyOffline(1000 + (long)(GameData.CrystalSeconds * (GameData.CrystalCap + 5)));
+            Assert.AreEqual(GameData.CrystalCap, sim.Crystals);
+            Assert.IsTrue(sim.CrystalsFull);
+        }
+
+        [Test]
+        public void Factory_SpendsOreAndAddsItsBonus()
+        {
+            var sim = CoreTests.NewSim();
+            int forge = GameData.Factory.FindIndex(f => f.Id == "forge");
+            int code = DrillCode.Make(0, 0);
+            double before = sim.DamageOf(code);
+            sim.State.ores = 100;
+            Assert.IsTrue(sim.UpgradeFactory(forge));
+            Assert.AreEqual(60, sim.State.ores, 1e-9);
+            Assert.AreEqual(before * 1.1, sim.DamageOf(code), 1e-9);
+        }
+
+        [Test]
+        public void Factory_CannotBeBoughtWithoutOre()
+        {
+            var sim = CoreTests.NewSim();
+            Assert.IsFalse(sim.UpgradeFactory(0));
+            Assert.AreEqual(0, sim.FactoryLevel(0));
+        }
+
+        [Test]
+        public void Factory_TakesACrystalEveryFewLevels()
+        {
+            var sim = CoreTests.NewSim();
+            sim.State.ores = 1e6;
+            for (int i = 0; i < GameData.FactoryCrystalEvery - 1; i++) Assert.IsTrue(sim.UpgradeFactory(0));
+            Assert.IsFalse(sim.UpgradeFactory(0), "the fifth level needs a crystal");
+            sim.State.crystals = 1;
+            Assert.IsTrue(sim.UpgradeFactory(0));
+            Assert.AreEqual(0, sim.Crystals);
+        }
+
+        [Test]
+        public void Factory_OutlivesARebirth()
+        {
+            var sim = CoreTests.NewSim();
+            sim.State.ores = 100;
+            sim.UpgradeFactory(0);
+            sim.State.bossesDefeated = 1;
+            sim.State.maxDepth = 400;
+            sim.State.totalIncome = 1e6;
+            Assert.IsTrue(sim.Rebirth());
+            Assert.AreEqual(1, sim.FactoryLevel(0));
+        }
+
+        #endregion
     }
 }

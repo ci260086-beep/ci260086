@@ -1,4 +1,12 @@
 {
+ "crystals": {"seconds": 7200, "cap": 24, "factoryEvery": 5},
+ "factory": [
+  {"id": "smelter", "name": "冶炼炉", "effect": "gold_pct", "perLevel": 10, "maxLevel": 30, "oreCost": 40, "oreGrowth": 1.25, "desc": "全部收入 +10%/级"},
+  {"id": "forge", "name": "锻造台", "effect": "dmg_pct", "perLevel": 10, "maxLevel": 30, "oreCost": 40, "oreGrowth": 1.25, "desc": "全部伤害 +10%/级"},
+  {"id": "sifter", "name": "筛矿机", "effect": "ore_pct", "perLevel": 15, "maxLevel": 30, "oreCost": 30, "oreGrowth": 1.25, "desc": "矿物价值 +15%/级"},
+  {"id": "archive", "name": "档案馆", "effect": "offline_pct", "perLevel": 3, "maxLevel": 15, "oreCost": 60, "oreGrowth": 1.35, "desc": "离线效率 +3%/级"},
+  {"id": "press", "name": "碎片压机", "effect": "shard_pct", "perLevel": 3, "maxLevel": 20, "oreCost": 80, "oreGrowth": 1.35, "desc": "重铸碎片 +3%/级"}
+ ],
  "schools": [
   {"id": "blast", "name": "爆破派", "branch": "blast", "branchDiscount": 30, "desc": "爆炸伤害 +200%，炸药 +100%，爆炸半径 +1",
    "bonuses": [{"effect": "blast_dmg", "amount": 200}, {"effect": "tnt_rate", "amount": 100}, {"effect": "blast_radius", "amount": 1}],

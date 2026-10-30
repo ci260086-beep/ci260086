@@ -76,6 +76,9 @@ namespace DeepDrill.Core
         public int school = -1;  // this run's school, picked after a rebirth
         public List<int> schoolsCleared = new List<int>();
 
+        public double crystals;
+        public List<int> factory = new List<int>(); // level per building
+
         public bool AnyBossDown => bossesDefeated > 0;
 
         public int BoughtOf(int family) => family < bought.Count ? bought[family] : 0;

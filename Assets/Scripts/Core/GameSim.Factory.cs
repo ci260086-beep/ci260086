@@ -15,9 +15,7 @@ namespace DeepDrill.Core
         private void GrowCrystals(double seconds) =>
             State.crystals = Math.Min(GameData.CrystalCap, State.crystals + seconds / GameData.CrystalSeconds);
 
-        public int FactoryLevel(int building) => State.LevelOf(FactoryKey(building));
-
-        private static string FactoryKey(int building) => "factory_" + GameData.Factory[building].Id;
+        public int FactoryLevel(int building) => building < State.factory.Count ? State.factory[building] : 0;
 
         public double FactoryOreCost(int building)
         {
@@ -39,7 +37,8 @@ namespace DeepDrill.Core
             if (!CanUpgradeFactory(building)) return false;
             State.ores -= FactoryOreCost(building);
             State.crystals -= FactoryCrystalCost(building);
-            State.factory.Add(building);
+            while (State.factory.Count <= building) State.factory.Add(0);
+            State.factory[building]++;
             RefreshEffects();
             return true;
         }
