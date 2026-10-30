@@ -1,0 +1,2730 @@
+[
+ {
+  "id": "root",
+  "name": "深渊钻头",
+  "branch": "core",
+  "effect": "dmg_pct",
+  "perLevel": 5,
+  "maxLevel": 10,
+  "baseCost": 15,
+  "costGrowth": 1.5,
+  "prereq": [],
+  "x": 0.0,
+  "y": 0.0,
+  "ring": 0,
+  "requiresLayer": 1,
+  "desc": "全部钻头伤害 +5%/级"
+ },
+ {
+  "id": "drill_01",
+  "name": "锋利钻尖",
+  "branch": "drill",
+  "effect": "dmg_pct",
+  "perLevel": 10,
+  "maxLevel": 25,
+  "baseCost": 60.0,
+  "costGrowth": 1.18,
+  "x": 0.0,
+  "y": 3.2,
+  "ring": 1,
+  "requiresLayer": 1,
+  "desc": "全部钻头伤害 +10%",
+  "prereq": [
+   "root"
+  ]
+ },
+ {
+  "id": "drill_02",
+  "name": "高速马达",
+  "branch": "drill",
+  "effect": "speed_pct",
+  "perLevel": 4,
+  "maxLevel": 20,
+  "baseCost": 42.0,
+  "costGrowth": 1.18,
+  "x": -1.6,
+  "y": 3.2,
+  "ring": 1,
+  "requiresLayer": 1,
+  "desc": "全部钻头攻速 +4%",
+  "prereq": [
+   "drill_01"
+  ]
+ },
+ {
+  "id": "drill_03",
+  "name": "手动助力",
+  "branch": "drill",
+  "effect": "click_pct",
+  "perLevel": 25,
+  "maxLevel": 20,
+  "baseCost": 42.0,
+  "costGrowth": 1.18,
+  "x": 1.6,
+  "y": 3.2,
+  "ring": 1,
+  "requiresLayer": 1,
+  "desc": "点击伤害 +25%",
+  "prereq": [
+   "drill_01"
+  ]
+ },
+ {
+  "id": "drill_04",
+  "name": "合金钻头",
+  "branch": "drill",
+  "effect": "dmg_pct",
+  "perLevel": 15,
+  "maxLevel": 20,
+  "baseCost": 137000.0,
+  "costGrowth": 1.18,
+  "x": 0.0,
+  "y": 6.4,
+  "ring": 2,
+  "requiresLayer": 2,
+  "desc": "全部钻头伤害 +15%",
+  "prereq": [
+   "drill_01"
+  ]
+ },
+ {
+  "id": "drill_05",
+  "name": "精准打击",
+  "branch": "drill",
+  "effect": "crit_chance",
+  "perLevel": 1,
+  "maxLevel": 20,
+  "baseCost": 96100.0,
+  "costGrowth": 1.18,
+  "x": -1.6,
+  "y": 6.4,
+  "ring": 2,
+  "requiresLayer": 2,
+  "desc": "暴击率 +1%",
+  "prereq": [
+   "drill_04"
+  ]
+ },
+ {
+  "id": "drill_06",
+  "name": "致命一击",
+  "branch": "drill",
+  "effect": "crit_mult",
+  "perLevel": 25,
+  "maxLevel": 20,
+  "baseCost": 96100.0,
+  "costGrowth": 1.18,
+  "x": 1.6,
+  "y": 6.4,
+  "ring": 2,
+  "requiresLayer": 2,
+  "desc": "暴击伤害 +25%",
+  "prereq": [
+   "drill_04"
+  ]
+ },
+ {
+  "id": "drill_07",
+  "name": "硬岩克星",
+  "branch": "drill",
+  "effect": "hard_pct",
+  "perLevel": 20,
+  "maxLevel": 15,
+  "baseCost": 314000000.0,
+  "costGrowth": 1.18,
+  "x": 0.0,
+  "y": 9.6,
+  "ring": 3,
+  "requiresLayer": 3,
+  "desc": "对硬岩伤害 +20%",
+  "prereq": [
+   "drill_04"
+  ]
+ },
+ {
+  "id": "drill_08",
+  "name": "涡轮增压",
+  "branch": "drill",
+  "effect": "speed_pct",
+  "perLevel": 6,
+  "maxLevel": 15,
+  "baseCost": 220000000.0,
+  "costGrowth": 1.18,
+  "x": -1.6,
+  "y": 9.6,
+  "ring": 3,
+  "requiresLayer": 3,
+  "desc": "全部钻头攻速 +6%",
+  "prereq": [
+   "drill_07"
+  ]
+ },
+ {
+  "id": "drill_09",
+  "name": "穿透钻",
+  "branch": "drill",
+  "effect": "pierce",
+  "perLevel": 1,
+  "maxLevel": 3,
+  "baseCost": 220000000.0,
+  "costGrowth": 1.6,
+  "x": 1.6,
+  "y": 9.6,
+  "ring": 3,
+  "requiresLayer": 3,
+  "desc": "溢出伤害传给下一格（层数） 1/级",
+  "prereq": [
+   "drill_07"
+  ]
+ },
+ {
+  "id": "drill_10",
+  "name": "群钻共振",
+  "branch": "drill",
+  "effect": "swarm_pct",
+  "perLevel": 2,
+  "maxLevel": 20,
+  "baseCost": 718000000000.0,
+  "costGrowth": 1.18,
+  "x": 0.0,
+  "y": 12.8,
+  "ring": 4,
+  "requiresLayer": 4,
+  "desc": "每拥有 10 台钻头，伤害 +2%",
+  "prereq": [
+   "drill_07"
+  ]
+ },
+ {
+  "id": "drill_11",
+  "name": "碎岩冲击",
+  "branch": "drill",
+  "effect": "dmg_pct",
+  "perLevel": 25,
+  "maxLevel": 15,
+  "baseCost": 502000000000.0,
+  "costGrowth": 1.18,
+  "x": -1.6,
+  "y": 12.8,
+  "ring": 4,
+  "requiresLayer": 4,
+  "desc": "全部钻头伤害 +25%",
+  "prereq": [
+   "drill_10"
+  ]
+ },
+ {
+  "id": "drill_12",
+  "name": "弱点洞察",
+  "branch": "drill",
+  "effect": "crit_chance",
+  "perLevel": 1.5,
+  "maxLevel": 10,
+  "baseCost": 502000000000.0,
+  "costGrowth": 1.28,
+  "x": 1.6,
+  "y": 12.8,
+  "ring": 4,
+  "requiresLayer": 4,
+  "desc": "暴击率 +1.5%",
+  "prereq": [
+   "drill_10"
+  ]
+ },
+ {
+  "id": "drill_13",
+  "name": "屠魔钻头",
+  "branch": "drill",
+  "effect": "boss_pct",
+  "perLevel": 30,
+  "maxLevel": 15,
+  "baseCost": 1640000000000000.0,
+  "costGrowth": 1.18,
+  "x": 0.0,
+  "y": 16.0,
+  "ring": 5,
+  "requiresLayer": 5,
+  "desc": "对 Boss 伤害 +30%",
+  "prereq": [
+   "drill_10"
+  ]
+ },
+ {
+  "id": "drill_14",
+  "name": "超频马达",
+  "branch": "drill",
+  "effect": "speed_pct",
+  "perLevel": 8,
+  "maxLevel": 10,
+  "baseCost": 1150000000000000.0,
+  "costGrowth": 1.28,
+  "x": -1.6,
+  "y": 16.0,
+  "ring": 5,
+  "requiresLayer": 5,
+  "desc": "全部钻头攻速 +8%",
+  "prereq": [
+   "drill_13"
+  ]
+ },
+ {
+  "id": "drill_15",
+  "name": "致命一击 II",
+  "branch": "drill",
+  "effect": "crit_mult",
+  "perLevel": 40,
+  "maxLevel": 15,
+  "baseCost": 1150000000000000.0,
+  "costGrowth": 1.18,
+  "x": 1.6,
+  "y": 16.0,
+  "ring": 5,
+  "requiresLayer": 5,
+  "desc": "暴击伤害 +40%",
+  "prereq": [
+   "drill_13"
+  ]
+ },
+ {
+  "id": "drill_16",
+  "name": "钨钢钻芯",
+  "branch": "drill",
+  "effect": "dmg_pct",
+  "perLevel": 40,
+  "maxLevel": 15,
+  "baseCost": 3.75e+18,
+  "costGrowth": 1.18,
+  "x": 0.0,
+  "y": 19.2,
+  "ring": 6,
+  "requiresLayer": 7,
+  "desc": "全部钻头伤害 +40%",
+  "prereq": [
+   "drill_13"
+  ]
+ },
+ {
+  "id": "drill_17",
+  "name": "群钻共振 II",
+  "branch": "drill",
+  "effect": "swarm_pct",
+  "perLevel": 3,
+  "maxLevel": 15,
+  "baseCost": 2.63e+18,
+  "costGrowth": 1.18,
+  "x": -1.6,
+  "y": 19.2,
+  "ring": 6,
+  "requiresLayer": 7,
+  "desc": "每拥有 10 台钻头，伤害 +3%",
+  "prereq": [
+   "drill_16"
+  ]
+ },
+ {
+  "id": "drill_18",
+  "name": "硬岩克星 II",
+  "branch": "drill",
+  "effect": "hard_pct",
+  "perLevel": 40,
+  "maxLevel": 10,
+  "baseCost": 2.63e+18,
+  "costGrowth": 1.28,
+  "x": 1.6,
+  "y": 19.2,
+  "ring": 6,
+  "requiresLayer": 7,
+  "desc": "对硬岩伤害 +40%",
+  "prereq": [
+   "drill_16"
+  ]
+ },
+ {
+  "id": "drill_19",
+  "name": "深层穿透",
+  "branch": "drill",
+  "effect": "pierce",
+  "perLevel": 1,
+  "maxLevel": 2,
+  "baseCost": 8.59e+21,
+  "costGrowth": 1.6,
+  "x": 0.0,
+  "y": 22.4,
+  "ring": 7,
+  "requiresLayer": 8,
+  "desc": "溢出伤害传给下一格（层数） 1/级",
+  "prereq": [
+   "drill_16"
+  ]
+ },
+ {
+  "id": "drill_20",
+  "name": "精准打击 II",
+  "branch": "drill",
+  "effect": "crit_chance",
+  "perLevel": 2,
+  "maxLevel": 10,
+  "baseCost": 6.01e+21,
+  "costGrowth": 1.28,
+  "x": -1.6,
+  "y": 22.4,
+  "ring": 7,
+  "requiresLayer": 8,
+  "desc": "暴击率 +2%",
+  "prereq": [
+   "drill_19"
+  ]
+ },
+ {
+  "id": "drill_21",
+  "name": "屠魔钻头 II",
+  "branch": "drill",
+  "effect": "boss_pct",
+  "perLevel": 50,
+  "maxLevel": 10,
+  "baseCost": 6.01e+21,
+  "costGrowth": 1.28,
+  "x": 1.6,
+  "y": 22.4,
+  "ring": 7,
+  "requiresLayer": 8,
+  "desc": "对 Boss 伤害 +50%",
+  "prereq": [
+   "drill_19"
+  ]
+ },
+ {
+  "id": "drill_22",
+  "name": "等离子钻芯",
+  "branch": "drill",
+  "effect": "dmg_pct",
+  "perLevel": 60,
+  "maxLevel": 15,
+  "baseCost": 1.96e+25,
+  "costGrowth": 1.18,
+  "x": 0.0,
+  "y": 25.6,
+  "ring": 8,
+  "requiresLayer": 9,
+  "desc": "全部钻头伤害 +60%",
+  "prereq": [
+   "drill_19"
+  ]
+ },
+ {
+  "id": "drill_23",
+  "name": "量子马达",
+  "branch": "drill",
+  "effect": "speed_pct",
+  "perLevel": 10,
+  "maxLevel": 10,
+  "baseCost": 1.37e+25,
+  "costGrowth": 1.28,
+  "x": -1.6,
+  "y": 25.6,
+  "ring": 8,
+  "requiresLayer": 9,
+  "desc": "全部钻头攻速 +10%",
+  "prereq": [
+   "drill_22"
+  ]
+ },
+ {
+  "id": "drill_24",
+  "name": "致命一击 III",
+  "branch": "drill",
+  "effect": "crit_mult",
+  "perLevel": 60,
+  "maxLevel": 10,
+  "baseCost": 1.37e+25,
+  "costGrowth": 1.28,
+  "x": 1.6,
+  "y": 25.6,
+  "ring": 8,
+  "requiresLayer": 9,
+  "desc": "暴击伤害 +60%",
+  "prereq": [
+   "drill_22"
+  ]
+ },
+ {
+  "id": "drill_25",
+  "name": "群钻共振 III",
+  "branch": "drill",
+  "effect": "swarm_pct",
+  "perLevel": 5,
+  "maxLevel": 10,
+  "baseCost": 4.49e+28,
+  "costGrowth": 1.28,
+  "x": 0.0,
+  "y": 28.8,
+  "ring": 9,
+  "requiresLayer": 10,
+  "desc": "每拥有 10 台钻头，伤害 +5%",
+  "prereq": [
+   "drill_22"
+  ]
+ },
+ {
+  "id": "drill_26",
+  "name": "反物质钻芯",
+  "branch": "drill",
+  "effect": "dmg_pct",
+  "perLevel": 100,
+  "maxLevel": 10,
+  "baseCost": 3.14e+28,
+  "costGrowth": 1.28,
+  "x": -1.6,
+  "y": 28.8,
+  "ring": 9,
+  "requiresLayer": 10,
+  "desc": "全部钻头伤害 +100%",
+  "prereq": [
+   "drill_25"
+  ]
+ },
+ {
+  "id": "drill_27",
+  "name": "屠魔钻头 III",
+  "branch": "drill",
+  "effect": "boss_pct",
+  "perLevel": 80,
+  "maxLevel": 10,
+  "baseCost": 3.14e+28,
+  "costGrowth": 1.28,
+  "x": 1.6,
+  "y": 28.8,
+  "ring": 9,
+  "requiresLayer": 10,
+  "desc": "对 Boss 伤害 +80%",
+  "prereq": [
+   "drill_25"
+  ]
+ },
+ {
+  "id": "drill_28",
+  "name": "星核钻芯",
+  "branch": "drill",
+  "effect": "dmg_pct",
+  "perLevel": 150,
+  "maxLevel": 10,
+  "baseCost": 1.03e+32,
+  "costGrowth": 1.28,
+  "x": 0.0,
+  "y": 32.0,
+  "ring": 10,
+  "requiresLayer": 12,
+  "desc": "全部钻头伤害 +150%",
+  "prereq": [
+   "drill_25"
+  ]
+ },
+ {
+  "id": "drill_29",
+  "name": "绝对暴击",
+  "branch": "drill",
+  "effect": "crit_chance",
+  "perLevel": 3,
+  "maxLevel": 5,
+  "baseCost": 7.19e+31,
+  "costGrowth": 1.6,
+  "x": -1.6,
+  "y": 32.0,
+  "ring": 10,
+  "requiresLayer": 12,
+  "desc": "暴击率 +3%",
+  "prereq": [
+   "drill_28"
+  ]
+ },
+ {
+  "id": "drill_30",
+  "name": "钻头风暴",
+  "branch": "drill",
+  "effect": "swarm_pct",
+  "perLevel": 10,
+  "maxLevel": 5,
+  "baseCost": 7.19e+31,
+  "costGrowth": 1.6,
+  "x": 1.6,
+  "y": 32.0,
+  "ring": 10,
+  "requiresLayer": 12,
+  "desc": "每拥有 10 台钻头，伤害 +10%",
+  "prereq": [
+   "drill_28"
+  ]
+ },
+ {
+  "id": "wealth_01",
+  "name": "矿物鉴定",
+  "branch": "wealth",
+  "effect": "ore_pct",
+  "perLevel": 10,
+  "maxLevel": 25,
+  "baseCost": 60.0,
+  "costGrowth": 1.18,
+  "x": 2.77,
+  "y": 1.6,
+  "ring": 1,
+  "requiresLayer": 1,
+  "desc": "矿物价值 +10%",
+  "prereq": [
+   "root"
+  ]
+ },
+ {
+  "id": "wealth_02",
+  "name": "精打细算",
+  "branch": "wealth",
+  "effect": "gold_pct",
+  "perLevel": 5,
+  "maxLevel": 20,
+  "baseCost": 42.0,
+  "costGrowth": 1.18,
+  "x": 1.97,
+  "y": 2.99,
+  "ring": 1,
+  "requiresLayer": 1,
+  "desc": "全部收入 +5%",
+  "prereq": [
+   "wealth_01"
+  ]
+ },
+ {
+  "id": "wealth_03",
+  "name": "挂机矿工",
+  "branch": "wealth",
+  "effect": "offline_pct",
+  "perLevel": 10,
+  "maxLevel": 10,
+  "baseCost": 42.0,
+  "costGrowth": 1.28,
+  "x": 3.57,
+  "y": 0.21,
+  "ring": 1,
+  "requiresLayer": 1,
+  "desc": "离线收益效率 +10%",
+  "prereq": [
+   "wealth_01"
+  ]
+ },
+ {
+  "id": "wealth_04",
+  "name": "宝箱嗅觉",
+  "branch": "wealth",
+  "effect": "chest_pct",
+  "perLevel": 10,
+  "maxLevel": 15,
+  "baseCost": 137000.0,
+  "costGrowth": 1.18,
+  "x": 5.54,
+  "y": 3.2,
+  "ring": 2,
+  "requiresLayer": 2,
+  "desc": "宝箱出现率 +10%",
+  "prereq": [
+   "wealth_01"
+  ]
+ },
+ {
+  "id": "wealth_05",
+  "name": "矿物鉴定 II",
+  "branch": "wealth",
+  "effect": "ore_pct",
+  "perLevel": 15,
+  "maxLevel": 20,
+  "baseCost": 96100.0,
+  "costGrowth": 1.18,
+  "x": 4.74,
+  "y": 4.59,
+  "ring": 2,
+  "requiresLayer": 2,
+  "desc": "矿物价值 +15%",
+  "prereq": [
+   "wealth_04"
+  ]
+ },
+ {
+  "id": "wealth_06",
+  "name": "夜班",
+  "branch": "wealth",
+  "effect": "offline_hours",
+  "perLevel": 1,
+  "maxLevel": 6,
+  "baseCost": 96100.0,
+  "costGrowth": 1.6,
+  "x": 6.34,
+  "y": 1.81,
+  "ring": 2,
+  "requiresLayer": 2,
+  "desc": "离线时长上限 +小时 1/级",
+  "prereq": [
+   "wealth_04"
+  ]
+ },
+ {
+  "id": "wealth_07",
+  "name": "宝箱丰收",
+  "branch": "wealth",
+  "effect": "chest_gold",
+  "perLevel": 50,
+  "maxLevel": 15,
+  "baseCost": 314000000.0,
+  "costGrowth": 1.18,
+  "x": 8.31,
+  "y": 4.8,
+  "ring": 3,
+  "requiresLayer": 3,
+  "desc": "宝箱金币 +50%",
+  "prereq": [
+   "wealth_04"
+  ]
+ },
+ {
+  "id": "wealth_08",
+  "name": "商业头脑",
+  "branch": "wealth",
+  "effect": "gold_pct",
+  "perLevel": 10,
+  "maxLevel": 15,
+  "baseCost": 220000000.0,
+  "costGrowth": 1.18,
+  "x": 7.51,
+  "y": 6.19,
+  "ring": 3,
+  "requiresLayer": 3,
+  "desc": "全部收入 +10%",
+  "prereq": [
+   "wealth_07"
+  ]
+ },
+ {
+  "id": "wealth_09",
+  "name": "挂机矿工 II",
+  "branch": "wealth",
+  "effect": "offline_pct",
+  "perLevel": 10,
+  "maxLevel": 5,
+  "baseCost": 220000000.0,
+  "costGrowth": 1.6,
+  "x": 9.11,
+  "y": 3.41,
+  "ring": 3,
+  "requiresLayer": 3,
+  "desc": "离线收益效率 +10%",
+  "prereq": [
+   "wealth_07"
+  ]
+ },
+ {
+  "id": "wealth_10",
+  "name": "宝石切割",
+  "branch": "wealth",
+  "effect": "ore_pct",
+  "perLevel": 25,
+  "maxLevel": 15,
+  "baseCost": 718000000000.0,
+  "costGrowth": 1.18,
+  "x": 11.09,
+  "y": 6.4,
+  "ring": 4,
+  "requiresLayer": 4,
+  "desc": "矿物价值 +25%",
+  "prereq": [
+   "wealth_07"
+  ]
+ },
+ {
+  "id": "wealth_11",
+  "name": "寻宝罗盘",
+  "branch": "wealth",
+  "effect": "rare_pct",
+  "perLevel": 10,
+  "maxLevel": 10,
+  "baseCost": 502000000000.0,
+  "costGrowth": 1.28,
+  "x": 10.29,
+  "y": 7.79,
+  "ring": 4,
+  "requiresLayer": 4,
+  "desc": "稀有物品掉率 +10%",
+  "prereq": [
+   "wealth_10"
+  ]
+ },
+ {
+  "id": "wealth_12",
+  "name": "宝箱嗅觉 II",
+  "branch": "wealth",
+  "effect": "chest_pct",
+  "perLevel": 15,
+  "maxLevel": 10,
+  "baseCost": 502000000000.0,
+  "costGrowth": 1.28,
+  "x": 11.89,
+  "y": 5.01,
+  "ring": 4,
+  "requiresLayer": 4,
+  "desc": "宝箱出现率 +15%",
+  "prereq": [
+   "wealth_10"
+  ]
+ },
+ {
+  "id": "wealth_13",
+  "name": "矿业公司",
+  "branch": "wealth",
+  "effect": "gold_pct",
+  "perLevel": 15,
+  "maxLevel": 15,
+  "baseCost": 1640000000000000.0,
+  "costGrowth": 1.18,
+  "x": 13.86,
+  "y": 8.0,
+  "ring": 5,
+  "requiresLayer": 5,
+  "desc": "全部收入 +15%",
+  "prereq": [
+   "wealth_10"
+  ]
+ },
+ {
+  "id": "wealth_14",
+  "name": "考古学家",
+  "branch": "wealth",
+  "effect": "rare_pct",
+  "perLevel": 15,
+  "maxLevel": 10,
+  "baseCost": 1150000000000000.0,
+  "costGrowth": 1.28,
+  "x": 13.06,
+  "y": 9.39,
+  "ring": 5,
+  "requiresLayer": 5,
+  "desc": "稀有物品掉率 +15%",
+  "prereq": [
+   "wealth_13"
+  ]
+ },
+ {
+  "id": "wealth_15",
+  "name": "通宵",
+  "branch": "wealth",
+  "effect": "offline_hours",
+  "perLevel": 2,
+  "maxLevel": 4,
+  "baseCost": 1150000000000000.0,
+  "costGrowth": 1.6,
+  "x": 14.66,
+  "y": 6.61,
+  "ring": 5,
+  "requiresLayer": 5,
+  "desc": "离线时长上限 +小时 2/级",
+  "prereq": [
+   "wealth_13"
+  ]
+ },
+ {
+  "id": "wealth_16",
+  "name": "宝石切割 II",
+  "branch": "wealth",
+  "effect": "ore_pct",
+  "perLevel": 40,
+  "maxLevel": 15,
+  "baseCost": 3.75e+18,
+  "costGrowth": 1.18,
+  "x": 16.63,
+  "y": 9.6,
+  "ring": 6,
+  "requiresLayer": 7,
+  "desc": "矿物价值 +40%",
+  "prereq": [
+   "wealth_13"
+  ]
+ },
+ {
+  "id": "wealth_17",
+  "name": "宝箱丰收 II",
+  "branch": "wealth",
+  "effect": "chest_gold",
+  "perLevel": 100,
+  "maxLevel": 10,
+  "baseCost": 2.63e+18,
+  "costGrowth": 1.28,
+  "x": 15.83,
+  "y": 10.99,
+  "ring": 6,
+  "requiresLayer": 7,
+  "desc": "宝箱金币 +100%",
+  "prereq": [
+   "wealth_16"
+  ]
+ },
+ {
+  "id": "wealth_18",
+  "name": "矿业集团",
+  "branch": "wealth",
+  "effect": "gold_pct",
+  "perLevel": 25,
+  "maxLevel": 10,
+  "baseCost": 2.63e+18,
+  "costGrowth": 1.28,
+  "x": 17.43,
+  "y": 8.21,
+  "ring": 6,
+  "requiresLayer": 7,
+  "desc": "全部收入 +25%",
+  "prereq": [
+   "wealth_16"
+  ]
+ },
+ {
+  "id": "wealth_19",
+  "name": "点石成金",
+  "branch": "wealth",
+  "effect": "ore_pct",
+  "perLevel": 60,
+  "maxLevel": 10,
+  "baseCost": 8.59e+21,
+  "costGrowth": 1.28,
+  "x": 19.4,
+  "y": 11.2,
+  "ring": 7,
+  "requiresLayer": 8,
+  "desc": "矿物价值 +60%",
+  "prereq": [
+   "wealth_16"
+  ]
+ },
+ {
+  "id": "wealth_20",
+  "name": "寻宝罗盘 II",
+  "branch": "wealth",
+  "effect": "rare_pct",
+  "perLevel": 20,
+  "maxLevel": 10,
+  "baseCost": 6.01e+21,
+  "costGrowth": 1.28,
+  "x": 18.6,
+  "y": 12.59,
+  "ring": 7,
+  "requiresLayer": 8,
+  "desc": "稀有物品掉率 +20%",
+  "prereq": [
+   "wealth_19"
+  ]
+ },
+ {
+  "id": "wealth_21",
+  "name": "永不停工",
+  "branch": "wealth",
+  "effect": "offline_pct",
+  "perLevel": 20,
+  "maxLevel": 5,
+  "baseCost": 6.01e+21,
+  "costGrowth": 1.6,
+  "x": 20.2,
+  "y": 9.81,
+  "ring": 7,
+  "requiresLayer": 8,
+  "desc": "离线收益效率 +20%",
+  "prereq": [
+   "wealth_19"
+  ]
+ },
+ {
+  "id": "wealth_22",
+  "name": "跨国矿业",
+  "branch": "wealth",
+  "effect": "gold_pct",
+  "perLevel": 40,
+  "maxLevel": 10,
+  "baseCost": 1.96e+25,
+  "costGrowth": 1.28,
+  "x": 22.17,
+  "y": 12.8,
+  "ring": 8,
+  "requiresLayer": 9,
+  "desc": "全部收入 +40%",
+  "prereq": [
+   "wealth_19"
+  ]
+ },
+ {
+  "id": "wealth_23",
+  "name": "宝石切割 III",
+  "branch": "wealth",
+  "effect": "ore_pct",
+  "perLevel": 80,
+  "maxLevel": 10,
+  "baseCost": 4.49e+28,
+  "costGrowth": 1.28,
+  "x": 24.94,
+  "y": 14.4,
+  "ring": 9,
+  "requiresLayer": 10,
+  "desc": "矿物价值 +80%",
+  "prereq": [
+   "wealth_22"
+  ]
+ },
+ {
+  "id": "wealth_24",
+  "name": "矿业帝国",
+  "branch": "wealth",
+  "effect": "gold_pct",
+  "perLevel": 60,
+  "maxLevel": 10,
+  "baseCost": 3.14e+28,
+  "costGrowth": 1.28,
+  "x": 24.14,
+  "y": 15.79,
+  "ring": 9,
+  "requiresLayer": 10,
+  "desc": "全部收入 +60%",
+  "prereq": [
+   "wealth_23"
+  ]
+ },
+ {
+  "id": "wealth_25",
+  "name": "地心财富",
+  "branch": "wealth",
+  "effect": "ore_pct",
+  "perLevel": 150,
+  "maxLevel": 10,
+  "baseCost": 1.03e+32,
+  "costGrowth": 1.28,
+  "x": 27.71,
+  "y": 16.0,
+  "ring": 10,
+  "requiresLayer": 12,
+  "desc": "矿物价值 +150%",
+  "prereq": [
+   "wealth_23"
+  ]
+ },
+ {
+  "id": "blast_01",
+  "name": "炸药储备",
+  "branch": "blast",
+  "effect": "tnt_rate",
+  "perLevel": 10,
+  "maxLevel": 20,
+  "baseCost": 60.0,
+  "costGrowth": 1.18,
+  "x": 2.77,
+  "y": -1.6,
+  "ring": 1,
+  "requiresLayer": 1,
+  "desc": "炸药块出现率 +10%",
+  "prereq": [
+   "root"
+  ]
+ },
+ {
+  "id": "blast_02",
+  "name": "大号炸药",
+  "branch": "blast",
+  "effect": "blast_radius",
+  "perLevel": 1,
+  "maxLevel": 3,
+  "baseCost": 42.0,
+  "costGrowth": 1.6,
+  "x": 3.57,
+  "y": -0.21,
+  "ring": 1,
+  "requiresLayer": 1,
+  "desc": "爆炸半径 +格 1/级",
+  "prereq": [
+   "blast_01"
+  ]
+ },
+ {
+  "id": "blast_03",
+  "name": "爆破收集",
+  "branch": "blast",
+  "effect": "blast_ore",
+  "perLevel": 20,
+  "maxLevel": 15,
+  "baseCost": 42.0,
+  "costGrowth": 1.18,
+  "x": 1.97,
+  "y": -2.99,
+  "ring": 1,
+  "requiresLayer": 1,
+  "desc": "爆炸矿物 +20%",
+  "prereq": [
+   "blast_01"
+  ]
+ },
+ {
+  "id": "blast_04",
+  "name": "连锁反应",
+  "branch": "blast",
+  "effect": "chain",
+  "perLevel": 1,
+  "maxLevel": 1,
+  "baseCost": 137000.0,
+  "costGrowth": 1.0,
+  "x": 5.54,
+  "y": -3.2,
+  "ring": 2,
+  "requiresLayer": 2,
+  "desc": "爆炸可连锁引爆炸药块 1/级",
+  "prereq": [
+   "blast_01"
+  ]
+ },
+ {
+  "id": "blast_05",
+  "name": "烈性炸药",
+  "branch": "blast",
+  "effect": "blast_dmg",
+  "perLevel": 25,
+  "maxLevel": 20,
+  "baseCost": 96100.0,
+  "costGrowth": 1.18,
+  "x": 6.34,
+  "y": -1.81,
+  "ring": 2,
+  "requiresLayer": 2,
+  "desc": "爆炸伤害 +25%",
+  "prereq": [
+   "blast_04"
+  ]
+ },
+ {
+  "id": "blast_06",
+  "name": "炸药储备 II",
+  "branch": "blast",
+  "effect": "tnt_rate",
+  "perLevel": 10,
+  "maxLevel": 15,
+  "baseCost": 96100.0,
+  "costGrowth": 1.18,
+  "x": 4.74,
+  "y": -4.59,
+  "ring": 2,
+  "requiresLayer": 2,
+  "desc": "炸药块出现率 +10%",
+  "prereq": [
+   "blast_04"
+  ]
+ },
+ {
+  "id": "blast_07",
+  "name": "爆破收集 II",
+  "branch": "blast",
+  "effect": "blast_ore",
+  "perLevel": 30,
+  "maxLevel": 15,
+  "baseCost": 314000000.0,
+  "costGrowth": 1.18,
+  "x": 8.31,
+  "y": -4.8,
+  "ring": 3,
+  "requiresLayer": 3,
+  "desc": "爆炸矿物 +30%",
+  "prereq": [
+   "blast_04"
+  ]
+ },
+ {
+  "id": "blast_08",
+  "name": "冲击波",
+  "branch": "blast",
+  "effect": "blast_dmg",
+  "perLevel": 30,
+  "maxLevel": 15,
+  "baseCost": 220000000.0,
+  "costGrowth": 1.18,
+  "x": 9.11,
+  "y": -3.41,
+  "ring": 3,
+  "requiresLayer": 3,
+  "desc": "爆炸伤害 +30%",
+  "prereq": [
+   "blast_07"
+  ]
+ },
+ {
+  "id": "blast_09",
+  "name": "定向爆破",
+  "branch": "blast",
+  "effect": "hard_pct",
+  "perLevel": 25,
+  "maxLevel": 10,
+  "baseCost": 220000000.0,
+  "costGrowth": 1.28,
+  "x": 7.51,
+  "y": -6.19,
+  "ring": 3,
+  "requiresLayer": 3,
+  "desc": "对硬岩伤害 +25%",
+  "prereq": [
+   "blast_07"
+  ]
+ },
+ {
+  "id": "blast_10",
+  "name": "集束炸药",
+  "branch": "blast",
+  "effect": "blast_radius",
+  "perLevel": 1,
+  "maxLevel": 2,
+  "baseCost": 718000000000.0,
+  "costGrowth": 1.6,
+  "x": 11.09,
+  "y": -6.4,
+  "ring": 4,
+  "requiresLayer": 4,
+  "desc": "爆炸半径 +格 1/级",
+  "prereq": [
+   "blast_07"
+  ]
+ },
+ {
+  "id": "blast_11",
+  "name": "烈性炸药 II",
+  "branch": "blast",
+  "effect": "blast_dmg",
+  "perLevel": 40,
+  "maxLevel": 15,
+  "baseCost": 502000000000.0,
+  "costGrowth": 1.18,
+  "x": 11.89,
+  "y": -5.01,
+  "ring": 4,
+  "requiresLayer": 4,
+  "desc": "爆炸伤害 +40%",
+  "prereq": [
+   "blast_10"
+  ]
+ },
+ {
+  "id": "blast_12",
+  "name": "爆破矿工",
+  "branch": "blast",
+  "effect": "blast_ore",
+  "perLevel": 40,
+  "maxLevel": 10,
+  "baseCost": 502000000000.0,
+  "costGrowth": 1.28,
+  "x": 10.29,
+  "y": -7.79,
+  "ring": 4,
+  "requiresLayer": 4,
+  "desc": "爆炸矿物 +40%",
+  "prereq": [
+   "blast_10"
+  ]
+ },
+ {
+  "id": "blast_13",
+  "name": "炸药储备 III",
+  "branch": "blast",
+  "effect": "tnt_rate",
+  "perLevel": 15,
+  "maxLevel": 10,
+  "baseCost": 1640000000000000.0,
+  "costGrowth": 1.28,
+  "x": 13.86,
+  "y": -8.0,
+  "ring": 5,
+  "requiresLayer": 5,
+  "desc": "炸药块出现率 +15%",
+  "prereq": [
+   "blast_10"
+  ]
+ },
+ {
+  "id": "blast_14",
+  "name": "震荡波",
+  "branch": "blast",
+  "effect": "blast_dmg",
+  "perLevel": 60,
+  "maxLevel": 10,
+  "baseCost": 1150000000000000.0,
+  "costGrowth": 1.28,
+  "x": 14.66,
+  "y": -6.61,
+  "ring": 5,
+  "requiresLayer": 5,
+  "desc": "爆炸伤害 +60%",
+  "prereq": [
+   "blast_13"
+  ]
+ },
+ {
+  "id": "blast_15",
+  "name": "爆破拆迁",
+  "branch": "blast",
+  "effect": "boss_pct",
+  "perLevel": 30,
+  "maxLevel": 10,
+  "baseCost": 1150000000000000.0,
+  "costGrowth": 1.28,
+  "x": 13.06,
+  "y": -9.39,
+  "ring": 5,
+  "requiresLayer": 5,
+  "desc": "对 Boss 伤害 +30%",
+  "prereq": [
+   "blast_13"
+  ]
+ },
+ {
+  "id": "blast_16",
+  "name": "热核炸药",
+  "branch": "blast",
+  "effect": "blast_dmg",
+  "perLevel": 80,
+  "maxLevel": 10,
+  "baseCost": 3.75e+18,
+  "costGrowth": 1.28,
+  "x": 16.63,
+  "y": -9.6,
+  "ring": 6,
+  "requiresLayer": 7,
+  "desc": "爆炸伤害 +80%",
+  "prereq": [
+   "blast_13"
+  ]
+ },
+ {
+  "id": "blast_17",
+  "name": "爆破收集 III",
+  "branch": "blast",
+  "effect": "blast_ore",
+  "perLevel": 60,
+  "maxLevel": 10,
+  "baseCost": 2.63e+18,
+  "costGrowth": 1.28,
+  "x": 17.43,
+  "y": -8.21,
+  "ring": 6,
+  "requiresLayer": 7,
+  "desc": "爆炸矿物 +60%",
+  "prereq": [
+   "blast_16"
+  ]
+ },
+ {
+  "id": "blast_18",
+  "name": "集束炸药 II",
+  "branch": "blast",
+  "effect": "blast_radius",
+  "perLevel": 1,
+  "maxLevel": 1,
+  "baseCost": 2.63e+18,
+  "costGrowth": 1.0,
+  "x": 15.83,
+  "y": -10.99,
+  "ring": 6,
+  "requiresLayer": 7,
+  "desc": "爆炸半径 +格 1/级",
+  "prereq": [
+   "blast_16"
+  ]
+ },
+ {
+  "id": "blast_19",
+  "name": "地震炸弹",
+  "branch": "blast",
+  "effect": "blast_dmg",
+  "perLevel": 100,
+  "maxLevel": 10,
+  "baseCost": 8.59e+21,
+  "costGrowth": 1.28,
+  "x": 19.4,
+  "y": -11.2,
+  "ring": 7,
+  "requiresLayer": 8,
+  "desc": "爆炸伤害 +100%",
+  "prereq": [
+   "blast_16"
+  ]
+ },
+ {
+  "id": "blast_20",
+  "name": "炸药工厂",
+  "branch": "blast",
+  "effect": "tnt_rate",
+  "perLevel": 20,
+  "maxLevel": 10,
+  "baseCost": 6.01e+21,
+  "costGrowth": 1.28,
+  "x": 20.2,
+  "y": -9.81,
+  "ring": 7,
+  "requiresLayer": 8,
+  "desc": "炸药块出现率 +20%",
+  "prereq": [
+   "blast_19"
+  ]
+ },
+ {
+  "id": "blast_21",
+  "name": "裂变爆破",
+  "branch": "blast",
+  "effect": "blast_ore",
+  "perLevel": 80,
+  "maxLevel": 10,
+  "baseCost": 1.96e+25,
+  "costGrowth": 1.28,
+  "x": 22.17,
+  "y": -12.8,
+  "ring": 8,
+  "requiresLayer": 9,
+  "desc": "爆炸矿物 +80%",
+  "prereq": [
+   "blast_19"
+  ]
+ },
+ {
+  "id": "blast_22",
+  "name": "聚变爆破",
+  "branch": "blast",
+  "effect": "blast_dmg",
+  "perLevel": 150,
+  "maxLevel": 10,
+  "baseCost": 1.37e+25,
+  "costGrowth": 1.28,
+  "x": 22.97,
+  "y": -11.41,
+  "ring": 8,
+  "requiresLayer": 9,
+  "desc": "爆炸伤害 +150%",
+  "prereq": [
+   "blast_21"
+  ]
+ },
+ {
+  "id": "blast_23",
+  "name": "反物质炸弹",
+  "branch": "blast",
+  "effect": "blast_dmg",
+  "perLevel": 250,
+  "maxLevel": 5,
+  "baseCost": 4.49e+28,
+  "costGrowth": 1.6,
+  "x": 24.94,
+  "y": -14.4,
+  "ring": 9,
+  "requiresLayer": 10,
+  "desc": "爆炸伤害 +250%",
+  "prereq": [
+   "blast_21"
+  ]
+ },
+ {
+  "id": "blast_24",
+  "name": "星爆",
+  "branch": "blast",
+  "effect": "blast_radius",
+  "perLevel": 1,
+  "maxLevel": 1,
+  "baseCost": 3.14e+28,
+  "costGrowth": 1.0,
+  "x": 25.74,
+  "y": -13.01,
+  "ring": 9,
+  "requiresLayer": 10,
+  "desc": "爆炸半径 +格 1/级",
+  "prereq": [
+   "blast_23"
+  ]
+ },
+ {
+  "id": "blast_25",
+  "name": "核心爆破",
+  "branch": "blast",
+  "effect": "blast_ore",
+  "perLevel": 200,
+  "maxLevel": 5,
+  "baseCost": 1.03e+32,
+  "costGrowth": 1.6,
+  "x": 27.71,
+  "y": -16.0,
+  "ring": 10,
+  "requiresLayer": 12,
+  "desc": "爆炸矿物 +200%",
+  "prereq": [
+   "blast_23"
+  ]
+ },
+ {
+  "id": "hangar_01",
+  "name": "批量采购",
+  "branch": "hangar",
+  "effect": "buy_discount",
+  "perLevel": 2,
+  "maxLevel": 15,
+  "baseCost": 60.0,
+  "costGrowth": 1.18,
+  "x": 0.0,
+  "y": -3.2,
+  "ring": 1,
+  "requiresLayer": 1,
+  "desc": "钻头价格 -2%",
+  "prereq": [
+   "root"
+  ]
+ },
+ {
+  "id": "hangar_02",
+  "name": "扩建机库",
+  "branch": "hangar",
+  "effect": "hangar_slots",
+  "perLevel": 4,
+  "maxLevel": 10,
+  "baseCost": 42.0,
+  "costGrowth": 1.28,
+  "x": 1.6,
+  "y": -3.2,
+  "ring": 1,
+  "requiresLayer": 1,
+  "desc": "机库格子 + 4/级",
+  "prereq": [
+   "hangar_01"
+  ]
+ },
+ {
+  "id": "hangar_03",
+  "name": "幸运焊工",
+  "branch": "hangar",
+  "effect": "merge_lucky",
+  "perLevel": 1,
+  "maxLevel": 10,
+  "baseCost": 42.0,
+  "costGrowth": 1.28,
+  "x": -1.6,
+  "y": -3.2,
+  "ring": 1,
+  "requiresLayer": 1,
+  "desc": "合成时跳 2 级的概率 +1%",
+  "prereq": [
+   "hangar_01"
+  ]
+ },
+ {
+  "id": "hangar_04",
+  "name": "自动合成",
+  "branch": "hangar",
+  "effect": "auto_merge",
+  "perLevel": 1,
+  "maxLevel": 1,
+  "baseCost": 137000.0,
+  "costGrowth": 1.0,
+  "x": 0.0,
+  "y": -6.4,
+  "ring": 2,
+  "requiresLayer": 2,
+  "desc": "机库自动合成 1/级",
+  "prereq": [
+   "hangar_01"
+  ]
+ },
+ {
+  "id": "hangar_05",
+  "name": "批量采购 II",
+  "branch": "hangar",
+  "effect": "buy_discount",
+  "perLevel": 2,
+  "maxLevel": 10,
+  "baseCost": 96100.0,
+  "costGrowth": 1.28,
+  "x": 1.6,
+  "y": -6.4,
+  "ring": 2,
+  "requiresLayer": 2,
+  "desc": "钻头价格 -2%",
+  "prereq": [
+   "hangar_04"
+  ]
+ },
+ {
+  "id": "hangar_06",
+  "name": "石器时代",
+  "branch": "hangar",
+  "effect": "buy_tier",
+  "perLevel": 1,
+  "maxLevel": 1,
+  "baseCost": 96100.0,
+  "costGrowth": 1.0,
+  "x": -1.6,
+  "y": -6.4,
+  "ring": 2,
+  "requiresLayer": 2,
+  "desc": "购买的钻头直接从更高材质开始（级） 1/级",
+  "prereq": [
+   "hangar_04"
+  ]
+ },
+ {
+  "id": "hangar_07",
+  "name": "扩建机库 II",
+  "branch": "hangar",
+  "effect": "hangar_slots",
+  "perLevel": 6,
+  "maxLevel": 10,
+  "baseCost": 314000000.0,
+  "costGrowth": 1.28,
+  "x": 0.0,
+  "y": -9.6,
+  "ring": 3,
+  "requiresLayer": 3,
+  "desc": "机库格子 + 6/级",
+  "prereq": [
+   "hangar_04"
+  ]
+ },
+ {
+  "id": "hangar_08",
+  "name": "幸运焊工 II",
+  "branch": "hangar",
+  "effect": "merge_lucky",
+  "perLevel": 1.5,
+  "maxLevel": 10,
+  "baseCost": 220000000.0,
+  "costGrowth": 1.28,
+  "x": 1.6,
+  "y": -9.6,
+  "ring": 3,
+  "requiresLayer": 3,
+  "desc": "合成时跳 2 级的概率 +1.5%",
+  "prereq": [
+   "hangar_07"
+  ]
+ },
+ {
+  "id": "hangar_09",
+  "name": "自动采购",
+  "branch": "hangar",
+  "effect": "auto_buy",
+  "perLevel": 1,
+  "maxLevel": 1,
+  "baseCost": 220000000.0,
+  "costGrowth": 1.0,
+  "x": -1.6,
+  "y": -9.6,
+  "ring": 3,
+  "requiresLayer": 3,
+  "desc": "自动购买最便宜的钻头 1/级",
+  "prereq": [
+   "hangar_07"
+  ]
+ },
+ {
+  "id": "hangar_10",
+  "name": "青铜时代",
+  "branch": "hangar",
+  "effect": "buy_tier",
+  "perLevel": 1,
+  "maxLevel": 1,
+  "baseCost": 718000000000.0,
+  "costGrowth": 1.0,
+  "x": 0.0,
+  "y": -12.8,
+  "ring": 4,
+  "requiresLayer": 4,
+  "desc": "购买的钻头直接从更高材质开始（级） 1/级",
+  "prereq": [
+   "hangar_07"
+  ]
+ },
+ {
+  "id": "hangar_11",
+  "name": "群钻共振",
+  "branch": "hangar",
+  "effect": "swarm_pct",
+  "perLevel": 2,
+  "maxLevel": 15,
+  "baseCost": 502000000000.0,
+  "costGrowth": 1.18,
+  "x": 1.6,
+  "y": -12.8,
+  "ring": 4,
+  "requiresLayer": 4,
+  "desc": "每拥有 10 台钻头，伤害 +2%",
+  "prereq": [
+   "hangar_10"
+  ]
+ },
+ {
+  "id": "hangar_12",
+  "name": "批量采购 III",
+  "branch": "hangar",
+  "effect": "buy_discount",
+  "perLevel": 2,
+  "maxLevel": 10,
+  "baseCost": 502000000000.0,
+  "costGrowth": 1.28,
+  "x": -1.6,
+  "y": -12.8,
+  "ring": 4,
+  "requiresLayer": 4,
+  "desc": "钻头价格 -2%",
+  "prereq": [
+   "hangar_10"
+  ]
+ },
+ {
+  "id": "hangar_13",
+  "name": "扩建机库 III",
+  "branch": "hangar",
+  "effect": "hangar_slots",
+  "perLevel": 8,
+  "maxLevel": 10,
+  "baseCost": 1640000000000000.0,
+  "costGrowth": 1.28,
+  "x": 0.0,
+  "y": -16.0,
+  "ring": 5,
+  "requiresLayer": 5,
+  "desc": "机库格子 + 8/级",
+  "prereq": [
+   "hangar_10"
+  ]
+ },
+ {
+  "id": "hangar_14",
+  "name": "铁器时代",
+  "branch": "hangar",
+  "effect": "buy_tier",
+  "perLevel": 1,
+  "maxLevel": 1,
+  "baseCost": 1150000000000000.0,
+  "costGrowth": 1.0,
+  "x": 1.6,
+  "y": -16.0,
+  "ring": 5,
+  "requiresLayer": 5,
+  "desc": "购买的钻头直接从更高材质开始（级） 1/级",
+  "prereq": [
+   "hangar_13"
+  ]
+ },
+ {
+  "id": "hangar_15",
+  "name": "精密焊接",
+  "branch": "hangar",
+  "effect": "dmg_pct",
+  "perLevel": 20,
+  "maxLevel": 15,
+  "baseCost": 1150000000000000.0,
+  "costGrowth": 1.18,
+  "x": -1.6,
+  "y": -16.0,
+  "ring": 5,
+  "requiresLayer": 5,
+  "desc": "全部钻头伤害 +20%",
+  "prereq": [
+   "hangar_13"
+  ]
+ },
+ {
+  "id": "hangar_16",
+  "name": "幸运焊工 III",
+  "branch": "hangar",
+  "effect": "merge_lucky",
+  "perLevel": 2,
+  "maxLevel": 10,
+  "baseCost": 3.75e+18,
+  "costGrowth": 1.28,
+  "x": 0.0,
+  "y": -19.2,
+  "ring": 6,
+  "requiresLayer": 7,
+  "desc": "合成时跳 2 级的概率 +2%",
+  "prereq": [
+   "hangar_13"
+  ]
+ },
+ {
+  "id": "hangar_17",
+  "name": "钢铁时代",
+  "branch": "hangar",
+  "effect": "buy_tier",
+  "perLevel": 1,
+  "maxLevel": 1,
+  "baseCost": 2.63e+18,
+  "costGrowth": 1.0,
+  "x": 1.6,
+  "y": -19.2,
+  "ring": 6,
+  "requiresLayer": 7,
+  "desc": "购买的钻头直接从更高材质开始（级） 1/级",
+  "prereq": [
+   "hangar_16"
+  ]
+ },
+ {
+  "id": "hangar_18",
+  "name": "流水线",
+  "branch": "hangar",
+  "effect": "buy_discount",
+  "perLevel": 3,
+  "maxLevel": 5,
+  "baseCost": 2.63e+18,
+  "costGrowth": 1.6,
+  "x": -1.6,
+  "y": -19.2,
+  "ring": 6,
+  "requiresLayer": 7,
+  "desc": "钻头价格 -3%",
+  "prereq": [
+   "hangar_16"
+  ]
+ },
+ {
+  "id": "hangar_19",
+  "name": "白银时代",
+  "branch": "hangar",
+  "effect": "buy_tier",
+  "perLevel": 1,
+  "maxLevel": 1,
+  "baseCost": 8.59e+21,
+  "costGrowth": 1.0,
+  "x": 0.0,
+  "y": -22.4,
+  "ring": 7,
+  "requiresLayer": 8,
+  "desc": "购买的钻头直接从更高材质开始（级） 1/级",
+  "prereq": [
+   "hangar_16"
+  ]
+ },
+ {
+  "id": "hangar_20",
+  "name": "群钻共振 II",
+  "branch": "hangar",
+  "effect": "swarm_pct",
+  "perLevel": 3,
+  "maxLevel": 10,
+  "baseCost": 6.01e+21,
+  "costGrowth": 1.28,
+  "x": 1.6,
+  "y": -22.4,
+  "ring": 7,
+  "requiresLayer": 8,
+  "desc": "每拥有 10 台钻头，伤害 +3%",
+  "prereq": [
+   "hangar_19"
+  ]
+ },
+ {
+  "id": "hangar_21",
+  "name": "黄金时代",
+  "branch": "hangar",
+  "effect": "buy_tier",
+  "perLevel": 1,
+  "maxLevel": 1,
+  "baseCost": 1.96e+25,
+  "costGrowth": 1.0,
+  "x": 0.0,
+  "y": -25.6,
+  "ring": 8,
+  "requiresLayer": 9,
+  "desc": "购买的钻头直接从更高材质开始（级） 1/级",
+  "prereq": [
+   "hangar_19"
+  ]
+ },
+ {
+  "id": "hangar_22",
+  "name": "扩建机库 IV",
+  "branch": "hangar",
+  "effect": "hangar_slots",
+  "perLevel": 10,
+  "maxLevel": 10,
+  "baseCost": 1.37e+25,
+  "costGrowth": 1.28,
+  "x": 1.6,
+  "y": -25.6,
+  "ring": 8,
+  "requiresLayer": 9,
+  "desc": "机库格子 + 10/级",
+  "prereq": [
+   "hangar_21"
+  ]
+ },
+ {
+  "id": "hangar_23",
+  "name": "水晶时代",
+  "branch": "hangar",
+  "effect": "buy_tier",
+  "perLevel": 1,
+  "maxLevel": 1,
+  "baseCost": 4.49e+28,
+  "costGrowth": 1.0,
+  "x": 0.0,
+  "y": -28.8,
+  "ring": 9,
+  "requiresLayer": 10,
+  "desc": "购买的钻头直接从更高材质开始（级） 1/级",
+  "prereq": [
+   "hangar_21"
+  ]
+ },
+ {
+  "id": "hangar_24",
+  "name": "完美焊接",
+  "branch": "hangar",
+  "effect": "merge_lucky",
+  "perLevel": 3,
+  "maxLevel": 5,
+  "baseCost": 3.14e+28,
+  "costGrowth": 1.6,
+  "x": 1.6,
+  "y": -28.8,
+  "ring": 9,
+  "requiresLayer": 10,
+  "desc": "合成时跳 2 级的概率 +3%",
+  "prereq": [
+   "hangar_23"
+  ]
+ },
+ {
+  "id": "hangar_25",
+  "name": "钻石时代",
+  "branch": "hangar",
+  "effect": "buy_tier",
+  "perLevel": 1,
+  "maxLevel": 1,
+  "baseCost": 1.03e+32,
+  "costGrowth": 1.0,
+  "x": 0.0,
+  "y": -32.0,
+  "ring": 10,
+  "requiresLayer": 12,
+  "desc": "购买的钻头直接从更高材质开始（级） 1/级",
+  "prereq": [
+   "hangar_23"
+  ]
+ },
+ {
+  "id": "frenzy_01",
+  "name": "持久狂热",
+  "branch": "frenzy",
+  "effect": "frenzy_time",
+  "perLevel": 1,
+  "maxLevel": 10,
+  "baseCost": 60.0,
+  "costGrowth": 1.28,
+  "x": -2.77,
+  "y": -1.6,
+  "ring": 1,
+  "requiresLayer": 1,
+  "desc": "狂热时长 +秒 1/级",
+  "prereq": [
+   "root"
+  ]
+ },
+ {
+  "id": "frenzy_02",
+  "name": "快速充能",
+  "branch": "frenzy",
+  "effect": "frenzy_charge",
+  "perLevel": 10,
+  "maxLevel": 15,
+  "baseCost": 42.0,
+  "costGrowth": 1.18,
+  "x": -1.97,
+  "y": -2.99,
+  "ring": 1,
+  "requiresLayer": 1,
+  "desc": "狂热充能速度 +10%",
+  "prereq": [
+   "frenzy_01"
+  ]
+ },
+ {
+  "id": "frenzy_03",
+  "name": "连击专家",
+  "branch": "frenzy",
+  "effect": "combo_window",
+  "perLevel": 0.5,
+  "maxLevel": 4,
+  "baseCost": 42.0,
+  "costGrowth": 1.6,
+  "x": -3.57,
+  "y": -0.21,
+  "ring": 1,
+  "requiresLayer": 1,
+  "desc": "连击判定时间 +秒 0.5/级",
+  "prereq": [
+   "frenzy_01"
+  ]
+ },
+ {
+  "id": "frenzy_04",
+  "name": "狂热之力",
+  "branch": "frenzy",
+  "effect": "frenzy_mult",
+  "perLevel": 20,
+  "maxLevel": 15,
+  "baseCost": 137000.0,
+  "costGrowth": 1.18,
+  "x": -5.54,
+  "y": -3.2,
+  "ring": 2,
+  "requiresLayer": 2,
+  "desc": "狂热伤害倍率 +20%",
+  "prereq": [
+   "frenzy_01"
+  ]
+ },
+ {
+  "id": "frenzy_05",
+  "name": "连击上限",
+  "branch": "frenzy",
+  "effect": "combo_cap",
+  "perLevel": 20,
+  "maxLevel": 10,
+  "baseCost": 96100.0,
+  "costGrowth": 1.28,
+  "x": -4.74,
+  "y": -4.59,
+  "ring": 2,
+  "requiresLayer": 2,
+  "desc": "连击加成上限 +20%",
+  "prereq": [
+   "frenzy_04"
+  ]
+ },
+ {
+  "id": "frenzy_06",
+  "name": "快速充能 II",
+  "branch": "frenzy",
+  "effect": "frenzy_charge",
+  "perLevel": 10,
+  "maxLevel": 10,
+  "baseCost": 96100.0,
+  "costGrowth": 1.28,
+  "x": -6.34,
+  "y": -1.81,
+  "ring": 2,
+  "requiresLayer": 2,
+  "desc": "狂热充能速度 +10%",
+  "prereq": [
+   "frenzy_04"
+  ]
+ },
+ {
+  "id": "frenzy_07",
+  "name": "余震",
+  "branch": "frenzy",
+  "effect": "frenzy_quake",
+  "perLevel": 1,
+  "maxLevel": 1,
+  "baseCost": 314000000.0,
+  "costGrowth": 1.0,
+  "x": -8.31,
+  "y": -4.8,
+  "ring": 3,
+  "requiresLayer": 3,
+  "desc": "狂热结束时全屏地震 1/级",
+  "prereq": [
+   "frenzy_04"
+  ]
+ },
+ {
+  "id": "frenzy_08",
+  "name": "持久狂热 II",
+  "branch": "frenzy",
+  "effect": "frenzy_time",
+  "perLevel": 1,
+  "maxLevel": 10,
+  "baseCost": 220000000.0,
+  "costGrowth": 1.28,
+  "x": -7.51,
+  "y": -6.19,
+  "ring": 3,
+  "requiresLayer": 3,
+  "desc": "狂热时长 +秒 1/级",
+  "prereq": [
+   "frenzy_07"
+  ]
+ },
+ {
+  "id": "frenzy_09",
+  "name": "狂热之力 II",
+  "branch": "frenzy",
+  "effect": "frenzy_mult",
+  "perLevel": 30,
+  "maxLevel": 10,
+  "baseCost": 220000000.0,
+  "costGrowth": 1.28,
+  "x": -9.11,
+  "y": -3.41,
+  "ring": 3,
+  "requiresLayer": 3,
+  "desc": "狂热伤害倍率 +30%",
+  "prereq": [
+   "frenzy_07"
+  ]
+ },
+ {
+  "id": "frenzy_10",
+  "name": "连击上限 II",
+  "branch": "frenzy",
+  "effect": "combo_cap",
+  "perLevel": 30,
+  "maxLevel": 10,
+  "baseCost": 718000000000.0,
+  "costGrowth": 1.28,
+  "x": -11.09,
+  "y": -6.4,
+  "ring": 4,
+  "requiresLayer": 4,
+  "desc": "连击加成上限 +30%",
+  "prereq": [
+   "frenzy_07"
+  ]
+ },
+ {
+  "id": "frenzy_11",
+  "name": "点击狂人",
+  "branch": "frenzy",
+  "effect": "click_pct",
+  "perLevel": 50,
+  "maxLevel": 10,
+  "baseCost": 502000000000.0,
+  "costGrowth": 1.28,
+  "x": -10.29,
+  "y": -7.79,
+  "ring": 4,
+  "requiresLayer": 4,
+  "desc": "点击伤害 +50%",
+  "prereq": [
+   "frenzy_10"
+  ]
+ },
+ {
+  "id": "frenzy_12",
+  "name": "快速充能 III",
+  "branch": "frenzy",
+  "effect": "frenzy_charge",
+  "perLevel": 15,
+  "maxLevel": 10,
+  "baseCost": 502000000000.0,
+  "costGrowth": 1.28,
+  "x": -11.89,
+  "y": -5.01,
+  "ring": 4,
+  "requiresLayer": 4,
+  "desc": "狂热充能速度 +15%",
+  "prereq": [
+   "frenzy_10"
+  ]
+ },
+ {
+  "id": "frenzy_13",
+  "name": "狂热之力 III",
+  "branch": "frenzy",
+  "effect": "frenzy_mult",
+  "perLevel": 50,
+  "maxLevel": 10,
+  "baseCost": 1640000000000000.0,
+  "costGrowth": 1.28,
+  "x": -13.86,
+  "y": -8.0,
+  "ring": 5,
+  "requiresLayer": 5,
+  "desc": "狂热伤害倍率 +50%",
+  "prereq": [
+   "frenzy_10"
+  ]
+ },
+ {
+  "id": "frenzy_14",
+  "name": "持久狂热 III",
+  "branch": "frenzy",
+  "effect": "frenzy_time",
+  "perLevel": 2,
+  "maxLevel": 5,
+  "baseCost": 3.75e+18,
+  "costGrowth": 1.6,
+  "x": -16.63,
+  "y": -9.6,
+  "ring": 6,
+  "requiresLayer": 7,
+  "desc": "狂热时长 +秒 2/级",
+  "prereq": [
+   "frenzy_13"
+  ]
+ },
+ {
+  "id": "frenzy_15",
+  "name": "连击上限 III",
+  "branch": "frenzy",
+  "effect": "combo_cap",
+  "perLevel": 50,
+  "maxLevel": 10,
+  "baseCost": 2.63e+18,
+  "costGrowth": 1.28,
+  "x": -15.83,
+  "y": -10.99,
+  "ring": 6,
+  "requiresLayer": 7,
+  "desc": "连击加成上限 +50%",
+  "prereq": [
+   "frenzy_14"
+  ]
+ },
+ {
+  "id": "frenzy_16",
+  "name": "狂热之力 IV",
+  "branch": "frenzy",
+  "effect": "frenzy_mult",
+  "perLevel": 80,
+  "maxLevel": 10,
+  "baseCost": 8.59e+21,
+  "costGrowth": 1.28,
+  "x": -19.4,
+  "y": -11.2,
+  "ring": 7,
+  "requiresLayer": 8,
+  "desc": "狂热伤害倍率 +80%",
+  "prereq": [
+   "frenzy_14"
+  ]
+ },
+ {
+  "id": "frenzy_17",
+  "name": "快速充能 IV",
+  "branch": "frenzy",
+  "effect": "frenzy_charge",
+  "perLevel": 20,
+  "maxLevel": 5,
+  "baseCost": 1.96e+25,
+  "costGrowth": 1.6,
+  "x": -22.17,
+  "y": -12.8,
+  "ring": 8,
+  "requiresLayer": 9,
+  "desc": "狂热充能速度 +20%",
+  "prereq": [
+   "frenzy_16"
+  ]
+ },
+ {
+  "id": "frenzy_18",
+  "name": "狂热之力 V",
+  "branch": "frenzy",
+  "effect": "frenzy_mult",
+  "perLevel": 120,
+  "maxLevel": 10,
+  "baseCost": 4.49e+28,
+  "costGrowth": 1.28,
+  "x": -24.94,
+  "y": -14.4,
+  "ring": 9,
+  "requiresLayer": 10,
+  "desc": "狂热伤害倍率 +120%",
+  "prereq": [
+   "frenzy_17"
+  ]
+ },
+ {
+  "id": "frenzy_19",
+  "name": "永恒连击",
+  "branch": "frenzy",
+  "effect": "combo_cap",
+  "perLevel": 100,
+  "maxLevel": 5,
+  "baseCost": 3.14e+28,
+  "costGrowth": 1.6,
+  "x": -24.14,
+  "y": -15.79,
+  "ring": 9,
+  "requiresLayer": 10,
+  "desc": "连击加成上限 +100%",
+  "prereq": [
+   "frenzy_18"
+  ]
+ },
+ {
+  "id": "frenzy_20",
+  "name": "永恒狂热",
+  "branch": "frenzy",
+  "effect": "frenzy_time",
+  "perLevel": 5,
+  "maxLevel": 3,
+  "baseCost": 1.03e+32,
+  "costGrowth": 1.6,
+  "x": -27.71,
+  "y": -16.0,
+  "ring": 10,
+  "requiresLayer": 12,
+  "desc": "狂热时长 +秒 5/级",
+  "prereq": [
+   "frenzy_18"
+  ]
+ },
+ {
+  "id": "strata_01",
+  "name": "表土专精",
+  "branch": "strata",
+  "effect": "layer_pct",
+  "perLevel": 50,
+  "maxLevel": 10,
+  "baseCost": 60.0,
+  "costGrowth": 1.28,
+  "x": -2.77,
+  "y": 1.6,
+  "ring": 1,
+  "requiresLayer": 1,
+  "desc": "在本分支对应地层内伤害 +50%",
+  "layer": 1,
+  "prereq": [
+   "root"
+  ]
+ },
+ {
+  "id": "strata_02",
+  "name": "砂岩专精",
+  "branch": "strata",
+  "effect": "layer_pct",
+  "perLevel": 50,
+  "maxLevel": 10,
+  "baseCost": 137000.0,
+  "costGrowth": 1.28,
+  "x": -5.54,
+  "y": 3.2,
+  "ring": 2,
+  "requiresLayer": 2,
+  "desc": "在本分支对应地层内伤害 +50%",
+  "layer": 2,
+  "prereq": [
+   "strata_01"
+  ]
+ },
+ {
+  "id": "strata_03",
+  "name": "溶洞专精",
+  "branch": "strata",
+  "effect": "layer_pct",
+  "perLevel": 50,
+  "maxLevel": 10,
+  "baseCost": 314000000.0,
+  "costGrowth": 1.28,
+  "x": -8.31,
+  "y": 4.8,
+  "ring": 3,
+  "requiresLayer": 3,
+  "desc": "在本分支对应地层内伤害 +50%",
+  "layer": 3,
+  "prereq": [
+   "strata_02"
+  ]
+ },
+ {
+  "id": "strata_04",
+  "name": "暗河专精",
+  "branch": "strata",
+  "effect": "layer_pct",
+  "perLevel": 50,
+  "maxLevel": 10,
+  "baseCost": 718000000000.0,
+  "costGrowth": 1.28,
+  "x": -11.09,
+  "y": 6.4,
+  "ring": 4,
+  "requiresLayer": 4,
+  "desc": "在本分支对应地层内伤害 +50%",
+  "layer": 4,
+  "prereq": [
+   "strata_03"
+  ]
+ },
+ {
+  "id": "strata_05",
+  "name": "遗迹专精",
+  "branch": "strata",
+  "effect": "layer_pct",
+  "perLevel": 50,
+  "maxLevel": 10,
+  "baseCost": 1640000000000000.0,
+  "costGrowth": 1.28,
+  "x": -13.86,
+  "y": 8.0,
+  "ring": 5,
+  "requiresLayer": 5,
+  "desc": "在本分支对应地层内伤害 +50%",
+  "layer": 5,
+  "prereq": [
+   "strata_04"
+  ]
+ },
+ {
+  "id": "strata_06",
+  "name": "地壳专精",
+  "branch": "strata",
+  "effect": "layer_pct",
+  "perLevel": 50,
+  "maxLevel": 10,
+  "baseCost": 3.75e+18,
+  "costGrowth": 1.28,
+  "x": -16.63,
+  "y": 9.6,
+  "ring": 6,
+  "requiresLayer": 7,
+  "desc": "在本分支对应地层内伤害 +50%",
+  "layer": 6,
+  "prereq": [
+   "strata_05"
+  ]
+ },
+ {
+  "id": "strata_07",
+  "name": "莫霍专精",
+  "branch": "strata",
+  "effect": "layer_pct",
+  "perLevel": 50,
+  "maxLevel": 10,
+  "baseCost": 8.59e+21,
+  "costGrowth": 1.28,
+  "x": -19.4,
+  "y": 11.2,
+  "ring": 7,
+  "requiresLayer": 8,
+  "desc": "在本分支对应地层内伤害 +50%",
+  "layer": 7,
+  "prereq": [
+   "strata_06"
+  ]
+ },
+ {
+  "id": "strata_08",
+  "name": "地幔专精",
+  "branch": "strata",
+  "effect": "layer_pct",
+  "perLevel": 50,
+  "maxLevel": 10,
+  "baseCost": 1.96e+25,
+  "costGrowth": 1.28,
+  "x": -22.17,
+  "y": 12.8,
+  "ring": 8,
+  "requiresLayer": 9,
+  "desc": "在本分支对应地层内伤害 +50%",
+  "layer": 8,
+  "prereq": [
+   "strata_07"
+  ]
+ },
+ {
+  "id": "strata_09",
+  "name": "过渡带专精",
+  "branch": "strata",
+  "effect": "layer_pct",
+  "perLevel": 50,
+  "maxLevel": 10,
+  "baseCost": 4.49e+28,
+  "costGrowth": 1.28,
+  "x": -24.94,
+  "y": 14.4,
+  "ring": 9,
+  "requiresLayer": 10,
+  "desc": "在本分支对应地层内伤害 +50%",
+  "layer": 9,
+  "prereq": [
+   "strata_08"
+  ]
+ },
+ {
+  "id": "strata_10",
+  "name": "下地幔专精",
+  "branch": "strata",
+  "effect": "layer_pct",
+  "perLevel": 50,
+  "maxLevel": 10,
+  "baseCost": 1.03e+32,
+  "costGrowth": 1.28,
+  "x": -27.71,
+  "y": 16.0,
+  "ring": 10,
+  "requiresLayer": 12,
+  "desc": "在本分支对应地层内伤害 +50%",
+  "layer": 10,
+  "prereq": [
+   "strata_09"
+  ]
+ },
+ {
+  "id": "strata_11",
+  "name": "外核专精",
+  "branch": "strata",
+  "effect": "layer_pct",
+  "perLevel": 50,
+  "maxLevel": 10,
+  "baseCost": 7.19e+31,
+  "costGrowth": 1.28,
+  "x": -28.51,
+  "y": 14.61,
+  "ring": 10,
+  "requiresLayer": 12,
+  "desc": "在本分支对应地层内伤害 +50%",
+  "layer": 11,
+  "prereq": [
+   "strata_10"
+  ]
+ },
+ {
+  "id": "strata_12",
+  "name": "内核专精",
+  "branch": "strata",
+  "effect": "layer_pct",
+  "perLevel": 50,
+  "maxLevel": 10,
+  "baseCost": 7.19e+31,
+  "costGrowth": 1.28,
+  "x": -26.91,
+  "y": 17.39,
+  "ring": 10,
+  "requiresLayer": 12,
+  "desc": "在本分支对应地层内伤害 +50%",
+  "layer": 12,
+  "prereq": [
+   "strata_10"
+  ]
+ },
+ {
+  "id": "strata_13",
+  "name": "地质学家",
+  "branch": "strata",
+  "effect": "rare_pct",
+  "perLevel": 10,
+  "maxLevel": 10,
+  "baseCost": 96100.0,
+  "costGrowth": 1.28,
+  "x": -6.34,
+  "y": 1.81,
+  "ring": 2,
+  "requiresLayer": 2,
+  "desc": "稀有物品掉率 +10%",
+  "prereq": [
+   "strata_02"
+  ]
+ },
+ {
+  "id": "strata_14",
+  "name": "Boss 猎人",
+  "branch": "strata",
+  "effect": "boss_pct",
+  "perLevel": 25,
+  "maxLevel": 15,
+  "baseCost": 220000000.0,
+  "costGrowth": 1.18,
+  "x": -9.11,
+  "y": 3.41,
+  "ring": 3,
+  "requiresLayer": 3,
+  "desc": "对 Boss 伤害 +25%",
+  "prereq": [
+   "strata_03"
+  ]
+ },
+ {
+  "id": "strata_15",
+  "name": "重铸大师",
+  "branch": "strata",
+  "effect": "shard_pct",
+  "perLevel": 10,
+  "maxLevel": 10,
+  "baseCost": 502000000000.0,
+  "costGrowth": 1.28,
+  "x": -11.89,
+  "y": 5.01,
+  "ring": 4,
+  "requiresLayer": 4,
+  "desc": "地核重铸碎片 +10%",
+  "prereq": [
+   "strata_04"
+  ]
+ },
+ {
+  "id": "strata_16",
+  "name": "启动资金",
+  "branch": "strata",
+  "effect": "start_gold",
+  "perLevel": 2,
+  "maxLevel": 10,
+  "baseCost": 1150000000000000.0,
+  "costGrowth": 1.28,
+  "x": -14.66,
+  "y": 6.61,
+  "ring": 5,
+  "requiresLayer": 5,
+  "desc": "重生后起始金币 × 2/级",
+  "prereq": [
+   "strata_05"
+  ]
+ },
+ {
+  "id": "strata_17",
+  "name": "地质学家 II",
+  "branch": "strata",
+  "effect": "rare_pct",
+  "perLevel": 15,
+  "maxLevel": 10,
+  "baseCost": 2.63e+18,
+  "costGrowth": 1.28,
+  "x": -17.43,
+  "y": 8.21,
+  "ring": 6,
+  "requiresLayer": 7,
+  "desc": "稀有物品掉率 +15%",
+  "prereq": [
+   "strata_06"
+  ]
+ },
+ {
+  "id": "strata_18",
+  "name": "Boss 猎人 II",
+  "branch": "strata",
+  "effect": "boss_pct",
+  "perLevel": 40,
+  "maxLevel": 10,
+  "baseCost": 6.01e+21,
+  "costGrowth": 1.28,
+  "x": -20.2,
+  "y": 9.81,
+  "ring": 7,
+  "requiresLayer": 8,
+  "desc": "对 Boss 伤害 +40%",
+  "prereq": [
+   "strata_07"
+  ]
+ },
+ {
+  "id": "strata_19",
+  "name": "重铸大师 II",
+  "branch": "strata",
+  "effect": "shard_pct",
+  "perLevel": 15,
+  "maxLevel": 10,
+  "baseCost": 1.37e+25,
+  "costGrowth": 1.28,
+  "x": -22.97,
+  "y": 11.41,
+  "ring": 8,
+  "requiresLayer": 9,
+  "desc": "地核重铸碎片 +15%",
+  "prereq": [
+   "strata_08"
+  ]
+ },
+ {
+  "id": "strata_20",
+  "name": "启动资金 II",
+  "branch": "strata",
+  "effect": "start_gold",
+  "perLevel": 3,
+  "maxLevel": 10,
+  "baseCost": 3.14e+28,
+  "costGrowth": 1.28,
+  "x": -25.74,
+  "y": 13.01,
+  "ring": 9,
+  "requiresLayer": 10,
+  "desc": "重生后起始金币 × 3/级",
+  "prereq": [
+   "strata_09"
+  ]
+ },
+ {
+  "id": "strata_21",
+  "name": "深渊凝视",
+  "branch": "strata",
+  "effect": "dmg_pct",
+  "perLevel": 30,
+  "maxLevel": 10,
+  "baseCost": 96100.0,
+  "costGrowth": 1.28,
+  "x": -4.74,
+  "y": 4.59,
+  "ring": 2,
+  "requiresLayer": 2,
+  "desc": "全部钻头伤害 +30%",
+  "prereq": [
+   "strata_02"
+  ]
+ },
+ {
+  "id": "strata_22",
+  "name": "深渊凝视 II",
+  "branch": "strata",
+  "effect": "dmg_pct",
+  "perLevel": 50,
+  "maxLevel": 10,
+  "baseCost": 502000000000.0,
+  "costGrowth": 1.28,
+  "x": -10.29,
+  "y": 7.79,
+  "ring": 4,
+  "requiresLayer": 4,
+  "desc": "全部钻头伤害 +50%",
+  "prereq": [
+   "strata_04"
+  ]
+ },
+ {
+  "id": "strata_23",
+  "name": "深渊凝视 III",
+  "branch": "strata",
+  "effect": "dmg_pct",
+  "perLevel": 80,
+  "maxLevel": 10,
+  "baseCost": 2.63e+18,
+  "costGrowth": 1.28,
+  "x": -15.83,
+  "y": 10.99,
+  "ring": 6,
+  "requiresLayer": 7,
+  "desc": "全部钻头伤害 +80%",
+  "prereq": [
+   "strata_06"
+  ]
+ },
+ {
+  "id": "strata_24",
+  "name": "深渊凝视 IV",
+  "branch": "strata",
+  "effect": "dmg_pct",
+  "perLevel": 120,
+  "maxLevel": 10,
+  "baseCost": 1.37e+25,
+  "costGrowth": 1.28,
+  "x": -21.37,
+  "y": 14.19,
+  "ring": 8,
+  "requiresLayer": 9,
+  "desc": "全部钻头伤害 +120%",
+  "prereq": [
+   "strata_08"
+  ]
+ },
+ {
+  "id": "strata_25",
+  "name": "深渊之主",
+  "branch": "strata",
+  "effect": "dmg_pct",
+  "perLevel": 200,
+  "maxLevel": 10,
+  "baseCost": 7.19e+31,
+  "costGrowth": 1.28,
+  "x": -29.31,
+  "y": 13.23,
+  "ring": 10,
+  "requiresLayer": 12,
+  "desc": "全部钻头伤害 +200%",
+  "prereq": [
+   "strata_10"
+  ]
+ }
+]

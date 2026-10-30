@@ -1,0 +1,608 @@
+{
+ "materials": [
+  "木",
+  "石",
+  "铜",
+  "铁",
+  "钢",
+  "银",
+  "金",
+  "水晶",
+  "钻石",
+  "秘银",
+  "黑曜",
+  "星核"
+ ],
+ "tierDamageMult": 3.0,
+ "buyPriceGrowth": 1.045,
+ "mergeRule": "两台同家族、同材质的钻头合成一台高一级材质；星核级不能再合成",
+ "families": [
+  {
+   "id": "std",
+   "name": "标准钻",
+   "damage": 1.0,
+   "hitsPerSec": 3.0,
+   "trait": "均衡，没有特殊效果",
+   "unlockLayer": 1,
+   "basePrice": 10
+  },
+  {
+   "id": "swift",
+   "name": "疾风钻",
+   "damage": 0.45,
+   "hitsPerSec": 8.0,
+   "trait": "攻速快，连击积累 ×2",
+   "unlockLayer": 2,
+   "basePrice": 2000.0
+  },
+  {
+   "id": "heavy",
+   "name": "重型钻",
+   "damage": 4.5,
+   "hitsPerSec": 1.0,
+   "trait": "对硬岩和超硬岩伤害 ×3，对 Boss ×1.5",
+   "unlockLayer": 3,
+   "basePrice": 60000.0
+  },
+  {
+   "id": "blast",
+   "name": "爆破钻",
+   "damage": 0.9,
+   "hitsPerSec": 3.0,
+   "trait": "击碎岩块时爆炸，对周围 1 格造成 50% 伤害",
+   "unlockLayer": 4,
+   "basePrice": 1500000.0
+  },
+  {
+   "id": "magnet",
+   "name": "磁力钻",
+   "damage": 0.7,
+   "hitsPerSec": 3.0,
+   "trait": "它击碎的矿物价值 ×2，并吸取 3 格内掉落",
+   "unlockLayer": 5,
+   "basePrice": 40000000.0
+  }
+ ],
+ "kinds": [
+  {
+   "id": "std_1",
+   "family": "std",
+   "tier": 1,
+   "name": "木标准钻",
+   "damage": 1.0,
+   "hitsPerSec": 3.0,
+   "dps": 3.0
+  },
+  {
+   "id": "std_2",
+   "family": "std",
+   "tier": 2,
+   "name": "石标准钻",
+   "damage": 3.0,
+   "hitsPerSec": 3.0,
+   "dps": 9.0
+  },
+  {
+   "id": "std_3",
+   "family": "std",
+   "tier": 3,
+   "name": "铜标准钻",
+   "damage": 9.0,
+   "hitsPerSec": 3.0,
+   "dps": 27.0
+  },
+  {
+   "id": "std_4",
+   "family": "std",
+   "tier": 4,
+   "name": "铁标准钻",
+   "damage": 27.0,
+   "hitsPerSec": 3.0,
+   "dps": 81.0
+  },
+  {
+   "id": "std_5",
+   "family": "std",
+   "tier": 5,
+   "name": "钢标准钻",
+   "damage": 81.0,
+   "hitsPerSec": 3.0,
+   "dps": 243.0
+  },
+  {
+   "id": "std_6",
+   "family": "std",
+   "tier": 6,
+   "name": "银标准钻",
+   "damage": 243.0,
+   "hitsPerSec": 3.0,
+   "dps": 729.0
+  },
+  {
+   "id": "std_7",
+   "family": "std",
+   "tier": 7,
+   "name": "金标准钻",
+   "damage": 729.0,
+   "hitsPerSec": 3.0,
+   "dps": 2187.0
+  },
+  {
+   "id": "std_8",
+   "family": "std",
+   "tier": 8,
+   "name": "水晶标准钻",
+   "damage": 2187.0,
+   "hitsPerSec": 3.0,
+   "dps": 6561.0
+  },
+  {
+   "id": "std_9",
+   "family": "std",
+   "tier": 9,
+   "name": "钻石标准钻",
+   "damage": 6561.0,
+   "hitsPerSec": 3.0,
+   "dps": 19683.0
+  },
+  {
+   "id": "std_10",
+   "family": "std",
+   "tier": 10,
+   "name": "秘银标准钻",
+   "damage": 19683.0,
+   "hitsPerSec": 3.0,
+   "dps": 59049.0
+  },
+  {
+   "id": "std_11",
+   "family": "std",
+   "tier": 11,
+   "name": "黑曜标准钻",
+   "damage": 59049.0,
+   "hitsPerSec": 3.0,
+   "dps": 177147.0
+  },
+  {
+   "id": "std_12",
+   "family": "std",
+   "tier": 12,
+   "name": "星核标准钻",
+   "damage": 177147.0,
+   "hitsPerSec": 3.0,
+   "dps": 531441.0
+  },
+  {
+   "id": "swift_1",
+   "family": "swift",
+   "tier": 1,
+   "name": "木疾风钻",
+   "damage": 0.45,
+   "hitsPerSec": 8.0,
+   "dps": 3.6
+  },
+  {
+   "id": "swift_2",
+   "family": "swift",
+   "tier": 2,
+   "name": "石疾风钻",
+   "damage": 1.35,
+   "hitsPerSec": 8.0,
+   "dps": 10.8
+  },
+  {
+   "id": "swift_3",
+   "family": "swift",
+   "tier": 3,
+   "name": "铜疾风钻",
+   "damage": 4.05,
+   "hitsPerSec": 8.0,
+   "dps": 32.4
+  },
+  {
+   "id": "swift_4",
+   "family": "swift",
+   "tier": 4,
+   "name": "铁疾风钻",
+   "damage": 12.15,
+   "hitsPerSec": 8.0,
+   "dps": 97.2
+  },
+  {
+   "id": "swift_5",
+   "family": "swift",
+   "tier": 5,
+   "name": "钢疾风钻",
+   "damage": 36.45,
+   "hitsPerSec": 8.0,
+   "dps": 291.6
+  },
+  {
+   "id": "swift_6",
+   "family": "swift",
+   "tier": 6,
+   "name": "银疾风钻",
+   "damage": 109.35000000000001,
+   "hitsPerSec": 8.0,
+   "dps": 874.8000000000001
+  },
+  {
+   "id": "swift_7",
+   "family": "swift",
+   "tier": 7,
+   "name": "金疾风钻",
+   "damage": 328.05,
+   "hitsPerSec": 8.0,
+   "dps": 2624.4
+  },
+  {
+   "id": "swift_8",
+   "family": "swift",
+   "tier": 8,
+   "name": "水晶疾风钻",
+   "damage": 984.15,
+   "hitsPerSec": 8.0,
+   "dps": 7873.2
+  },
+  {
+   "id": "swift_9",
+   "family": "swift",
+   "tier": 9,
+   "name": "钻石疾风钻",
+   "damage": 2952.4500000000003,
+   "hitsPerSec": 8.0,
+   "dps": 23619.600000000002
+  },
+  {
+   "id": "swift_10",
+   "family": "swift",
+   "tier": 10,
+   "name": "秘银疾风钻",
+   "damage": 8857.35,
+   "hitsPerSec": 8.0,
+   "dps": 70858.8
+  },
+  {
+   "id": "swift_11",
+   "family": "swift",
+   "tier": 11,
+   "name": "黑曜疾风钻",
+   "damage": 26572.05,
+   "hitsPerSec": 8.0,
+   "dps": 212576.4
+  },
+  {
+   "id": "swift_12",
+   "family": "swift",
+   "tier": 12,
+   "name": "星核疾风钻",
+   "damage": 79716.15000000001,
+   "hitsPerSec": 8.0,
+   "dps": 637729.2000000001
+  },
+  {
+   "id": "heavy_1",
+   "family": "heavy",
+   "tier": 1,
+   "name": "木重型钻",
+   "damage": 4.5,
+   "hitsPerSec": 1.0,
+   "dps": 4.5
+  },
+  {
+   "id": "heavy_2",
+   "family": "heavy",
+   "tier": 2,
+   "name": "石重型钻",
+   "damage": 13.5,
+   "hitsPerSec": 1.0,
+   "dps": 13.5
+  },
+  {
+   "id": "heavy_3",
+   "family": "heavy",
+   "tier": 3,
+   "name": "铜重型钻",
+   "damage": 40.5,
+   "hitsPerSec": 1.0,
+   "dps": 40.5
+  },
+  {
+   "id": "heavy_4",
+   "family": "heavy",
+   "tier": 4,
+   "name": "铁重型钻",
+   "damage": 121.5,
+   "hitsPerSec": 1.0,
+   "dps": 121.5
+  },
+  {
+   "id": "heavy_5",
+   "family": "heavy",
+   "tier": 5,
+   "name": "钢重型钻",
+   "damage": 364.5,
+   "hitsPerSec": 1.0,
+   "dps": 364.5
+  },
+  {
+   "id": "heavy_6",
+   "family": "heavy",
+   "tier": 6,
+   "name": "银重型钻",
+   "damage": 1093.5,
+   "hitsPerSec": 1.0,
+   "dps": 1093.5
+  },
+  {
+   "id": "heavy_7",
+   "family": "heavy",
+   "tier": 7,
+   "name": "金重型钻",
+   "damage": 3280.5,
+   "hitsPerSec": 1.0,
+   "dps": 3280.5
+  },
+  {
+   "id": "heavy_8",
+   "family": "heavy",
+   "tier": 8,
+   "name": "水晶重型钻",
+   "damage": 9841.5,
+   "hitsPerSec": 1.0,
+   "dps": 9841.5
+  },
+  {
+   "id": "heavy_9",
+   "family": "heavy",
+   "tier": 9,
+   "name": "钻石重型钻",
+   "damage": 29524.5,
+   "hitsPerSec": 1.0,
+   "dps": 29524.5
+  },
+  {
+   "id": "heavy_10",
+   "family": "heavy",
+   "tier": 10,
+   "name": "秘银重型钻",
+   "damage": 88573.5,
+   "hitsPerSec": 1.0,
+   "dps": 88573.5
+  },
+  {
+   "id": "heavy_11",
+   "family": "heavy",
+   "tier": 11,
+   "name": "黑曜重型钻",
+   "damage": 265720.5,
+   "hitsPerSec": 1.0,
+   "dps": 265720.5
+  },
+  {
+   "id": "heavy_12",
+   "family": "heavy",
+   "tier": 12,
+   "name": "星核重型钻",
+   "damage": 797161.5,
+   "hitsPerSec": 1.0,
+   "dps": 797161.5
+  },
+  {
+   "id": "blast_1",
+   "family": "blast",
+   "tier": 1,
+   "name": "木爆破钻",
+   "damage": 0.9,
+   "hitsPerSec": 3.0,
+   "dps": 2.7
+  },
+  {
+   "id": "blast_2",
+   "family": "blast",
+   "tier": 2,
+   "name": "石爆破钻",
+   "damage": 2.7,
+   "hitsPerSec": 3.0,
+   "dps": 8.100000000000001
+  },
+  {
+   "id": "blast_3",
+   "family": "blast",
+   "tier": 3,
+   "name": "铜爆破钻",
+   "damage": 8.1,
+   "hitsPerSec": 3.0,
+   "dps": 24.3
+  },
+  {
+   "id": "blast_4",
+   "family": "blast",
+   "tier": 4,
+   "name": "铁爆破钻",
+   "damage": 24.3,
+   "hitsPerSec": 3.0,
+   "dps": 72.9
+  },
+  {
+   "id": "blast_5",
+   "family": "blast",
+   "tier": 5,
+   "name": "钢爆破钻",
+   "damage": 72.9,
+   "hitsPerSec": 3.0,
+   "dps": 218.70000000000002
+  },
+  {
+   "id": "blast_6",
+   "family": "blast",
+   "tier": 6,
+   "name": "银爆破钻",
+   "damage": 218.70000000000002,
+   "hitsPerSec": 3.0,
+   "dps": 656.1
+  },
+  {
+   "id": "blast_7",
+   "family": "blast",
+   "tier": 7,
+   "name": "金爆破钻",
+   "damage": 656.1,
+   "hitsPerSec": 3.0,
+   "dps": 1968.3000000000002
+  },
+  {
+   "id": "blast_8",
+   "family": "blast",
+   "tier": 8,
+   "name": "水晶爆破钻",
+   "damage": 1968.3,
+   "hitsPerSec": 3.0,
+   "dps": 5904.900000000001
+  },
+  {
+   "id": "blast_9",
+   "family": "blast",
+   "tier": 9,
+   "name": "钻石爆破钻",
+   "damage": 5904.900000000001,
+   "hitsPerSec": 3.0,
+   "dps": 17714.7
+  },
+  {
+   "id": "blast_10",
+   "family": "blast",
+   "tier": 10,
+   "name": "秘银爆破钻",
+   "damage": 17714.7,
+   "hitsPerSec": 3.0,
+   "dps": 53144.100000000006
+  },
+  {
+   "id": "blast_11",
+   "family": "blast",
+   "tier": 11,
+   "name": "黑曜爆破钻",
+   "damage": 53144.1,
+   "hitsPerSec": 3.0,
+   "dps": 159432.30000000002
+  },
+  {
+   "id": "blast_12",
+   "family": "blast",
+   "tier": 12,
+   "name": "星核爆破钻",
+   "damage": 159432.30000000002,
+   "hitsPerSec": 3.0,
+   "dps": 478296.9
+  },
+  {
+   "id": "magnet_1",
+   "family": "magnet",
+   "tier": 1,
+   "name": "木磁力钻",
+   "damage": 0.7,
+   "hitsPerSec": 3.0,
+   "dps": 2.0999999999999996
+  },
+  {
+   "id": "magnet_2",
+   "family": "magnet",
+   "tier": 2,
+   "name": "石磁力钻",
+   "damage": 2.0999999999999996,
+   "hitsPerSec": 3.0,
+   "dps": 6.299999999999999
+  },
+  {
+   "id": "magnet_3",
+   "family": "magnet",
+   "tier": 3,
+   "name": "铜磁力钻",
+   "damage": 6.3,
+   "hitsPerSec": 3.0,
+   "dps": 18.9
+  },
+  {
+   "id": "magnet_4",
+   "family": "magnet",
+   "tier": 4,
+   "name": "铁磁力钻",
+   "damage": 18.9,
+   "hitsPerSec": 3.0,
+   "dps": 56.69999999999999
+  },
+  {
+   "id": "magnet_5",
+   "family": "magnet",
+   "tier": 5,
+   "name": "钢磁力钻",
+   "damage": 56.699999999999996,
+   "hitsPerSec": 3.0,
+   "dps": 170.09999999999997
+  },
+  {
+   "id": "magnet_6",
+   "family": "magnet",
+   "tier": 6,
+   "name": "银磁力钻",
+   "damage": 170.1,
+   "hitsPerSec": 3.0,
+   "dps": 510.2999999999999
+  },
+  {
+   "id": "magnet_7",
+   "family": "magnet",
+   "tier": 7,
+   "name": "金磁力钻",
+   "damage": 510.29999999999995,
+   "hitsPerSec": 3.0,
+   "dps": 1530.8999999999996
+  },
+  {
+   "id": "magnet_8",
+   "family": "magnet",
+   "tier": 8,
+   "name": "水晶磁力钻",
+   "damage": 1530.8999999999999,
+   "hitsPerSec": 3.0,
+   "dps": 4592.699999999999
+  },
+  {
+   "id": "magnet_9",
+   "family": "magnet",
+   "tier": 9,
+   "name": "钻石磁力钻",
+   "damage": 4592.7,
+   "hitsPerSec": 3.0,
+   "dps": 13778.099999999999
+  },
+  {
+   "id": "magnet_10",
+   "family": "magnet",
+   "tier": 10,
+   "name": "秘银磁力钻",
+   "damage": 13778.099999999999,
+   "hitsPerSec": 3.0,
+   "dps": 41334.299999999996
+  },
+  {
+   "id": "magnet_11",
+   "family": "magnet",
+   "tier": 11,
+   "name": "黑曜磁力钻",
+   "damage": 41334.299999999996,
+   "hitsPerSec": 3.0,
+   "dps": 124002.89999999998
+  },
+  {
+   "id": "magnet_12",
+   "family": "magnet",
+   "tier": 12,
+   "name": "星核磁力钻",
+   "damage": 124002.9,
+   "hitsPerSec": 3.0,
+   "dps": 372008.69999999995
+  }
+ ]
+}

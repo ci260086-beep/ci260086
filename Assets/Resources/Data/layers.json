@@ -1,0 +1,338 @@
+[
+ {
+  "id": 1,
+  "name": "表土",
+  "depthStartM": 0,
+  "depthEndM": 100,
+  "rowStart": 0,
+  "rowEnd": 100,
+  "rows": 100,
+  "color": "棕/绿",
+  "ores": [
+   {
+    "name": "煤",
+    "valueMult": 1,
+    "rate": 0.06
+   },
+   {
+    "name": "铜",
+    "valueMult": 2,
+    "rate": 0.06
+   }
+  ],
+  "mechanic": "无，教学层",
+  "boss": {
+   "name": "巨型木根",
+   "hpMult": 400.0,
+   "timeLimitSec": 60
+  }
+ },
+ {
+  "id": 2,
+  "name": "砂岩",
+  "depthStartM": 100,
+  "depthEndM": 500,
+  "rowStart": 100,
+  "rowEnd": 250,
+  "rows": 150,
+  "color": "土黄",
+  "ores": [
+   {
+    "name": "铁",
+    "valueMult": 4,
+    "rate": 0.06
+   },
+   {
+    "name": "银",
+    "valueMult": 8,
+    "rate": 0.03
+   }
+  ],
+  "mechanic": "沙块：下方挖空就塌落",
+  "boss": {
+   "name": "岩甲虫",
+   "hpMult": 459.99999999999994,
+   "timeLimitSec": 60
+  }
+ },
+ {
+  "id": 3,
+  "name": "石灰岩溶洞",
+  "depthStartM": 500,
+  "depthEndM": 2000,
+  "rowStart": 250,
+  "rowEnd": 430,
+  "rows": 180,
+  "color": "紫/蓝",
+  "ores": [
+   {
+    "name": "水晶",
+    "valueMult": 16,
+    "rate": 0.05
+   },
+   {
+    "name": "金",
+    "valueMult": 30,
+    "rate": 0.02
+   }
+  ],
+  "mechanic": "水晶反射：击碎时弹射伤害周围 2 格",
+  "boss": {
+   "name": "水晶巨像",
+   "hpMult": 528.9999999999999,
+   "timeLimitSec": 60
+  }
+ },
+ {
+  "id": 4,
+  "name": "地下暗河",
+  "depthStartM": 2000,
+  "depthEndM": 5000,
+  "rowStart": 430,
+  "rowEnd": 630,
+  "rows": 200,
+  "color": "深蓝",
+  "ores": [
+   {
+    "name": "珍珠",
+    "valueMult": 50,
+    "rate": 0.04
+   },
+   {
+    "name": "蓝宝石",
+    "valueMult": 90,
+    "rate": 0.02
+   }
+  ],
+  "mechanic": "水流：挖开水块会冲走附近碎屑并推歪钻头",
+  "boss": {
+   "name": "盲眼巨鱼",
+   "hpMult": 608.3499999999999,
+   "timeLimitSec": 60
+  }
+ },
+ {
+  "id": 5,
+  "name": "远古遗迹",
+  "depthStartM": 5000,
+  "depthEndM": 10000,
+  "rowStart": 630,
+  "rowEnd": 830,
+  "rows": 200,
+  "color": "金/灰",
+  "ores": [
+   {
+    "name": "古币",
+    "valueMult": 150,
+    "rate": 0.05
+   },
+   {
+    "name": "红宝石",
+    "valueMult": 260,
+    "rate": 0.02
+   }
+  ],
+  "mechanic": "机关宝箱和隐藏房间",
+  "boss": {
+   "name": "石像守卫",
+   "hpMult": 699.6024999999997,
+   "timeLimitSec": 60
+  }
+ },
+ {
+  "id": 6,
+  "name": "花岗岩地壳",
+  "depthStartM": 10000,
+  "depthEndM": 35000,
+  "rowStart": 830,
+  "rowEnd": 1050,
+  "rows": 220,
+  "color": "灰/粉",
+  "ores": [
+   {
+    "name": "石英",
+    "valueMult": 400,
+    "rate": 0.05
+   },
+   {
+    "name": "钛",
+    "valueMult": 700,
+    "rate": 0.025
+   }
+  ],
+  "mechanic": "超硬岩：只有重型钻能高效挖",
+  "boss": {
+   "name": "花岗岩魔像",
+   "hpMult": 804.5428749999998,
+   "timeLimitSec": 60
+  }
+ },
+ {
+  "id": 7,
+  "name": "莫霍面",
+  "depthStartM": 35000,
+  "depthEndM": 100000,
+  "rowStart": 1050,
+  "rowEnd": 1270,
+  "rows": 220,
+  "color": "黑/暗红",
+  "ores": [
+   {
+    "name": "玄武晶",
+    "valueMult": 1200.0,
+    "rate": 0.05
+   },
+   {
+    "name": "铂",
+    "valueMult": 2000.0,
+    "rate": 0.02
+   }
+  ],
+  "mechanic": "高压：钻头每 10 秒过热一次，需狂热散热",
+  "boss": {
+   "name": "莫霍守门人",
+   "hpMult": 925.2243062499996,
+   "timeLimitSec": 60
+  }
+ },
+ {
+  "id": 8,
+  "name": "上地幔",
+  "depthStartM": 100000,
+  "depthEndM": 410000,
+  "rowStart": 1270,
+  "rowEnd": 1510,
+  "rows": 240,
+  "color": "橄榄绿",
+  "ores": [
+   {
+    "name": "橄榄石",
+    "valueMult": 3500.0,
+    "rate": 0.05
+   },
+   {
+    "name": "钻石",
+    "valueMult": 6000.0,
+    "rate": 0.015
+   }
+  ],
+  "mechanic": "岩浆囊：碰到会连锁喷发",
+  "boss": {
+   "name": "熔岩巨蛇",
+   "hpMult": 1064.0079521874995,
+   "timeLimitSec": 60
+  }
+ },
+ {
+  "id": 9,
+  "name": "地幔过渡带",
+  "depthStartM": 410000,
+  "depthEndM": 660000,
+  "rowStart": 1510,
+  "rowEnd": 1750,
+  "rows": 240,
+  "color": "蓝绿",
+  "ores": [
+   {
+    "name": "林伍德石",
+    "valueMult": 10000.0,
+    "rate": 0.05
+   },
+   {
+    "name": "尖晶石",
+    "valueMult": 18000.0,
+    "rate": 0.02
+   }
+  ],
+  "mechanic": "相变层：每 30 行岩块类型整体变化一次",
+  "boss": {
+   "name": "相变之灵",
+   "hpMult": 1223.6091450156243,
+   "timeLimitSec": 60
+  }
+ },
+ {
+  "id": 10,
+  "name": "下地幔",
+  "depthStartM": 660000,
+  "depthEndM": 2890000,
+  "rowStart": 1750,
+  "rowEnd": 2010,
+  "rows": 260,
+  "color": "深红/橙",
+  "ores": [
+   {
+    "name": "布里奇曼石",
+    "valueMult": 30000.0,
+    "rate": 0.05
+   },
+   {
+    "name": "后钙钛矿",
+    "valueMult": 55000.0,
+    "rate": 0.02
+   }
+  ],
+  "mechanic": "对流：整片地层缓慢横向流动",
+  "boss": {
+   "name": "地幔巨鲸",
+   "hpMult": 1407.150516767968,
+   "timeLimitSec": 60
+  }
+ },
+ {
+  "id": 11,
+  "name": "外核",
+  "depthStartM": 2890000,
+  "depthEndM": 5150000,
+  "rowStart": 2010,
+  "rowEnd": 2270,
+  "rows": 260,
+  "color": "金/白",
+  "ores": [
+   {
+    "name": "液态铁镍",
+    "valueMult": 90000.0,
+    "rate": 0.05
+   },
+   {
+    "name": "地磁晶",
+    "valueMult": 160000.0,
+    "rate": 0.02
+   }
+  ],
+  "mechanic": "液态：挖开的格子会被慢慢回填",
+  "boss": {
+   "name": "磁暴旋涡",
+   "hpMult": 1618.2230942831627,
+   "timeLimitSec": 60
+  }
+ },
+ {
+  "id": 12,
+  "name": "内核",
+  "depthStartM": 5150000,
+  "depthEndM": 6371000,
+  "rowStart": 2270,
+  "rowEnd": 2550,
+  "rows": 280,
+  "color": "白金",
+  "ores": [
+   {
+    "name": "星核碎晶",
+    "valueMult": 300000.0,
+    "rate": 0.05
+   },
+   {
+    "name": "地心之石",
+    "valueMult": 600000.0,
+    "rate": 0.01
+   }
+  ],
+  "mechanic": "极高温：只有狂热时能造成全额伤害",
+  "boss": {
+   "name": "地核心脏",
+   "hpMult": 1860.956558425637,
+   "timeLimitSec": 60
+  }
+ }
+]

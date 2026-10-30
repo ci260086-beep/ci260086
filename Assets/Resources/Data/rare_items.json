@@ -1,0 +1,326 @@
+[
+ {
+  "id": "rare_1_1",
+  "name": "三叶虫化石",
+  "layer": 1,
+  "rarity": "稀有",
+  "dropChance": 0.02,
+  "bonus": "全部伤害 +1%",
+  "dupeBonus": "重复获得时该加成再 +50%（最多 10 次）"
+ },
+ {
+  "id": "rare_1_2",
+  "name": "古老树根",
+  "layer": 1,
+  "rarity": "史诗",
+  "dropChance": 0.006,
+  "bonus": "矿物价值 +3%",
+  "dupeBonus": "重复获得时该加成再 +50%（最多 10 次）"
+ },
+ {
+  "id": "rare_1_3",
+  "name": "迷路的鼹鼠玩具",
+  "layer": 1,
+  "rarity": "传说",
+  "dropChance": 0.0015,
+  "bonus": "全部收入 +5%",
+  "dupeBonus": "重复获得时该加成再 +50%（最多 10 次）"
+ },
+ {
+  "id": "rare_2_1",
+  "name": "沙漠玫瑰石",
+  "layer": 2,
+  "rarity": "稀有",
+  "dropChance": 0.02,
+  "bonus": "全部伤害 +1%",
+  "dupeBonus": "重复获得时该加成再 +50%（最多 10 次）"
+ },
+ {
+  "id": "rare_2_2",
+  "name": "沙虫牙",
+  "layer": 2,
+  "rarity": "史诗",
+  "dropChance": 0.006,
+  "bonus": "矿物价值 +3%",
+  "dupeBonus": "重复获得时该加成再 +50%（最多 10 次）"
+ },
+ {
+  "id": "rare_2_3",
+  "name": "埋藏的怀表",
+  "layer": 2,
+  "rarity": "传说",
+  "dropChance": 0.0015,
+  "bonus": "全部收入 +5%",
+  "dupeBonus": "重复获得时该加成再 +50%（最多 10 次）"
+ },
+ {
+  "id": "rare_3_1",
+  "name": "发光钟乳石",
+  "layer": 3,
+  "rarity": "稀有",
+  "dropChance": 0.02,
+  "bonus": "全部伤害 +1%",
+  "dupeBonus": "重复获得时该加成再 +50%（最多 10 次）"
+ },
+ {
+  "id": "rare_3_2",
+  "name": "洞穴壁画碎片",
+  "layer": 3,
+  "rarity": "史诗",
+  "dropChance": 0.006,
+  "bonus": "矿物价值 +3%",
+  "dupeBonus": "重复获得时该加成再 +50%（最多 10 次）"
+ },
+ {
+  "id": "rare_3_3",
+  "name": "紫晶晶洞",
+  "layer": 3,
+  "rarity": "传说",
+  "dropChance": 0.0015,
+  "bonus": "全部收入 +5%",
+  "dupeBonus": "重复获得时该加成再 +50%（最多 10 次）"
+ },
+ {
+  "id": "rare_4_1",
+  "name": "盲鱼鳞片",
+  "layer": 4,
+  "rarity": "稀有",
+  "dropChance": 0.02,
+  "bonus": "全部伤害 +1%",
+  "dupeBonus": "重复获得时该加成再 +50%（最多 10 次）"
+ },
+ {
+  "id": "rare_4_2",
+  "name": "沉船罗盘",
+  "layer": 4,
+  "rarity": "史诗",
+  "dropChance": 0.006,
+  "bonus": "矿物价值 +3%",
+  "dupeBonus": "重复获得时该加成再 +50%（最多 10 次）"
+ },
+ {
+  "id": "rare_4_3",
+  "name": "暗河珍珠母",
+  "layer": 4,
+  "rarity": "传说",
+  "dropChance": 0.0015,
+  "bonus": "全部收入 +5%",
+  "dupeBonus": "重复获得时该加成再 +50%（最多 10 次）"
+ },
+ {
+  "id": "rare_5_1",
+  "name": "古城钥匙",
+  "layer": 5,
+  "rarity": "稀有",
+  "dropChance": 0.02,
+  "bonus": "全部伤害 +1%",
+  "dupeBonus": "重复获得时该加成再 +50%（最多 10 次）"
+ },
+ {
+  "id": "rare_5_2",
+  "name": "黄金面具",
+  "layer": 5,
+  "rarity": "史诗",
+  "dropChance": 0.006,
+  "bonus": "矿物价值 +3%",
+  "dupeBonus": "重复获得时该加成再 +50%（最多 10 次）"
+ },
+ {
+  "id": "rare_5_3",
+  "name": "失落的石板",
+  "layer": 5,
+  "rarity": "传说",
+  "dropChance": 0.0015,
+  "bonus": "全部收入 +5%",
+  "dupeBonus": "重复获得时该加成再 +50%（最多 10 次）"
+ },
+ {
+  "id": "rare_6_1",
+  "name": "花岗岩球",
+  "layer": 6,
+  "rarity": "稀有",
+  "dropChance": 0.02,
+  "bonus": "全部伤害 +1%",
+  "dupeBonus": "重复获得时该加成再 +50%（最多 10 次）"
+ },
+ {
+  "id": "rare_6_2",
+  "name": "锆石晶粒",
+  "layer": 6,
+  "rarity": "史诗",
+  "dropChance": 0.006,
+  "bonus": "矿物价值 +3%",
+  "dupeBonus": "重复获得时该加成再 +50%（最多 10 次）"
+ },
+ {
+  "id": "rare_6_3",
+  "name": "地壳地图",
+  "layer": 6,
+  "rarity": "传说",
+  "dropChance": 0.0015,
+  "bonus": "全部收入 +5%",
+  "dupeBonus": "重复获得时该加成再 +50%（最多 10 次）"
+ },
+ {
+  "id": "rare_7_1",
+  "name": "莫霍面样本",
+  "layer": 7,
+  "rarity": "稀有",
+  "dropChance": 0.02,
+  "bonus": "全部伤害 +1%",
+  "dupeBonus": "重复获得时该加成再 +50%（最多 10 次）"
+ },
+ {
+  "id": "rare_7_2",
+  "name": "玄武岩柱",
+  "layer": 7,
+  "rarity": "史诗",
+  "dropChance": 0.006,
+  "bonus": "矿物价值 +3%",
+  "dupeBonus": "重复获得时该加成再 +50%（最多 10 次）"
+ },
+ {
+  "id": "rare_7_3",
+  "name": "铂金徽章",
+  "layer": 7,
+  "rarity": "传说",
+  "dropChance": 0.0015,
+  "bonus": "全部收入 +5%",
+  "dupeBonus": "重复获得时该加成再 +50%（最多 10 次）"
+ },
+ {
+  "id": "rare_8_1",
+  "name": "橄榄石原石",
+  "layer": 8,
+  "rarity": "稀有",
+  "dropChance": 0.02,
+  "bonus": "全部伤害 +1%",
+  "dupeBonus": "重复获得时该加成再 +50%（最多 10 次）"
+ },
+ {
+  "id": "rare_8_2",
+  "name": "金伯利岩管",
+  "layer": 8,
+  "rarity": "史诗",
+  "dropChance": 0.006,
+  "bonus": "矿物价值 +3%",
+  "dupeBonus": "重复获得时该加成再 +50%（最多 10 次）"
+ },
+ {
+  "id": "rare_8_3",
+  "name": "地幔羽碎片",
+  "layer": 8,
+  "rarity": "传说",
+  "dropChance": 0.0015,
+  "bonus": "全部收入 +5%",
+  "dupeBonus": "重复获得时该加成再 +50%（最多 10 次）"
+ },
+ {
+  "id": "rare_9_1",
+  "name": "林伍德石晶体",
+  "layer": 9,
+  "rarity": "稀有",
+  "dropChance": 0.02,
+  "bonus": "全部伤害 +1%",
+  "dupeBonus": "重复获得时该加成再 +50%（最多 10 次）"
+ },
+ {
+  "id": "rare_9_2",
+  "name": "水之结晶",
+  "layer": 9,
+  "rarity": "史诗",
+  "dropChance": 0.006,
+  "bonus": "矿物价值 +3%",
+  "dupeBonus": "重复获得时该加成再 +50%（最多 10 次）"
+ },
+ {
+  "id": "rare_9_3",
+  "name": "相变核心",
+  "layer": 9,
+  "rarity": "传说",
+  "dropChance": 0.0015,
+  "bonus": "全部收入 +5%",
+  "dupeBonus": "重复获得时该加成再 +50%（最多 10 次）"
+ },
+ {
+  "id": "rare_10_1",
+  "name": "布里奇曼石",
+  "layer": 10,
+  "rarity": "稀有",
+  "dropChance": 0.02,
+  "bonus": "全部伤害 +1%",
+  "dupeBonus": "重复获得时该加成再 +50%（最多 10 次）"
+ },
+ {
+  "id": "rare_10_2",
+  "name": "地幔鲸骨",
+  "layer": 10,
+  "rarity": "史诗",
+  "dropChance": 0.006,
+  "bonus": "矿物价值 +3%",
+  "dupeBonus": "重复获得时该加成再 +50%（最多 10 次）"
+ },
+ {
+  "id": "rare_10_3",
+  "name": "超深钻石",
+  "layer": 10,
+  "rarity": "传说",
+  "dropChance": 0.0015,
+  "bonus": "全部收入 +5%",
+  "dupeBonus": "重复获得时该加成再 +50%（最多 10 次）"
+ },
+ {
+  "id": "rare_11_1",
+  "name": "磁极石",
+  "layer": 11,
+  "rarity": "稀有",
+  "dropChance": 0.02,
+  "bonus": "全部伤害 +1%",
+  "dupeBonus": "重复获得时该加成再 +50%（最多 10 次）"
+ },
+ {
+  "id": "rare_11_2",
+  "name": "液态金属珠",
+  "layer": 11,
+  "rarity": "史诗",
+  "dropChance": 0.006,
+  "bonus": "矿物价值 +3%",
+  "dupeBonus": "重复获得时该加成再 +50%（最多 10 次）"
+ },
+ {
+  "id": "rare_11_3",
+  "name": "地磁罗盘",
+  "layer": 11,
+  "rarity": "传说",
+  "dropChance": 0.0015,
+  "bonus": "全部收入 +5%",
+  "dupeBonus": "重复获得时该加成再 +50%（最多 10 次）"
+ },
+ {
+  "id": "rare_12_1",
+  "name": "地心之石",
+  "layer": 12,
+  "rarity": "稀有",
+  "dropChance": 0.02,
+  "bonus": "全部伤害 +1%",
+  "dupeBonus": "重复获得时该加成再 +50%（最多 10 次）"
+ },
+ {
+  "id": "rare_12_2",
+  "name": "星核碎晶",
+  "layer": 12,
+  "rarity": "史诗",
+  "dropChance": 0.006,
+  "bonus": "矿物价值 +3%",
+  "dupeBonus": "重复获得时该加成再 +50%（最多 10 次）"
+ },
+ {
+  "id": "rare_12_3",
+  "name": "地球心跳",
+  "layer": 12,
+  "rarity": "传说",
+  "dropChance": 0.0015,
+  "bonus": "全部收入 +5%",
+  "dupeBonus": "重复获得时该加成再 +50%（最多 10 次）"
+ }
+]
