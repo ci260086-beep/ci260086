@@ -193,7 +193,7 @@ namespace DeepDrill.Game
             float y = drillY - (Stage.Height / 2f - drillStageY) / Stage.PixelsPerUnit;
 
             float halfWidth = Stage.Width / 2f / Stage.PixelsPerUnit;
-            float digUnits = Stage.DigWidth / Stage.PixelsPerUnit;
+            float digUnits = Stage.PanelX / Stage.PixelsPerUnit; // the rail floats, so ground shows behind it
             x = Mathf.Clamp(x, -0.5f + halfWidth, Balance.Columns - 0.5f - digUnits + halfWidth);
             return new Vector2(Stage.SnapToPixel(x), Stage.SnapToPixel(y));
         }

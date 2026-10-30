@@ -19,6 +19,7 @@ namespace DeepDrill.Game
         private const int PanelTitleHeight = 15;
         private const int FooterHeight = 21;
         private const int RailButton = 18;
+        private const int RailTopGroup = 3;
         private const int MeterWidth = 60;
         private const int MeterHeight = 7;
         private const int MeterY = 169;
@@ -234,13 +235,17 @@ namespace DeepDrill.Game
 
         private void BuildRail()
         {
-            var rail = Ui.Panel(stageRoot, "Rail", Stage.DigWidth, 0, Stage.RailWidth, Stage.Height, PanelColor);
+            // the rail floats over the ground: upgrade tabs at the top, stats and settings at the bottom
+            var rail = Ui.Panel(stageRoot, "Rail", Stage.DigWidth, 0, Stage.RailWidth, Stage.Height, Color.clear);
+            rail.raycastTarget = false;
             string[] icons = { "tab_drill", "tab_blast", "tab_frenzy", "tab_stats", "tab_settings" };
             for (int i = 0; i < icons.Length; i++)
             {
                 int index = i;
-                var button = Ui.Button(rail.transform, Font, "", 1, 3 + i * (RailButton + 2), RailButton, RailButton, 7,
-                    RailColor, out _);
+                int y = i < RailTopGroup
+                    ? 3 + i * (RailButton + 2)
+                    : Stage.Height - 3 - (icons.Length - i) * (RailButton + 2) + 2;
+                var button = Ui.Button(rail.transform, Font, "", 1, y, RailButton, RailButton, 7, RailColor, out _);
                 Ui.Icon(button.transform, art.Get(icons[i]), 1, 1, 16);
                 button.onClick.AddListener(() => ShowPage(index));
                 railButtons.Add(button.GetComponent<Image>());
