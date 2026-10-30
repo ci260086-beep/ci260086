@@ -18,6 +18,9 @@ namespace DeepDrill.Game
         private const float DrillPivotBelowCenter = 0.92f; // the sprite turns about a point near its tip
         private const float DrillPivotY = 1.5f / 32f;
 
+        private static readonly Color SoilWall = new Color32(0x2e, 0x1f, 0x17, 0xff);
+        private static readonly Color SandWall = new Color32(0x4a, 0x35, 0x20, 0xff);
+
         private sealed class Cell
         {
             public SpriteRenderer Back;
@@ -37,12 +40,15 @@ namespace DeepDrill.Game
         private GameSim sim;
         private Camera cam;
         private Cell[,] cells;
-        private Sprite[] dirt;
+        private Sprite[][] ground;
+        private Sprite[][] edgeSprites;
+        private Sprite[] bossFaces;
         private Sprite[] cracks;
         private Sprite[] drillFrames;
         private Sprite[] frenzyFrames;
         private Sprite tunnel;
         private Sprite grass, hardRock, coal, copper, chest, tnt, bossRoot;
+        private Sprite hardRockSand, coalSand, copperSand, iron, silver, chestSand, sand, beetleShell, beetleBare;
         private SpriteRenderer drill;
         private SpriteRenderer bossFace;
         private float followX;
@@ -56,12 +62,33 @@ namespace DeepDrill.Game
         {
             sim = simulation;
             cam = camera;
-            dirt = new[] { art.Get("dirt_a"), art.Get("dirt_b"), art.Get("dirt_c") };
+            ground = new[]
+            {
+                new[] { art.Get("dirt_a"), art.Get("dirt_b"), art.Get("dirt_c") },
+                new[] { art.Get("sandstone_a"), art.Get("sandstone_b"), art.Get("sandstone_c") },
+            };
+            edgeSprites = new Sprite[2][];
+            for (int stratum = 0; stratum < edgeSprites.Length; stratum++)
+            {
+                edgeSprites[stratum] = new Sprite[EdgeNames.Length];
+                for (int e = 0; e < EdgeNames.Length; e++)
+                    edgeSprites[stratum][e] = art.Get(EdgeNames[e] + (stratum == 0 ? "" : "_sand"));
+            }
+            hardRockSand = art.Get("hard_rock_sand");
+            coalSand = art.Get("ore_coal_sand");
+            copperSand = art.Get("ore_copper_sand");
+            iron = art.Get("ore_iron_sand");
+            silver = art.Get("ore_silver_sand");
+            chestSand = art.Get("chest_sand");
+            sand = art.Get("sand_block");
+            beetleShell = art.Get("beetle_shell");
+            beetleBare = art.Get("beetle_bare");
+            bossFaces = new[] { art.Get("boss_face"), art.Get("beetle_face") };
             cracks = art.Strip("crack_overlay", 16, 0.5f);
             drillFrames = art.Strip("drill_spin", 32, DrillPivotY);
             frenzyFrames = art.Strip("drill_frenzy", 32, DrillPivotY);
             tnt = art.Get("tnt");
-            tunnel = art.Get("tunnel_bg");
+            tunnel = art.Get("tunnel_neutral");
             grass = art.Get("grass");
             hardRock = art.Get("hard_rock");
             coal = art.Get("ore_coal");
@@ -70,7 +97,6 @@ namespace DeepDrill.Game
             bossRoot = art.Get("boss_root");
 
             bossFace = MakeRenderer("bossFace", 4, transform);
-            bossFace.sprite = art.Get("boss_face");
 
             cells = new Cell[VisibleRows, VisibleCols];
             for (int r = 0; r < VisibleRows; r++)
@@ -86,10 +112,7 @@ namespace DeepDrill.Game
                         Edges = new SpriteRenderer[EdgeNames.Length],
                     };
                     for (int e = 0; e < EdgeNames.Length; e++)
-                    {
                         cell.Edges[e] = MakeRenderer("edge", 2, tile.transform);
-                        cell.Edges[e].sprite = art.Get(EdgeNames[e]);
-                    }
                     cells[r, c] = cell;
                 }
             }
@@ -148,8 +171,13 @@ namespace DeepDrill.Game
                 new Vector3(Stage.SnapToPixel(drillX), Stage.SnapToPixel(drillY - DrillPivotBelowCenter), 0),
                 Quaternion.Euler(0, 0, angle));
 
-            bossFace.enabled = !sim.State.bossDefeated;
-            bossFace.transform.position = new Vector3(Mathf.Round(drillX), -(Balance.BossRow + 0.5f), 0);
+            var boss = sim.CurrentBoss;
+            bossFace.enabled = boss != null;
+            if (boss != null)
+            {
+                bossFace.sprite = bossFaces[sim.State.bossesDefeated];
+                bossFace.transform.position = new Vector3(Mathf.Round(drillX), -(boss.Row + 0.5f), 0);
+            }
 
             StepWobble(dt);
             DrawCells(target);
@@ -189,17 +217,22 @@ namespace DeepDrill.Game
 
             bool inWorld = row >= 0 && col >= 0 && col < Balance.Columns;
             bool solid = inWorld && sim.Row(row)[col].Alive;
+            int stratum = inWorld ? WorldGen.StratumAt(sim.State.seed, row, col) : 0;
             // solid cells keep ground behind them so a nudged tile never shows the sky through the gap
             cell.Back.enabled = inWorld;
-            cell.Back.sprite = solid ? dirt[0] : tunnel;
+            cell.Back.sprite = solid ? ground[stratum][0] : tunnel;
+            cell.Back.color = solid ? Color.white : WallTint(row);
             cell.Tile.enabled = solid;
             cell.Crack.enabled = false;
             for (int e = 0; e < cell.Edges.Length; e++)
+            {
                 cell.Edges[e].enabled = solid && IsHole(row + EdgeRowOffset[e], col + EdgeColOffset[e]);
+                cell.Edges[e].sprite = edgeSprites[stratum][e];
+            }
             if (!solid) return;
 
             var block = sim.Row(row)[col];
-            cell.Tile.sprite = SpriteFor(block.Type, row, col);
+            cell.Tile.sprite = SpriteFor(block.Type, row, col, stratum);
 
             if (wobble.ContainsKey(Key(row, col)))
                 cell.Tile.transform.position = pos + new Vector3(0, -1f / Stage.PixelsPerUnit, 0);
@@ -215,18 +248,34 @@ namespace DeepDrill.Game
         private bool IsHole(int row, int col) =>
             row >= 0 && col >= 0 && col < Balance.Columns && !sim.Row(row)[col].Alive;
 
-        private Sprite SpriteFor(BlockType type, int row, int col)
+        // The back wall fades across the transition rows and a little past them.
+        private static Color WallTint(int row)
         {
+            float from = Balance.SandstoneRow - Balance.TransitionRows;
+            float to = Balance.SandstoneRow + Balance.TransitionRows;
+            return Color.Lerp(SoilWall, SandWall, Mathf.InverseLerp(from, to, row));
+        }
+
+        private Sprite SpriteFor(BlockType type, int row, int col, int stratum)
+        {
+            bool inSand = stratum == 1;
             switch (type)
             {
                 case BlockType.Grass: return grass;
-                case BlockType.HardRock: return hardRock;
-                case BlockType.Coal: return coal;
-                case BlockType.Copper: return copper;
-                case BlockType.Chest: return chest;
+                case BlockType.HardRock: return inSand ? hardRockSand : hardRock;
+                case BlockType.Coal: return inSand ? coalSand : coal;
+                case BlockType.Copper: return inSand ? copperSand : copper;
+                case BlockType.Iron: return iron;
+                case BlockType.Silver: return silver;
+                case BlockType.Sand: return sand;
+                case BlockType.Chest: return inSand ? chestSand : chest;
                 case BlockType.Tnt: return tnt;
-                case BlockType.BossRoot: return bossRoot;
-                default: return dirt[WorldGen.Hash(sim.State.seed + 7, row, col) % dirt.Length];
+                case BlockType.BossRoot:
+                    if (row < Balance.BeetleRow) return bossRoot;
+                    return sim.BossActive && sim.BossArmor <= 0 ? beetleBare : beetleShell;
+                default:
+                    var set = ground[stratum];
+                    return set[WorldGen.Hash(sim.State.seed + 7, row, col) % set.Length];
             }
         }
 

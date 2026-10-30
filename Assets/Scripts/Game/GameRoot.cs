@@ -25,6 +25,9 @@ namespace DeepDrill.Game
         private static readonly Color ChestBits = new Color32(0xff, 0xe2, 0x7a, 0xff);
         private static readonly Color TntBits = new Color32(0xb8, 0x2c, 0x2c, 0xff);
         private static readonly Color RootBits = new Color32(0x6b, 0x46, 0x30, 0xff);
+        private static readonly Color ArmorBits = new Color32(0x8a, 0x8a, 0x96, 0xff);
+        private static readonly Color SilverBits = new Color32(0xe8, 0xe8, 0xf0, 0xff);
+        private static readonly Color SandBits = new Color32(0xe8, 0xcc, 0x84, 0xff);
         private static readonly Color HitText = Color.white;
         private static readonly Color CoinText = new Color32(0xff, 0xe2, 0x7a, 0xff);
 
@@ -166,12 +169,22 @@ namespace DeepDrill.Game
                     break;
 
                 case SimEventKind.BossStarted:
-                    hud.ShowToast("巨型木根！60 秒内打穿它", 3f);
+                    hud.ShowToast($"{sim.CurrentBoss.Name}！60 秒内打穿它", 3f);
                     world.Shake(0.3f, 3f);
                     break;
 
                 case SimEventKind.BossFailed:
-                    hud.ShowToast("木根再生了，升级后再来", 3f);
+                    hud.ShowToast($"{sim.CurrentBoss.Name}恢复了，升级后再来", 3f);
+                    break;
+
+                case SimEventKind.BossArmorBroken:
+                    hud.ShowToast("甲壳碎了！", 2f);
+                    fx.Debris(WorldView.CellCenter(Balance.BeetleRow, Mathf.RoundToInt((float)sim.Drill.X)), ArmorBits, 30);
+                    world.Shake(0.3f, 4f);
+                    break;
+
+                case SimEventKind.StratumEntered:
+                    hud.ShowToast($"进入{Balance.StratumNames[(int)e.Amount]}", 3.5f);
                     break;
 
                 case SimEventKind.BossDefeated:
@@ -235,8 +248,7 @@ namespace DeepDrill.Game
             double oreCount = ore ? 1 : 0;
             if (ore || e.Block == BlockType.Chest)
             {
-                string icon = e.Block == BlockType.Coal ? "icon_coal"
-                    : e.Block == BlockType.Copper ? "icon_copper" : "icon_coin";
+                string icon = IconFor(e.Block);
                 Vector2 target = ore ? hud.OreTarget : hud.CoinTarget;
                 bool flying = fx.FlyIcon(art.Get(icon), stage, target, () => hud.Land(value, oreCount));
                 if (flying) hud.AddInFlight(value, oreCount);
@@ -246,10 +258,25 @@ namespace DeepDrill.Game
         private Vector2 CellStage(int row, int col) =>
             Stage.WorldToStage(WorldView.CellCenter(row, col), world.CameraPosition);
 
+        private static string IconFor(BlockType type)
+        {
+            switch (type)
+            {
+                case BlockType.Coal: return "icon_coal";
+                case BlockType.Copper: return "icon_copper";
+                case BlockType.Iron: return "icon_iron";
+                case BlockType.Silver: return "icon_silver";
+                default: return "icon_coin";
+            }
+        }
+
         private static Color BitsColor(BlockType type)
         {
             switch (type)
             {
+                case BlockType.Iron: return ArmorBits;
+                case BlockType.Silver: return SilverBits;
+                case BlockType.Sand: return SandBits;
                 case BlockType.Grass: return GrassBits;
                 case BlockType.HardRock: return RockBits;
                 case BlockType.Coal: return CoalBits;

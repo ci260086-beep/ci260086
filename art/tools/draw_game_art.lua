@@ -104,7 +104,7 @@ for x = 0, 15 do
 end
 save(grass, "Tiles/grass")
 
-local hard = dirt(8)
+local function drawHard(hard)
 for y = 2, 13 do
   for x = 2, 13 do
     local dx, dy = (x - 7.5) / 6, (y - 7.5) / 5.6
@@ -132,13 +132,15 @@ for y = 1, 14 do
     end
   end
 end
-save(hard, "Tiles/hard_rock")
+return hard
+end
+save(drawHard(dirt(8)), "Tiles/hard_rock")
 
 local NUGGET_LAYOUT = {
   { 2, 2, 3 }, { 9, 1, 2 }, { 11, 6, 3 }, { 4, 8, 3 }, { 9, 11, 2 }, { 1, 11, 2 },
 }
-local function ore(hi, mid, lo)
-  local g = dirt(6)
+local function ore(hi, mid, lo, base)
+  local g = base or dirt(6)
   for _, n in ipairs(NUGGET_LAYOUT) do
     local x, y, s = n[1], n[2], n[3]
     g:rect(x, y, x + s - 1, y + s - 1, mid)
@@ -177,7 +179,7 @@ tnt:set(6, 8, INK) tnt:set(8, 6, INK) tnt:set(9, 6, D3) tnt:set(10, 6, O2) tnt:s
 bevel(tnt, RED_HI, RED_LO)
 save(tnt, "Tiles/tnt")
 
-local chest = dirt(8)
+local function drawChest(chest)
 chest:rect(2, 5, 13, 12, O1)
 chest:rect(2, 5, 13, 5, O2)
 chest:rect(2, 6, 2, 12, O2)
@@ -192,7 +194,9 @@ chest:rect(1, 4, 14, 4, INK)
 chest:rect(1, 13, 14, 13, INK)
 chest:rect(1, 4, 1, 13, INK)
 chest:rect(14, 4, 14, 13, INK)
-save(chest, "Tiles/chest")
+return chest
+end
+save(drawChest(dirt(8)), "Tiles/chest")
 
 local tunnel = canvas(16, 16)
 tunnel:rect(0, 0, 15, 15, D1)
@@ -201,6 +205,108 @@ for _ = 1, 9 do
   tunnel:set(x, y, rnd(2) == 0 and INK or D2)
 end
 save(tunnel, "Tiles/tunnel_bg")
+
+-- back wall tinted per depth in the game, so the stratum change can fade instead of snapping
+local neutral = canvas(16, 16)
+neutral:rect(0, 0, 15, 15, hex("ffffff"))
+for _ = 1, 9 do
+  local x, y = rnd(16), rnd(16)
+  neutral:set(x, y, rnd(2) == 0 and hex("8c8c8c") or hex("c8c8c8"))
+end
+save(neutral, "Tiles/tunnel_neutral")
+
+-- sandstone stratum: horizontal bedding, seamless like the topsoil
+local SA, SB, SC, SD, SE, SF = hex("2a1e14"), hex("4a3520"), hex("6e5030"), hex("94703c"), hex("b8904c"), hex("d4ae62")
+local SG, SH = hex("e8cc84"), hex("f4e4b0")
+
+local function sandstone(n)
+  local g = canvas(16, 16)
+  g:rect(0, 0, 15, 15, SE)
+  g:rect(0, 5, 15, 6, SD)
+  g:rect(0, 13, 15, 13, SD)
+  for _ = 1, n do
+    local x, y = rnd(16), rnd(16)
+    local c = rnd(3) == 0 and SF or SD
+    g:set(x, y, c)
+    g:set((x + 1) % 16, y, c)
+  end
+  return g
+end
+save(sandstone(8), "Tiles/sandstone_a")
+save(sandstone(12), "Tiles/sandstone_b")
+save(sandstone(5), "Tiles/sandstone_c")
+
+-- loose sand reads softer and lighter than the rock so the player can spot what will fall
+local sand = canvas(16, 16)
+sand:rect(0, 0, 15, 15, SG)
+for y = 0, 15 do
+  for x = 0, 15 do
+    local n = (x * 7 + y * 13 + (x * y) % 5) % 9
+    if n == 0 then sand:set(x, y, SF) elseif n == 4 then sand:set(x, y, SH) end
+  end
+end
+sand:rect(0, 15, 15, 15, SF)
+save(sand, "Tiles/sand_block")
+
+save(drawHard(sandstone(6)), "Tiles/hard_rock_sand")
+save(drawChest(sandstone(6)), "Tiles/chest_sand")
+for name, c in pairs({
+  copper = { hex("f6b98a"), O2, O1 },
+  coal = { hex("6a6a78"), K2, K1 },
+  iron = { hex("e8e8f0"), hex("8a8a96"), hex("5a5a64") },
+  silver = { hex("fff4d8"), hex("e8e8f0"), hex("c0c0cc") },
+}) do
+  save(ore(c[1], c[2], c[3], sandstone(4)), "Tiles/ore_" .. name .. "_sand")
+end
+
+local function sandEdge(name, inner, ink)
+  local g = canvas(16, 16)
+  for i = 0, 15 do
+    ink(g, i)
+    inner(g, i)
+  end
+  save(g, "Tiles/" .. name)
+end
+sandEdge("edge_top_sand", function(g, i) g:set(i, 1, SB) end, function(g, i) g:set(i, 0, SA) end)
+sandEdge("edge_bottom_sand", function(g, i) g:set(i, 14, SG) end, function(g, i) g:set(i, 15, SA) end)
+sandEdge("edge_left_sand", function(g, i) g:set(1, i, SF) end, function(g, i) g:set(0, i, SA) end)
+sandEdge("edge_right_sand", function(g, i) g:set(14, i, SB) end, function(g, i) g:set(15, i, SA) end)
+
+-- rock beetle: plated shell, the bare hide under it, and a face laid over the row
+local shell = canvas(16, 16)
+shell:rect(0, 0, 15, 15, hex("5a5a64"))
+shell:rect(0, 0, 15, 2, hex("c0c0cc"))
+shell:rect(0, 3, 15, 4, hex("8a8a96"))
+shell:rect(0, 12, 15, 13, hex("3a2a20"))
+shell:rect(0, 14, 15, 15, SB)
+for x = 3, 15, 8 do shell:rect(x, 3, x, 11, hex("3a2a20")) end
+save(shell, "Tiles/beetle_shell")
+
+local bare = canvas(16, 16)
+bare:rect(0, 0, 15, 15, hex("7a4a2a"))
+for y = 0, 15 do
+  for x = 0, 15 do
+    if (x + y * 3) % 7 == 0 then bare:set(x, y, hex("a06838")) end
+    if (x * 3 + y) % 11 == 0 then bare:set(x, y, hex("3a2a20")) end
+  end
+end
+save(bare, "Tiles/beetle_bare")
+
+local beetle = canvas(48, 32)
+for _, ex in ipairs({ 14, 33 }) do
+  for y = 6, 15 do
+    for x = ex - 6, ex + 6 do
+      if ((x - ex) / 6) ^ 2 + ((y - 10.5) / 5) ^ 2 <= 1 then beetle:set(x, y, hex("3a2a20")) end
+    end
+  end
+  beetle:rect(ex - 2, 9, ex + 2, 12, hex("e84a2e"))
+  beetle:rect(ex - 1, 10, ex, 10, hex("fff4d8"))
+end
+for i = 0, 7 do
+  beetle:rect(10 - i, 20 + i, 16 - i, 21 + i, hex("c0c0cc"))
+  beetle:rect(31 + i, 20 + i, 37 + i, 21 + i, hex("c0c0cc"))
+end
+save(beetle, "Tiles/beetle_face")
 
 -- crack overlay: each frame keeps the previous frame's cracks and adds more
 local function line(pts, x0, y0, x1, y1)

@@ -23,7 +23,7 @@ namespace DeepDrill.Game
                 if (state == null) return NewGame();
                 if (state.version > GameState.CurrentVersion)
                     Debug.LogWarning($"Save version {state.version} is newer than this build.");
-                state.version = GameState.CurrentVersion;
+                state.Upgrade();
                 return state;
             }
             catch (Exception e)

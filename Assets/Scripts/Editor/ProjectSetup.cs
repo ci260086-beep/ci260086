@@ -67,6 +67,13 @@ namespace DeepDrill.Editor
             EditorApplication.EnterPlaymode();
         }
 
+        public static void RefreshArtLibrary()
+        {
+            Directory.CreateDirectory("Assets/Resources");
+            BuildArtLibrary();
+            AssetDatabase.SaveAssets();
+        }
+
         private static void BuildArtLibrary()
         {
             var sprites = new List<Sprite>();

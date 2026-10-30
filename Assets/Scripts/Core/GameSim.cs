@@ -17,6 +17,8 @@ namespace DeepDrill.Core
         BossDefeated,
         BossFailed,
         Rebirth,
+        StratumEntered,
+        BossArmorBroken,
     }
 
     public struct SimEvent
@@ -57,6 +59,7 @@ namespace DeepDrill.Core
         private int incomeFilled;
         private double hitClock;
         private double physicsClock;
+        private double sandClock;
         private double comboClock;
         private int blastsThisChain;
         private bool insideBlast;
@@ -75,10 +78,17 @@ namespace DeepDrill.Core
         public bool BossActive { get; private set; }
         public double BossHp { get; private set; }
         public double BossTimeLeft { get; private set; }
-        public double BossMaxHp => Balance.BlockHp(Balance.BossRow) * Balance.BossHpMultiplier;
+        public double BossArmor { get; private set; }
+
+        /// <summary>The next guardian still standing, or null once all are down.</summary>
+        public BossDef CurrentBoss =>
+            State.bossesDefeated < Balance.Bosses.Length ? Balance.Bosses[State.bossesDefeated] : null;
+
+        public double BossMaxHp => CurrentBoss?.MaxHp ?? 0;
+        public double BossMaxArmor => CurrentBoss?.MaxArmor ?? 0;
 
         public int ShardsOnRebirth => Balance.ShardsForRebirth(State.maxDepth, State.totalIncome);
-        public bool CanRebirth => State.bossDefeated && ShardsOnRebirth > 0;
+        public bool CanRebirth => State.AnyBossDown && ShardsOnRebirth > 0;
 
         public int Combo { get; private set; }
         public double FrenzyEnergy { get; private set; }
@@ -125,8 +135,15 @@ namespace DeepDrill.Core
             return blocks;
         }
 
-        private bool IsBossRow(int row) =>
-            !State.bossDefeated && row >= Balance.BossRow && row < Balance.BossRow + Balance.BossRows;
+        private bool IsBossRow(int row)
+        {
+            for (int i = State.bossesDefeated; i < Balance.Bosses.Length; i++)
+            {
+                int start = Balance.Bosses[i].Row;
+                if (row >= start && row < start + Balance.BossRows) return true;
+            }
+            return false;
+        }
 
         /// <summary>The sky is open; the sides of the world are unbreakable walls.</summary>
         public bool IsSolid(int row, int col)
@@ -141,6 +158,7 @@ namespace DeepDrill.Core
             AdvanceIncomeWindow(dt);
             AdvanceCombo(dt);
             AdvanceFrenzy(dt);
+            AdvanceSand(dt);
             AdvancePhysics(dt);
             AdvanceBoss(dt);
 
@@ -193,7 +211,7 @@ namespace DeepDrill.Core
             State.totalIncome = 0;
             State.incomePerSecond = 0;
             State.skills.Clear();
-            State.bossDefeated = false;
+            State.bossesDefeated = 0;
             State.seed = random.Next(1, int.MaxValue);
             PlaceDrillOnSurface();
             Drill.Place(State.drillX, State.drillY);
@@ -367,6 +385,7 @@ namespace DeepDrill.Core
             if (block.Type == BlockType.BossRoot)
             {
                 if (!BossActive) return;
+                HitBossArmor(ref amount);
                 BossHp -= amount;
                 Events.Add(new SimEvent
                 {
@@ -455,44 +474,98 @@ namespace DeepDrill.Core
             int feet = Drill.FeetRow;
             if (feet <= State.depth) return;
             for (int row = State.depth; row < feet; row++) rows.Remove(row - KeptRowsAbove);
+            int stratum = Balance.StratumOfDepth(feet);
+            bool entered = stratum != Balance.StratumOfDepth(State.depth);
             State.depth = feet;
             State.maxDepth = Math.Max(State.maxDepth, feet);
             Events.Add(new SimEvent { Kind = SimEventKind.DepthChanged, Row = feet });
+            if (entered) Events.Add(new SimEvent { Kind = SimEventKind.StratumEntered, Amount = stratum });
         }
+
+        // Loose sand drops one cell per step, bottom row first so a whole column falls together.
+        // It settles on the body of the drill rather than through it.
+        private void AdvanceSand(double dt)
+        {
+            sandClock += dt;
+            while (sandClock >= Balance.SandStepSeconds)
+            {
+                sandClock -= Balance.SandStepSeconds;
+                StepSand();
+            }
+        }
+
+        private void StepSand()
+        {
+            int top = Math.Max(0, State.depth - Balance.SandWindowRows);
+            for (int row = State.depth + Balance.SandWindowRows; row >= top; row--)
+            {
+                if (!rows.TryGetValue(row, out var upper) || !rows.TryGetValue(row + 1, out var lower)) continue;
+                for (int col = 0; col < Balance.Columns; col++)
+                {
+                    if (upper[col].Type != BlockType.Sand || !upper[col].Alive) continue;
+                    if (lower[col].Alive || DrillOccupies(row + 1, col)) continue;
+                    var moved = upper[col];
+                    upper[col] = lower[col];
+                    lower[col] = moved;
+                }
+            }
+        }
+
+        private bool DrillOccupies(int row, int col) =>
+            Math.Abs(col - Drill.X) < DrillBody.HalfWidth + 0.5
+            && Math.Abs(row - Drill.Y) < DrillBody.HalfHeight + 0.5;
 
         private void AdvanceBoss(double dt)
         {
-            if (State.bossDefeated) return;
+            var boss = CurrentBoss;
+            if (boss == null) return;
             if (!BossActive)
             {
-                if (Drill.FeetRow < Balance.BossRow || !Drill.Grounded) return;
+                if (Drill.FeetRow < boss.Row || !Drill.Grounded) return;
                 BossActive = true;
-                BossHp = BossMaxHp;
-                BossTimeLeft = Balance.BossSeconds;
+                ResetBoss();
                 Events.Add(new SimEvent { Kind = SimEventKind.BossStarted });
                 return;
             }
 
             BossTimeLeft -= dt;
             if (BossTimeLeft > 0) return;
-            // the root regrows: the player gets another attempt, usually after upgrading
-            BossHp = BossMaxHp;
-            BossTimeLeft = Balance.BossSeconds;
+            // it regrows: the player gets another attempt, usually after upgrading
+            ResetBoss();
             Events.Add(new SimEvent { Kind = SimEventKind.BossFailed });
+        }
+
+        private void ResetBoss()
+        {
+            BossHp = BossMaxHp;
+            BossArmor = BossMaxArmor;
+            BossTimeLeft = Balance.BossSeconds;
+        }
+
+        // Armour soaks the full hit and lets a reduced share through until it is gone.
+        private void HitBossArmor(ref double amount)
+        {
+            if (BossArmor <= 0) return;
+            BossArmor -= amount;
+            amount *= Balance.BossArmorDamageRatio;
+            if (BossArmor > 0) return;
+            BossArmor = 0;
+            Events.Add(new SimEvent { Kind = SimEventKind.BossArmorBroken });
         }
 
         private void DefeatBoss()
         {
+            var boss = CurrentBoss;
             BossActive = false;
-            State.bossDefeated = true;
+            State.bossesDefeated++;
 
-            double value = Balance.OreValue(Balance.BossRow, Balance.BossRewardValue);
+            double value = Balance.OreValue(boss.Row, boss.RewardValue);
             State.coins += value;
             State.totalIncome += value;
             incomeBuckets[incomeIndex] += value;
 
             int col = RoundToInt(Drill.X);
-            for (int row = Balance.BossRow; row < Balance.BossRow + Balance.BossRows; row++)
+            for (int row = boss.Row; row < boss.Row + Balance.BossRows; row++)
             {
                 rows.Remove(row); // the rest of the row grows back as ordinary ground
                 for (int c = col - Balance.BossBreachHalfWidth; c <= col + Balance.BossBreachHalfWidth; c++)
@@ -501,7 +574,7 @@ namespace DeepDrill.Core
 
             Events.Add(new SimEvent
             {
-                Kind = SimEventKind.BossDefeated, Row = Balance.BossRow, Col = col, Amount = value,
+                Kind = SimEventKind.BossDefeated, Row = boss.Row, Col = col, Amount = value,
             });
         }
 

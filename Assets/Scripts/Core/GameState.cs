@@ -14,7 +14,7 @@ namespace DeepDrill.Core
     [Serializable]
     public sealed class GameState
     {
-        public const int CurrentVersion = 2;
+        public const int CurrentVersion = 3;
 
         public int version = CurrentVersion;
         public int seed = 1;
@@ -26,11 +26,22 @@ namespace DeepDrill.Core
         public double incomePerSecond;
         public int shards;
         public long lastSaveUnixSeconds;
-        public bool bossDefeated;
+        public int bossesDefeated;
+        public bool bossDefeated; // version 2 saves only; Upgrade() moves it into bossesDefeated
         public bool drillPlaced;
         public double drillX;
         public double drillY;
         public List<SkillLevel> skills = new List<SkillLevel>();
+
+        public bool AnyBossDown => bossesDefeated > 0;
+
+        /// <summary>Brings a loaded save up to the current version.</summary>
+        public void Upgrade()
+        {
+            if (version < 3 && bossDefeated) bossesDefeated = 1;
+            bossDefeated = false;
+            version = CurrentVersion;
+        }
 
         public int LevelOf(string id)
         {

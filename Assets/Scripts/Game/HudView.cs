@@ -34,6 +34,7 @@ namespace DeepDrill.Game
         private static readonly Color IconBoxColor = new Color32(0x1a, 0x12, 0x10, 0xff);
         private static readonly Color CoinColor = new Color32(0xff, 0xe2, 0x7a, 0xff);
         private static readonly Color FrenzyColor = new Color32(0xe8, 0x40, 0x2e, 0xff);
+        private static readonly Color ArmorColor = new Color32(0xc0, 0xc0, 0xcc, 0xff);
         private static readonly Color LockedColor = new Color32(0x3a, 0x3a, 0x44, 0xff);
         private static readonly Color WarmText = new Color32(0xe0, 0x8a, 0x4a, 0xff);
         private static readonly Color SoftText = new Color32(0xc4, 0x9a, 0x6c, 0xff);
@@ -85,7 +86,7 @@ namespace DeepDrill.Game
         private Text coinsLabel, incomeLabel, oresLabel, depthLabel, comboLabel, versionLabel;
         private Text toastLabel, panelTitle, footerLabel, statsLabel;
         private Image meterFill;
-        private Image bossBar, bossFill;
+        private Image bossBar, bossFill, bossArmorFill;
         private Text bossLabel;
         private Button rebirthButton;
         private Text rebirthLabel;
@@ -207,6 +208,8 @@ namespace DeepDrill.Game
             bossBar.raycastTarget = false;
             bossFill = Ui.Panel(bossBar.transform, "Fill", 1, 1, 0, 5, FrenzyColor);
             bossFill.raycastTarget = false;
+            bossArmorFill = Ui.Panel(bossBar.transform, "Armor", 1, 1, 0, 2, ArmorColor);
+            bossArmorFill.raycastTarget = false;
             bossLabel = Floating("", (Stage.DigWidth - BossBarWidth) / 2f, 12, BossBarWidth, 10, 7, TextAnchor.MiddleCenter);
 
             depthLabel = Floating("", Stage.DigWidth - 104, 2, 100, 14, 10, TextAnchor.MiddleRight);
@@ -397,12 +400,18 @@ namespace DeepDrill.Game
         {
             bool show = sim.BossActive;
             bossBar.gameObject.SetActive(show);
-            bossLabel.text = show
-                ? $"巨型木根 {NumberFormat.Short(sim.BossHp)}  {Mathf.CeilToInt((float)sim.BossTimeLeft)}秒"
-                : "";
-            if (!show) return;
-            double fill = System.Math.Max(0, sim.BossHp / sim.BossMaxHp);
+            if (!show)
+            {
+                bossLabel.text = "";
+                return;
+            }
+            string armor = sim.BossArmor > 0 ? " 护甲" : "";
+            bossLabel.text = $"{sim.CurrentBoss.Name}{armor} {NumberFormat.Short(sim.BossHp)}  " +
+                $"{Mathf.CeilToInt((float)sim.BossTimeLeft)}秒";
+            double fill = Math.Max(0, sim.BossHp / sim.BossMaxHp);
             bossFill.rectTransform.sizeDelta = new Vector2((float)(fill * (BossBarWidth - 2)), 5);
+            double armorFill = sim.BossMaxArmor > 0 ? sim.BossArmor / sim.BossMaxArmor : 0;
+            bossArmorFill.rectTransform.sizeDelta = new Vector2((float)(armorFill * (BossBarWidth - 2)), 2);
         }
 
         private void UpdateRebirth(float dt)

@@ -2,6 +2,19 @@ using System;
 
 namespace DeepDrill.Core
 {
+    /// <summary>A timed guardian: a wall of living blocks across the whole world.</summary>
+    public sealed class BossDef
+    {
+        public int Row;
+        public string Name;
+        public double HpMultiplier;
+        public double RewardValue;
+        public double ArmorRatio; // armour as a share of max HP; damage is halved until it is gone
+
+        public double MaxHp => Balance.BlockHp(Row) * HpMultiplier;
+        public double MaxArmor => MaxHp * ArmorRatio;
+    }
+
     /// <summary>Every tunable number and formula from the design brief.</summary>
     public static class Balance
     {
@@ -43,12 +56,30 @@ namespace DeepDrill.Core
         public const int BaseChainLimit = 2;
         public const int ChainLimitPerLevel = 2;
 
-        public const int BossRow = 100;
+        public const double IronValue = 5;
+        public const double SilverValue = 10;
+        public const double SandHpMultiplier = 0.5;
+        public const double SandStepSeconds = 0.12;
+        public const int SandWindowRows = 12;
+
+        public const int SandstoneRow = 100;
+        public const int TransitionRows = 5;
+        public static readonly string[] StratumNames = { "表土层", "砂岩层" };
+
+        public const int BossRow = SandstoneRow;
+        public const int BeetleRow = 200;
         public const int BossRows = 2;
         public const double BossSeconds = 60;
-        public const double BossHpMultiplier = 60;
-        public const double BossRewardValue = 400;
+        public const double BossArmorDamageRatio = 0.5;
         public const int BossBreachHalfWidth = 3;
+
+        public static readonly BossDef[] Bosses =
+        {
+            new BossDef { Row = BossRow, Name = "巨型木根", HpMultiplier = 60, RewardValue = 400 },
+            new BossDef { Row = BeetleRow, Name = "岩甲虫", HpMultiplier = 60, RewardValue = 800, ArmorRatio = 0.25 },
+        };
+
+        public static int StratumOfDepth(int depth) => depth < SandstoneRow ? 0 : 1;
 
         public static int ShardsForRebirth(int maxDepth, double totalIncome)
         {

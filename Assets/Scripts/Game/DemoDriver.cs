@@ -77,15 +77,39 @@ namespace DeepDrill.Game
             yield return new WaitForSeconds(2.5f);
             yield return Shot("boss");
 
-            while (!sim.State.bossDefeated && Time.time < wait) yield return null;
+            while (!sim.State.AnyBossDown && Time.time < wait) yield return null;
             yield return new WaitForSeconds(1.5f);
-            Debug.Log($"[demo] boss defeated={sim.State.bossDefeated} depth={sim.State.depth} shardsOffered={sim.ShardsOnRebirth}");
+            Debug.Log($"[demo] boss down={sim.State.AnyBossDown} depth={sim.State.depth} shardsOffered={sim.ShardsOnRebirth}");
             yield return Shot("boss_down");
+
+            yield return Sandstone();
 
             bool reborn = sim.Rebirth();
             yield return new WaitForSeconds(1f);
             Debug.Log($"[demo] rebirth={reborn} shards={sim.State.shards} depth={sim.State.depth} coins={sim.State.coins:0.0} damage={sim.DamagePerHit:0.0}");
             yield return Shot("rebirth");
+        }
+
+        private IEnumerator Sandstone()
+        {
+            var sim = root.Sim;
+            sim.Teleport(150, Balance.StartColumn);
+            root.SnapCamera();
+            yield return new WaitForSeconds(3f);
+            yield return Shot("sandstone");
+
+            sim.Teleport(Balance.BeetleRow - 2, Balance.StartColumn);
+            root.SnapCamera();
+            float wait = Time.time + BossTimeout;
+            while (!sim.BossActive && Time.time < wait) yield return null;
+            yield return new WaitForSeconds(1f);
+            yield return Shot("beetle");
+            while (sim.BossActive && sim.BossArmor > 0 && Time.time < wait) yield return null;
+            yield return new WaitForSeconds(0.5f);
+            yield return Shot("beetle_bare");
+            while (sim.BossActive && Time.time < wait) yield return null;
+            yield return new WaitForSeconds(1.5f);
+            Debug.Log($"[demo] beetle bossesDefeated={sim.State.bossesDefeated} depth={sim.State.depth}");
         }
 
         private IEnumerator Shot(string name)

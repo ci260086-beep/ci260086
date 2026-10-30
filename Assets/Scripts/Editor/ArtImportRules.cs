@@ -20,5 +20,17 @@ namespace DeepDrill.Editor
             importer.alphaIsTransparency = true;
             importer.npotScale = TextureImporterNPOTScale.None;
         }
+
+        // New art reaches the game by itself, including while the project is open in the Editor.
+        private static void OnPostprocessAllAssets(string[] imported, string[] deleted, string[] moved, string[] movedFrom)
+        {
+            foreach (string path in imported)
+            {
+                if (!path.StartsWith("Assets/Art/")) continue;
+                EditorApplication.delayCall -= ProjectSetup.RefreshArtLibrary;
+                EditorApplication.delayCall += ProjectSetup.RefreshArtLibrary;
+                return;
+            }
+        }
     }
 }
