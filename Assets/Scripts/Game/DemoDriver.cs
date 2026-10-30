@@ -30,8 +30,25 @@ namespace DeepDrill.Game
         private IEnumerator Run()
         {
             var sim = root.Sim;
-            yield return new WaitForSeconds(StartPlaySeconds);
-            yield return Shot("start");
+            yield return new WaitForSeconds(1f);
+            yield return Shot("intro_tap");
+
+            // tap the drill like a player until the first coins arrive
+            float tapUntil = Time.time + StartPlaySeconds;
+            while (sim.State.coins < 1 && Time.time < tapUntil)
+            {
+                root.ClickCell(sim.Lead.Body.BodyRow + 1, sim.Lead.Body.Column);
+                yield return new WaitForSeconds(0.05f);
+            }
+            yield return new WaitForSeconds(0.3f);
+            Debug.Log($"[demo] tapped coins={sim.State.coins:0.0} auto={sim.AutoDrillUnlocked}");
+            yield return Shot("intro_coins");
+
+            sim.State.coins = 15;
+            sim.Buy(GameSim.RootSkill);
+            yield return new WaitForSeconds(4f);
+            Debug.Log($"[demo] unlocked auto={sim.AutoDrillUnlocked} depth={sim.State.depth}");
+            yield return Shot("unlocked");
 
             sim.State.coins = 1e12;
             for (int i = 0; i < SwarmSize; i++) sim.BuyDrill(0);

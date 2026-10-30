@@ -23,10 +23,116 @@ namespace DeepDrill.Tests
             GameData.Load(name => File.ReadAllText(Path.Combine(data, name + ".json")));
         }
 
+        // Most rules are tested with auto drilling on; FreshSim is a game as the player first meets it.
         private static GameSim NewSim(int seed = 42)
+        {
+            var sim = FreshSim(seed);
+            sim.GrantSkill(GameSim.RootSkill, 1);
+            return sim;
+        }
+
+        private static GameSim FreshSim(int seed = 42)
         {
             EnsureData();
             return new GameSim(new GameState { seed = seed });
+        }
+
+        [Test]
+        public void BeforeUnlock_DrillsDoNotDigByThemselves()
+        {
+            var sim = FreshSim();
+            for (int i = 0; i < 200; i++) sim.Tick(0.1);
+            Assert.AreEqual(0, sim.State.coins, 1e-9);
+            Assert.AreEqual(0, sim.State.depth);
+            Assert.IsFalse(sim.Events.Exists(e => e.Kind == SimEventKind.BlockHit));
+        }
+
+        [Test]
+        public void BeforeUnlock_TappingADrillSwingsItOnce()
+        {
+            var sim = FreshSim();
+            sim.Tick(0.1);
+            sim.Events.Clear();
+            var body = sim.Lead.Body;
+            Assert.IsTrue(sim.Click(body.BodyRow, body.Column), "the drill itself");
+            Assert.IsTrue(sim.Click(body.BodyRow + 1, body.Column), "the block under it");
+            var hits = sim.Events.FindAll(e => e.Kind == SimEventKind.BlockHit);
+            Assert.AreEqual(2, hits.Count);
+            Assert.IsTrue(hits.TrueForAll(e => e.FromClick), "full click feedback");
+            Assert.IsFalse(sim.Click(body.BodyRow + 1, 3), "other blocks do nothing yet");
+        }
+
+        [Test]
+        public void TappingALot_EarnsTheUnlockInAboutHalfAMinuteToAMinute()
+        {
+            var sim = FreshSim();
+            double cost = GameData.Skill(GameSim.RootSkill).CostAt(0);
+            const double tapsPerSecond = 5;
+            double seconds = 0;
+            while (sim.State.coins < cost && seconds < 600)
+            {
+                sim.Tick(1 / tapsPerSecond);
+                sim.Click(sim.Lead.Body.BodyRow + 1, sim.Lead.Body.Column);
+                seconds += 1 / tapsPerSecond;
+            }
+            Assert.That(seconds, Is.InRange(20, 75));
+        }
+
+        [Test]
+        public void Unlocking_StartsAutomaticDigging()
+        {
+            var sim = FreshSim();
+            sim.State.coins = 15;
+            Assert.IsTrue(sim.Buy(GameSim.RootSkill));
+            Assert.IsTrue(sim.AutoDrillUnlocked);
+            for (int i = 0; i < 300; i++) sim.Tick(0.1);
+            Assert.Greater(sim.State.depth, 0);
+        }
+
+        [Test]
+        public void RootLevels_UnlockFirstThenAddDamage()
+        {
+            var sim = FreshSim();
+            int code = DrillCode.Make(0, 0);
+            double damage = sim.DamageOf(code);
+            sim.GrantSkill(GameSim.RootSkill, 1);
+            Assert.AreEqual(damage, sim.DamageOf(code), 1e-9, "level 1 is the switch");
+            sim.GrantSkill(GameSim.RootSkill, 3);
+            Assert.AreEqual(damage * 1.1, sim.DamageOf(code), 1e-9);
+        }
+
+        [Test]
+        public void BeforeUnlock_NoOfflineIncomeOrAutoHangar()
+        {
+            var sim = FreshSim();
+            sim.State.incomePerSecond = 100;
+            sim.State.lastSaveUnixSeconds = 1000;
+            Assert.AreEqual(0, sim.ApplyOffline(5000), 1e-9);
+
+            sim.GrantSkill(GameData.Skills.First(s => s.Effect == SkillEffect.auto_merge).Id, 1);
+            sim.State.drills.Add(DrillCode.Make(0, 0));
+            sim.Tick(1.1);
+            Assert.AreEqual(2, sim.State.drills.Count, "auto merge waits for the unlock");
+        }
+
+        [Test]
+        public void StartGoldSkill_KeepsAutoDrillThroughRebirth()
+        {
+            var sim = NewSim();
+            var s = sim.State;
+            s.bossesDefeated = 1;
+            s.maxDepth = 400;
+            s.totalIncome = 1e6;
+            sim.GrantSkill(GameData.Skills.First(x => x.Effect == SkillEffect.start_gold).Id, 1);
+            Assert.IsTrue(sim.Rebirth());
+            Assert.IsTrue(sim.AutoDrillUnlocked);
+
+            var plain = NewSim();
+            plain.State.bossesDefeated = 1;
+            plain.State.maxDepth = 400;
+            plain.State.totalIncome = 1e6;
+            Assert.IsTrue(plain.Rebirth());
+            Assert.IsFalse(plain.AutoDrillUnlocked, "the switch is cleared like any skill");
         }
 
         private static void MakeBlock(GameSim sim, int row, int col, BlockType type, double hp = 0.1)
@@ -340,7 +446,7 @@ namespace DeepDrill.Tests
         [Test]
         public void Skills_NeedLayerThenPrereq()
         {
-            var sim = NewSim();
+            var sim = FreshSim();
             sim.State.coins = 1e30;
             Assert.IsFalse(sim.Buy("drill_01"), "root first");
             Assert.IsTrue(sim.Buy("root"));
@@ -705,10 +811,10 @@ namespace DeepDrill.Tests
             var chest = sim.Row(10)[0];
             chest.Type = BlockType.Chest;
             chest.Hp = 0.1;
-            sim.GrantSkill("root", 0); // recomputes bonuses
+            sim.GrantSkill("root", 1); // recomputes bonuses
             Assert.AreEqual(before * 1.01, sim.DamageOf(code), 1e-9);
             sim.State.AddRare("rare_1_1");
-            sim.GrantSkill("root", 0);
+            sim.GrantSkill("root", 1);
             Assert.AreEqual(before * 1.015, sim.DamageOf(code), 1e-9);
         }
 
@@ -758,6 +864,7 @@ namespace DeepDrill.Tests
         [Test]
         public void OldSave_RestartsTheWorldButKeepsCoins()
         {
+            EnsureData();
             var state = new GameState { version = 3, coins = 5, depth = 80 };
             state.SetLevel("drill_damage", 5);
             state.Upgrade();

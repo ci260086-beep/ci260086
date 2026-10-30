@@ -152,7 +152,7 @@ def ring_base_cost(k):
 skills = []
 skills.append({"id": "root", "name": "深渊钻头", "branch": "core", "effect": "dmg_pct", "perLevel": 5, "maxLevel": 10,
                "baseCost": 15, "costGrowth": 1.5, "prereq": [], "x": 0.0, "y": 0.0, "ring": 0,
-               "requiresLayer": 1, "desc": "全部钻头伤害 +5%/级"})
+               "requiresLayer": 1, "desc": "第 1 级：自动钻探，所有钻头自动挖掘；第 2 级起全部钻头伤害 +5%/级"})
 for b, (bid, bname, nodes) in enumerate(BRANCHES):
     ang = math.radians(90 - 60 * b)
     ux, uy = math.cos(ang), math.sin(ang)

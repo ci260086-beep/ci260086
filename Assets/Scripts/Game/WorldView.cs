@@ -155,7 +155,7 @@ namespace DeepDrill.Game
         {
             row = Mathf.RoundToInt(-world.y);
             col = Mathf.RoundToInt(world.x);
-            return row >= 0 && col >= 0 && col < Balance.Columns;
+            return col >= 0 && col < Balance.Columns; // rows above ground stay valid: drills start up there
         }
 
         private void LateUpdate()

@@ -63,6 +63,7 @@ namespace DeepDrill.Core
         private const int SwarmPerDrills = 10;
         private const int AutoBuysPerTick = 5;
         private const int MaxSpawnRowsUp = 40;
+        public const string RootSkill = "root";
         private const int SwiftFamily = 1;
         private const int HeavyFamily = 2;
         private const int BlastFamily = 3;
@@ -151,6 +152,9 @@ namespace DeepDrill.Core
                 Balance.ComboBonusPerStep * (Combo / Balance.ComboStep));
 
         public double Effect(SkillEffect effect) => effects[(int)effect];
+
+        /// <summary>The first level of the root skill: until then drills only move when tapped.</summary>
+        public bool AutoDrillUnlocked => State.LevelOf(RootSkill) >= 1;
 
         private int AchievementCount(string prefix)
         {
@@ -300,14 +304,40 @@ namespace DeepDrill.Core
             AdvanceHousekeeping(dt);
         }
 
-        /// <summary>Player tap on any block. Returns false when nothing was there to hit.</summary>
+        /// <summary>
+        /// Player tap. Tapping a drill or the block under it makes that drill swing once, which is
+        /// the only way to dig before auto drilling is unlocked. Afterwards any block can be tapped.
+        /// Returns false when the tap hit nothing.
+        /// </summary>
         public bool Click(int row, int col)
         {
-            if (row < 0 || col < 0 || col >= Balance.Columns) return false;
+            if (col < 0 || col >= Balance.Columns) return false;
+            // a drill can be above ground, so a tap on it comes before the check for sky
+            var unit = UnitAtOrAbove(row, col);
+            if (unit != null && SwingByHand(unit)) return true;
+            if (!AutoDrillUnlocked || row < 0) return false;
             var block = Row(row)[col];
             if (!block.Alive) return false;
             if (block.Type == BlockType.BossRoot && !BossActive) return false;
             Strike(row, col, ClickDamage, true, RollCrit(), Lead);
+            return true;
+        }
+
+        private DrillUnit UnitAtOrAbove(int row, int col)
+        {
+            foreach (var unit in Units)
+            {
+                if (unit.Body.Column != col) continue;
+                int bodyRow = unit.Body.BodyRow;
+                if (bodyRow == row || bodyRow + 1 == row) return unit;
+            }
+            return null;
+        }
+
+        private bool SwingByHand(DrillUnit unit)
+        {
+            if (!FindTarget(unit.Body, out int row, out int col)) return false;
+            Strike(row, col, DamageOf(unit.Code) * (1 + Effect(SkillEffect.click_pct) / 100), true, RollCrit(), unit);
             return true;
         }
 
@@ -432,7 +462,7 @@ namespace DeepDrill.Core
         /// <summary>Credits offline income and returns how much was added.</summary>
         public double ApplyOffline(long nowUnixSeconds)
         {
-            if (State.lastSaveUnixSeconds <= 0) return 0;
+            if (State.lastSaveUnixSeconds <= 0 || !AutoDrillUnlocked) return 0;
             double earned = Balance.OfflineEarnings(State.incomePerSecond, nowUnixSeconds - State.lastSaveUnixSeconds,
                 Effect(SkillEffect.offline_pct) / 100, Effect(SkillEffect.offline_hours));
             State.coins += earned;
@@ -446,6 +476,7 @@ namespace DeepDrill.Core
             if (!CanRebirth) return false;
             int gained = ShardsOnRebirth;
             double startGold = Balance.StartGold * Math.Max(1, Effect(SkillEffect.start_gold));
+            bool keepAutoDrill = Effect(SkillEffect.start_gold) > 0;
             State.shards += gained;
             State.rebirths++;
 
@@ -456,6 +487,7 @@ namespace DeepDrill.Core
             State.totalIncome = 0;
             State.incomePerSecond = 0;
             State.skills.Clear();
+            if (keepAutoDrill) State.SetLevel(RootSkill, 1);
             State.drills.Clear();
             State.bought.Clear();
             State.bossesDefeated = 0;
@@ -491,7 +523,9 @@ namespace DeepDrill.Core
             {
                 var skill = GameData.Skill(level.id);
                 if (skill == null) continue;
-                double amount = skill.PerLevel * level.level;
+                // the root's first level buys auto drilling, not damage
+                int counted = level.id == RootSkill ? Math.Max(0, level.level - 1) : level.level;
+                double amount = skill.PerLevel * counted;
                 if (skill.Effect == SkillEffect.layer_pct) layerBonus[skill.ForLayer] += amount;
                 effects[(int)skill.Effect] += amount;
             }
@@ -636,6 +670,7 @@ namespace DeepDrill.Core
 
         private void AdvanceHits(double dt)
         {
+            if (!AutoDrillUnlocked) return;
             foreach (var unit in Units)
             {
                 unit.HitClock += dt * HitsPerSecond(unit.Code);
@@ -1036,6 +1071,7 @@ namespace DeepDrill.Core
 
         private void AutoHangar()
         {
+            if (!AutoDrillUnlocked) return;
             bool changed = false;
             if (Effect(SkillEffect.auto_merge) > 0)
             {

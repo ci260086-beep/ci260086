@@ -135,7 +135,7 @@ namespace DeepDrill.Game
         private GameObject sidePanel;
         private RectTransform treeContent;
         private Text coinsLabel, incomeLabel, oresLabel, depthLabel, comboLabel, versionLabel, drillsLabel;
-        private Text toastLabel, panelTitle, footerLabel, statsLabel, treeInfo, galleryInfo, galleryCount;
+        private Text toastLabel, guideLabel, panelTitle, footerLabel, statsLabel, treeInfo, galleryInfo, galleryCount;
         private Image meterFill;
         private Image bossBar, bossFill, bossArmorFill;
         private Text bossLabel;
@@ -212,6 +212,8 @@ namespace DeepDrill.Game
 
             toastLabel = Floating("", 0, 140, Stage.DigWidth, 18, 13, TextAnchor.MiddleCenter);
             toastLabel.color = CoinColor;
+            guideLabel = Floating("", 0, 24, Stage.DigWidth, 18, 13, TextAnchor.MiddleCenter);
+            guideLabel.fontStyle = FontStyle.Bold;
 
             var eventsGo = new GameObject("EventSystem");
             eventsGo.transform.SetParent(transform, false);
@@ -555,7 +557,12 @@ namespace DeepDrill.Game
             treeInfo.text = $"{skill.Name} Lv{level}/{skill.MaxLevel}  {skill.Desc}\n{now}{next}{cost}{gate}";
         }
 
-        private static string FormatEffect(SkillDef skill, int level) => $"+{skill.PerLevel * level:0.##}";
+        private static string FormatEffect(SkillDef skill, int level)
+        {
+            if (skill.Id != GameSim.RootSkill) return $"+{skill.PerLevel * level:0.##}";
+            if (level <= 0) return "手动挖掘";
+            return level == 1 ? "自动钻探" : $"自动钻探，伤害 +{skill.PerLevel * (level - 1):0.##}%";
+        }
 
         public void PanTree(Vector2 screenDelta)
         {
@@ -654,6 +661,7 @@ namespace DeepDrill.Game
             UpdateCombo();
             UpdateMeter();
             UpdateToast(dt);
+            UpdateGuide();
             UpdateBoss();
             UpdateRebirth(dt);
 
@@ -661,6 +669,25 @@ namespace DeepDrill.Game
             if (currentPage == PageTree) UpdateTree();
             if (currentPage == PageGallery) UpdateGallery();
             if (currentPage == PageStats) UpdateStats();
+        }
+
+        // The opening: tap the drill, then spend the first coins on auto drilling.
+        private void UpdateGuide()
+        {
+            bool locked = !sim.AutoDrillUnlocked;
+            guideLabel.gameObject.SetActive(locked && currentPage != PageTree);
+            float pulse = Mathf.PingPong(Time.unscaledTime * 2f, 1f);
+            if (locked)
+            {
+                bool earned = sim.State.coins >= 1;
+                guideLabel.text = earned ? "打开技能树，解锁自动钻探" : "点击钻头开始挖掘！";
+                guideLabel.color = Color.Lerp(CoinColor, Color.white, pulse);
+            }
+
+            bool flash = locked && sim.State.coins >= 1 && currentPage != PageTree;
+            railButtons[PageTree].color = flash
+                ? Color.Lerp(RailColor, CoinColor, pulse)
+                : (currentPage == PageTree ? RailSelected : RailColor);
         }
 
         private void UpdateCombo()
