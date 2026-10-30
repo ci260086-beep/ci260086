@@ -94,7 +94,7 @@ namespace DeepDrill.Core
     /// </summary>
     public static class GameData
     {
-        private const double OverlapStep = 0.9;
+        private const double OverlapStep = 1.0;
 
         public static List<LayerDef> Layers;
         public static List<FamilyDef> Families;
@@ -242,17 +242,26 @@ namespace DeepDrill.Core
             SeparateOverlaps();
         }
 
-        // A few nodes share a coordinate in the data; push later ones apart vertically.
+        // Some nodes share or nearly share a coordinate in the data; push later ones apart vertically.
         private static void SeparateOverlaps()
         {
-            var taken = new HashSet<string>();
-            foreach (var skill in Skills)
+            for (int i = 1; i < Skills.Count; i++)
             {
-                while (!taken.Add(CellOf(skill))) skill.Y += OverlapStep;
+                var skill = Skills[i];
+                bool moved = true;
+                while (moved)
+                {
+                    moved = false;
+                    for (int j = 0; j < i; j++)
+                    {
+                        var other = Skills[j];
+                        if (Math.Abs(skill.X - other.X) >= OverlapStep || Math.Abs(skill.Y - other.Y) >= OverlapStep) continue;
+                        skill.Y = other.Y + (skill.Y >= 0 ? OverlapStep : -OverlapStep);
+                        moved = true;
+                    }
+                }
             }
         }
-
-        private static string CellOf(SkillDef s) => $"{Math.Round(s.X / OverlapStep)}:{Math.Round(s.Y / OverlapStep)}";
 
         private static void LoadAchievements(string json)
         {

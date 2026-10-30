@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using DeepDrill.Core;
 using UnityEngine;
@@ -16,6 +16,7 @@ namespace DeepDrill.Game
         private const float FloatSeconds = 0.65f;
         private const float FloatRise = 18f;
         private const int MaxFlyers = 40;
+        private const int MaxFloaters = 24;
         private const int BlastCount = 12;
         private const float BlastSeconds = 0.3f;
 
@@ -149,6 +150,8 @@ namespace DeepDrill.Game
 
         public void FloatText(string text, Vector2 stage, Color color, int size)
         {
+            if (floaters.Count >= MaxFloaters) return; // a big swarm would otherwise bury the screen in numbers
+
             Floater f;
             if (floaterPool.Count > 0)
             {

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using DeepDrill.Core;
@@ -14,6 +14,7 @@ namespace DeepDrill.Game
         private const int HitstopFrames = 2;
         private const float HitstopCooldown = 0.5f;
         private const int DepthMilestone = 50;
+        private const int QuietCritDrills = 20; // past this, drill crits would only be noise
         private const double HardLandingSpeed = 14;
         private const double SoftLandingSpeed = 10;
 
@@ -56,6 +57,7 @@ namespace DeepDrill.Game
         {
             Application.targetFrameRate = 60;
             art = Resources.Load<ArtLibrary>("ArtLibrary");
+            GameData.Load(name => Resources.Load<TextAsset>("Data/" + name).text);
 
             string savePath = CommandLine.Value("--save") ?? Path.Combine(Application.persistentDataPath, "save.json");
             saves = new SaveService(savePath);
@@ -158,7 +160,7 @@ namespace DeepDrill.Game
                     break;
 
                 case SimEventKind.DepthChanged:
-                    if (e.Row % DepthMilestone == 0) hud.ShowToast($"挖到 {e.Row} 米了", 3f);
+                    if (e.Row % DepthMilestone == 0) hud.ShowToast($"挖到 {GameData.FormatDepth(e.Row)} 了", 3f);
                     break;
 
                 case SimEventKind.Landed:
@@ -166,12 +168,12 @@ namespace DeepDrill.Game
                     break;
 
                 case SimEventKind.BossStarted:
-                    hud.ShowToast($"{sim.BossName}！{sim.BossDuration:0} 秒内打穿它", 3f);
+                    hud.ShowToast($"{sim.CurrentBoss.BossName}！{sim.BossDuration:0} 秒内打穿它", 3f);
                     world.Shake(0.3f, 3f);
                     break;
 
                 case SimEventKind.BossFailed:
-                    hud.ShowToast($"{sim.BossName}恢复了，升级后再来", 3f);
+                    hud.ShowToast($"{sim.CurrentBoss.BossName}恢复了，升级后再来", 3f);
                     break;
 
                 case SimEventKind.BossArmorBroken:
@@ -179,9 +181,8 @@ namespace DeepDrill.Game
                     world.Shake(0.3f, 4f);
                     break;
 
-                case SimEventKind.StratumEntered:
-                    var stratum = Strata.All[(int)e.Amount];
-                    hud.ShowToast($"进入{stratum.Name}  地下 {stratum.RealDepth}", 3.5f);
+                case SimEventKind.LayerEntered:
+                    hud.ShowToast($"进入{GameData.Layers[(int)e.Amount].Name}", 3.5f);
                     break;
 
                 case SimEventKind.BossDefeated:
@@ -192,15 +193,15 @@ namespace DeepDrill.Game
                     break;
 
                 case SimEventKind.DrillMerged:
-                    hud.ShowToast($"合成了{DrillTiers.Names[(int)e.Amount]}", 2f);
+                    hud.ShowToast($"合成了{HudView.KindName((int)e.Amount)}", 2f);
                     break;
 
                 case SimEventKind.RareFound:
-                    hud.ShowToast($"发现稀有物品：{RareItems.All[(int)e.Amount].Name}", 4f);
+                    hud.ShowToast($"发现稀有物品：{GameData.Rares[(int)e.Amount].Name}", 4f);
                     break;
 
                 case SimEventKind.AchievementUnlocked:
-                    hud.ShowToast($"成就：{AchievementCatalog.All[(int)e.Amount].Name}", 3f);
+                    hud.ShowToast($"成就：{GameData.Achievements[(int)e.Amount].Name}", 3f);
                     break;
 
                 case SimEventKind.Rebirth:
@@ -223,7 +224,7 @@ namespace DeepDrill.Game
                 fx.Debris(WorldView.CellCenter(e.Row, e.Col), BitsColor(e.Block), 2);
                 if (e.Crit) world.Shake(0.14f, 2f);
             }
-            else if (e.Crit)
+            else if (e.Crit && sim.Units.Count <= QuietCritDrills)
             {
                 fx.FloatText(NumberFormat.Short(e.Amount) + "!", CellStage(e.Row, e.Col), CoinText, 10);
             }
@@ -236,7 +237,7 @@ namespace DeepDrill.Game
             bool hard = e.Amount >= HardLandingSpeed;
             var feet = new Vector2(e.Col, -e.Row + 0.5f);
             fx.Debris(feet, DirtBits, hard ? 14 : 6);
-            if (e.Crit) world.Shake(hard ? 0.28f : 0.12f, hard ? 4f : 2f); // Crit marks the lead drill here
+            if (e.Lead) world.Shake(hard ? 0.28f : 0.12f, hard ? 4f : 2f);
         }
 
         private void OnBroken(in SimEvent e)

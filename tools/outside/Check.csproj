@@ -9,11 +9,12 @@
     <OutputPath>out\check</OutputPath>
     <UnityDir Condition="'$(UnityDir)' == ''">C:\Program Files\Unity\Hub\Editor\6000.0.85f1\Editor</UnityDir>
     <Project>$(MSBuildThisFileDirectory)..\..</Project>
+    <UiDll Condition="'$(UiDll)' == ''">$(Project)\Library\ScriptAssemblies\UnityEngine.UI.dll</UiDll>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="$(Project)\Assets\Scripts\Core\*.cs" />
     <Compile Include="$(Project)\Assets\Scripts\Game\*.cs" />
     <Reference Include="$(UnityDir)\Data\Managed\UnityEngine\*.dll" />
-    <Reference Include="$(Project)\Library\ScriptAssemblies\UnityEngine.UI.dll" />
+    <Reference Include="$(UiDll)" />
   </ItemGroup>
 </Project>
