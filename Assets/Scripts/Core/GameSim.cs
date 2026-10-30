@@ -24,7 +24,7 @@ namespace DeepDrill.Core
         RareFound,
         AchievementUnlocked,
         Overheated,
-        DrillBoosted,
+        PixelsDug,
     }
 
     public struct SimEvent
@@ -49,9 +49,6 @@ namespace DeepDrill.Core
         public double LastSwing = -1;
         public bool PrefersLeft;
 
-        /// <summary>Stacked with nowhere to go: this drill hammers the one below instead.</summary>
-        public bool Boosting;
-        public DrillUnit Below;
 
         public int Family => DrillCode.Family(Code);
         public int Tier => DrillCode.Tier(Code);
@@ -61,11 +58,10 @@ namespace DeepDrill.Core
     /// The whole game rule set. Knows nothing about Unity: the presentation layer calls Tick and
     /// Click, then drains <see cref="Events"/> to draw what happened. Needs GameData loaded.
     /// </summary>
-    public sealed class GameSim
+    public sealed partial class GameSim
     {
         private const int IncomeWindowSeconds = 10;
         private const int MaxSwingsPerUnitPerTick = 8;
-        private const int KeptRowsAbove = 30;
         private const double HousekeepingSeconds = 1;
         private const int SwarmPerDrills = 10;
         private const int AutoBuysPerTick = 5;
@@ -83,40 +79,34 @@ namespace DeepDrill.Core
         public readonly List<DrillUnit> Units = new List<DrillUnit>();
         public readonly List<SimEvent> Events = new List<SimEvent>();
 
-        private readonly Dictionary<int, Block[]> rows = new Dictionary<int, Block[]>();
         private readonly Queue<(int row, int col)> pendingBlasts = new Queue<(int, int)>();
         private readonly Dictionary<long, DrillUnit> occupied = new Dictionary<long, DrillUnit>();
         private readonly double[] incomeBuckets = new double[IncomeWindowSeconds];
         private readonly double[] effects = new double[Enum.GetValues(typeof(SkillEffect)).Length];
         private readonly double[] layerBonus;
-        private readonly Func<int, int, bool> solidForStepper;
         private readonly Random random;
-        private DrillUnit stepper;
         private int incomeIndex;
         private double incomeClock;
         private int incomeFilled;
         private double physicsClock;
-        private double looseClock;
         private double comboClock;
         private double housekeepingClock;
         private double swarmMultiplier = 1;
         private double drillBonus = 1;
         private int blastsThisChain;
         private bool insideBlast;
-        private bool reflecting;
         private double simTime;
         private double heatClock;
         private double overheatLeft;
-        private double convectionClock;
-        private readonly Queue<(int row, int col, double time)> refills = new Queue<(int, int, double)>();
 
         public GameSim(GameState state, int? randomSeed = null)
         {
             State = state;
             random = new Random(randomSeed ?? state.seed);
-            solidForStepper = SolidForStepper;
+            solidAt = SolidAtTiles;
             layerBonus = new double[GameData.Layers.Count];
             RefreshEffects();
+            ResetWorld();
 
             if (!state.drillPlaced)
             {
@@ -254,32 +244,6 @@ namespace DeepDrill.Core
 
         public int SimulationLimit => Balance.SimulatedDrills + (int)Effect(SkillEffect.hangar_slots);
 
-        public Block[] Row(int row)
-        {
-            if (rows.TryGetValue(row, out var blocks)) return blocks;
-
-            blocks = new Block[Balance.Columns];
-            int leadCol = Lead != null ? Lead.Body.Column : (int)Math.Round(State.drillX);
-            for (int col = 0; col < Balance.Columns; col++)
-            {
-                var block = new Block();
-                if (IsBossRow(row))
-                {
-                    block.Type = BlockType.BossRoot;
-                    block.Hp = block.MaxHp = double.MaxValue;
-                }
-                else
-                {
-                    WorldGen.Fill(block, State.seed, row, col, TntChance, ChestChance);
-                    // only a reloaded run meets rows above the drill here: reopen the passage it stands in
-                    if (row < State.depth && col == leadCol) block.Hp = 0;
-                }
-                blocks[col] = block;
-            }
-            rows[row] = blocks;
-            return blocks;
-        }
-
         private bool IsBossRow(int row)
         {
             for (int i = State.bossesDefeated; i < GameData.Layers.Count; i++)
@@ -289,18 +253,6 @@ namespace DeepDrill.Core
             }
             return false;
         }
-
-        /// <summary>The sky is open; the sides of the world are unbreakable walls.</summary>
-        public bool IsSolid(int row, int col)
-        {
-            if (row < 0) return false;
-            if (col < 0 || col >= Balance.Columns) return true;
-            return Row(row)[col].Alive;
-        }
-
-        // Two drills never share a cell: to the one being stepped, the other is a wall.
-        private bool SolidForStepper(int row, int col) =>
-            IsSolid(row, col) || (occupied.TryGetValue(CellKey(row, col), out var other) && other != stepper);
 
         public void Tick(double dt)
         {
@@ -313,64 +265,6 @@ namespace DeepDrill.Core
             AdvanceBoss(dt);
             AdvanceHits(dt);
             AdvanceHousekeeping(dt);
-        }
-
-        /// <summary>
-        /// Player tap. Tapping a drill or the block under it makes that drill swing once, which is
-        /// the only way to dig before auto drilling is unlocked. Afterwards any block can be tapped.
-        /// Returns false when the tap hit nothing.
-        /// </summary>
-        public bool Click(int row, int col)
-        {
-            if (col < 0 || col >= Balance.Columns) return false;
-            // a drill can be above ground, so a tap on it comes before the check for sky
-            var unit = UnitAtOrAbove(row, col);
-            if (unit != null && SwingByHand(unit)) return true;
-            if (!AutoDrillUnlocked || row < 0) return false;
-            var block = Row(row)[col];
-            if (!block.Alive) return false;
-            if (block.Type == BlockType.BossRoot && !BossActive) return false;
-            Strike(row, col, ClickDamage, true, RollCrit(), Lead);
-            return true;
-        }
-
-        private DrillUnit UnitAtOrAbove(int row, int col)
-        {
-            foreach (var unit in Units)
-            {
-                if (unit.Body.Column != col) continue;
-                int bodyRow = unit.Body.BodyRow;
-                if (bodyRow == row || bodyRow + 1 == row) return unit;
-            }
-            return null;
-        }
-
-        private bool SwingByHand(DrillUnit unit)
-        {
-            if (!FindTarget(unit.Body, out int row, out int col)) return false;
-            unit.LastSwing = simTime;
-            Strike(row, col, DamageOf(unit.Code) * (1 + Effect(SkillEffect.click_pct) / 100), true, RollCrit(), unit);
-            return true;
-        }
-
-        /// <summary>Removes a block with no reward or effects.</summary>
-        public void Carve(int row, int col)
-        {
-            if (row >= 0 && col >= 0 && col < Balance.Columns) Row(row)[col].Hp = 0;
-        }
-
-        /// <summary>Moves the lead drill to stand on the given row, clearing room for it.</summary>
-        public void Teleport(int row, int col)
-        {
-            for (int r = row - 3; r < row; r++)
-                for (int c = col - 2; c <= col + 2; c++)
-                    Carve(r, c);
-            Lead.Body.Place(col, row - 0.5 - DrillBody.HalfHeight);
-            State.depth = row;
-            State.maxDepth = Math.Max(State.maxDepth, row);
-            State.maxDepthEver = Math.Max(State.maxDepthEver, row);
-            State.drillX = Lead.Body.X;
-            State.drillY = Lead.Body.Y;
         }
 
         public bool FamilyUnlocked(int family) => ReachedLayer >= GameData.Families[family].UnlockLayer;
@@ -513,16 +407,15 @@ namespace DeepDrill.Core
             State.drillX = Balance.StartColumn;
             State.drillY = -0.5 - DrillBody.HalfHeight;
 
-            rows.Clear();
+            ResetWorld();
             pendingBlasts.Clear();
             Array.Clear(incomeBuckets, 0, incomeBuckets.Length);
             incomeFilled = 0;
-            incomeClock = physicsClock = comboClock = looseClock = 0;
+            incomeClock = physicsClock = comboClock = 0;
             Combo = 0;
             FrenzyEnergy = FrenzyTimeLeft = 0;
             BossActive = false;
-            refills.Clear();
-            overheatLeft = heatClock = convectionClock = 0;
+            overheatLeft = heatClock = 0;
 
             RefreshEffects();
             Units.Clear();
@@ -624,25 +517,6 @@ namespace DeepDrill.Core
             swarmMultiplier = activePower > 0 ? ownedPower / activePower : 1;
         }
 
-        private void SpawnNearLead(DrillUnit unit)
-        {
-            // Drops in above the digging face, in whichever nearby column has the fewest drills,
-            // so a batch spreads out instead of landing on itself. A shaft is opened for the fall.
-            int col = EmptiestColumn();
-            int floor = Lead.Body.FeetRow - 1;
-            for (int up = SpawnDropRows; up < MaxSpawnRowsUp; up++)
-            {
-                int row = floor - up;
-                if (occupied.ContainsKey(CellKey(row, col))) continue;
-                for (int r = row; r <= floor; r++) Carve(r, col);
-                unit.Body.Place(col, row);
-                occupied[CellKey(row, col)] = unit;
-                unit.HitClock = random.NextDouble();
-                return;
-            }
-            unit.Body.Place(col, floor - MaxSpawnRowsUp);
-        }
-
         private int EmptiestColumn()
         {
             int best = Lead.Body.Column, fewest = int.MaxValue;
@@ -662,86 +536,6 @@ namespace DeepDrill.Core
             return best;
         }
 
-        // A drill resting on a drill slides to the nearest column it can dig in. With nowhere to go
-        // it stays on top as a booster, so no drill is ever idle.
-        private void UpdateFooting(DrillUnit unit)
-        {
-            var body = unit.Body;
-            body.Nudge = 0;
-            unit.Boosting = false;
-            unit.Below = null;
-            int feet = body.FeetRow;
-            int col = body.Column;
-            if (!occupied.TryGetValue(CellKey(feet, col), out var below) || below == unit) return;
-            if (IsSolid(feet, col)) return;
-
-            int side = OpenSide(body.BodyRow, feet, col, unit.PrefersLeft);
-            if (side != 0)
-            {
-                body.Nudge = side;
-                return;
-            }
-            unit.Boosting = true;
-            unit.Below = below;
-        }
-
-        private int OpenSide(int bodyRow, int feet, int col, bool prefersLeft)
-        {
-            bool leftClear = true, rightClear = true;
-            for (int d = 1; d <= SlideSearchColumns; d++)
-            {
-                leftClear = leftClear && Passable(bodyRow, col - d);
-                rightClear = rightClear && Passable(bodyRow, col + d);
-                bool left = leftClear && !occupied.ContainsKey(CellKey(feet, col - d));
-                bool right = rightClear && !occupied.ContainsKey(CellKey(feet, col + d));
-                if (left && right) return prefersLeft ? -1 : 1;
-                if (left) return -1;
-                if (right) return 1;
-                if (!leftClear && !rightClear) return 0;
-            }
-            return 0;
-        }
-
-        private bool Passable(int row, int col) => !IsSolid(row, col) && !occupied.ContainsKey(CellKey(row, col));
-
-        private void AdvancePhysics(double dt)
-        {
-            physicsClock += dt;
-            while (physicsClock >= DrillBody.StepSeconds)
-            {
-                physicsClock -= DrillBody.StepSeconds;
-                occupied.Clear();
-                foreach (var unit in Units) occupied[CellKey(unit.Body.BodyRow, unit.Body.Column)] = unit;
-
-                foreach (var unit in Units)
-                {
-                    stepper = unit;
-                    UpdateFooting(unit);
-                    long before = CellKey(unit.Body.BodyRow, unit.Body.Column);
-                    double impact = unit.Body.Step(DrillBody.StepSeconds, solidForStepper);
-                    long after = CellKey(unit.Body.BodyRow, unit.Body.Column);
-                    if (before != after)
-                    {
-                        occupied.Remove(before);
-                        occupied[after] = unit;
-                    }
-                    if (impact <= 0) continue;
-                    Events.Add(new SimEvent
-                    {
-                        Kind = SimEventKind.Landed, Row = unit.Body.FeetRow, Col = unit.Body.Column,
-                        Amount = impact, Lead = unit == Lead,
-                    });
-                }
-            }
-
-            foreach (var unit in Units)
-                if (unit.Body.Y > Lead.Body.Y) Lead = unit;
-
-            State.drillX = Lead.Body.X;
-            State.drillY = Lead.Body.Y;
-            UpdateDepth();
-        }
-
         private void AdvanceHits(double dt)
         {
             if (!AutoDrillUnlocked) return;
@@ -759,282 +553,7 @@ namespace DeepDrill.Core
             }
         }
 
-        private void Swing(DrillUnit unit)
-        {
-            var digger = unit;
-            for (int hops = 0; digger.Boosting && digger.Below != null && hops < MaxBoostChain; hops++)
-                digger = digger.Below;
-            if (!FindTarget(digger.Body, out int row, out int col)) return;
-            unit.LastSwing = simTime;
-            if (digger != unit)
-                Events.Add(new SimEvent { Kind = SimEventKind.DrillBoosted, Row = unit.Body.BodyRow, Col = unit.Body.Column });
-            Strike(row, col, DamageOf(unit.Code), false, RollCrit(), unit);
-        }
-
-        /// <summary>The block the tip points at, or else the nearest one the drill can reach.</summary>
-        public bool FindTarget(DrillBody body, out int row, out int col)
-        {
-            row = RoundToInt(body.TipY);
-            col = RoundToInt(body.TipX);
-            if (row >= 0 && col >= 0 && col < Balance.Columns && Row(row)[col].Alive) return true;
-
-            double best = double.MaxValue;
-            int foundRow = 0, foundCol = 0;
-            for (int r = Math.Max(0, row - 1); r <= row + 1; r++)
-            {
-                for (int c = Math.Max(0, col - 1); c <= Math.Min(Balance.Columns - 1, col + 1); c++)
-                {
-                    if (!Row(r)[c].Alive) continue;
-                    double dr = r - body.TipY, dc = c - body.TipX;
-                    double d = dr * dr + dc * dc;
-                    if (d >= best) continue;
-                    best = d;
-                    foundRow = r;
-                    foundCol = c;
-                }
-            }
-            row = foundRow;
-            col = foundCol;
-            return best < double.MaxValue;
-        }
-
         private bool RollCrit() => random.NextDouble() < CritChance;
-
-        private void Strike(int row, int col, double damage, bool fromClick, bool crit, DrillUnit by)
-        {
-            var block = Row(row)[col];
-            double amount = damage * (crit ? CritMultiplier : 1);
-            bool heavy = by.Family == HeavyFamily;
-            if (block.Type == BlockType.HardRock)
-                amount *= (1 + Effect(SkillEffect.hard_pct) / 100) * (heavy ? 3 : 1);
-            if (block.Type == BlockType.SuperHard)
-                amount *= (1 + Effect(SkillEffect.hard_pct) / 100) * (heavy ? 3 : Balance.SuperHardWeakDamage);
-            if (GameData.LayerOfRow(row) == Balance.CoreLayer && !InFrenzy)
-                amount *= Balance.HeatDamageRatio;
-
-            if (block.Type == BlockType.BossRoot)
-            {
-                if (!BossActive) return;
-                amount *= (1 + Effect(SkillEffect.boss_pct) / 100) * (heavy ? 1.5 : 1);
-                HitBossArmor(ref amount);
-                BossHp -= amount;
-                Events.Add(new SimEvent
-                {
-                    Kind = SimEventKind.BlockHit, Row = row, Col = col, Block = block.Type,
-                    Amount = amount, FromClick = fromClick, Crit = crit,
-                });
-                if (BossHp <= 0) DefeatBoss();
-                return;
-            }
-
-            ApplyDamage(row, col, block, amount, fromClick, crit, by);
-            RunBlasts();
-        }
-
-        private void ApplyDamage(int row, int col, Block block, double amount, bool fromClick, bool crit, DrillUnit by)
-        {
-            block.Hp -= amount;
-            Events.Add(new SimEvent
-            {
-                Kind = SimEventKind.BlockHit, Row = row, Col = col, Block = block.Type,
-                Amount = amount, FromClick = fromClick, Crit = crit,
-            });
-            if (block.Hp > 0) return;
-
-            double overflow = -block.Hp;
-            Break(row, col, block, fromClick, false, by);
-            PassOverflow(row, col, overflow, by);
-
-            if (by.Family != BlastFamily) return;
-            double splash = amount * Balance.BlastDrillSplash * (1 + Effect(SkillEffect.blast_dmg) / 100);
-            for (int r = row - 1; r <= row + 1; r++)
-            {
-                for (int c = col - 1; c <= col + 1; c++)
-                {
-                    if (r < 0 || c < 0 || c >= Balance.Columns || (r == row && c == col)) continue;
-                    var near = Row(r)[c];
-                    if (!near.Alive || near.Type == BlockType.BossRoot) continue;
-                    near.Hp -= splash;
-                    if (near.Hp <= 0) Break(r, c, near, false, true, by);
-                }
-            }
-        }
-
-        // pierce: what was left over when a block broke carries on into the next ones down
-        private void PassOverflow(int row, int col, double overflow, DrillUnit by)
-        {
-            int layers = (int)Effect(SkillEffect.pierce);
-            for (int i = 1; i <= layers && overflow > 0; i++)
-            {
-                int next = row + i;
-                if (col < 0 || col >= Balance.Columns || !IsSolid(next, col)) continue;
-                var block = Row(next)[col];
-                if (block.Type == BlockType.BossRoot) return;
-                block.Hp -= overflow;
-                if (block.Hp > 0) return;
-                overflow = -block.Hp;
-                Break(next, col, block, false, false, by);
-            }
-        }
-
-        private void Break(int row, int col, Block block, bool fromClick, bool byBlast, DrillUnit by)
-        {
-            block.Hp = 0;
-            bool isOre = block.Type == BlockType.Ore;
-            double value = WorldGen.ValueOf(block, row) * ComboMultiplier * IncomeMultiplier;
-            if (isOre)
-            {
-                value *= (1 + Effect(SkillEffect.ore_pct) / 100) * (1 + RareBonus(1, 3) / 100);
-                if (byBlast) value *= 1 + Effect(SkillEffect.blast_ore) / 100;
-                if (by.Family == MagnetFamily) value *= 2;
-                State.ores += 1;
-            }
-            if (block.Type == BlockType.Chest)
-            {
-                value *= 1 + Effect(SkillEffect.chest_gold) / 100;
-                RollRareDrop(row);
-            }
-
-            State.coins += value;
-            State.totalIncome += value;
-            incomeBuckets[incomeIndex] += value;
-
-            Combo += by.Family == SwiftFamily ? 2 : 1;
-            State.bestCombo = Math.Max(State.bestCombo, Combo);
-            comboClock = Balance.ComboWindowSeconds + Effect(SkillEffect.combo_window);
-            if (!InFrenzy && Combo >= 2)
-            {
-                double charge = Balance.FrenzyChargePerBreak * (1 + Effect(SkillEffect.frenzy_charge) / 100);
-                FrenzyEnergy = Math.Min(1, FrenzyEnergy + charge);
-            }
-
-            Events.Add(new SimEvent
-            {
-                Kind = SimEventKind.BlockBroken, Row = row, Col = col, Block = block.Type, Ore = block.Ore,
-                Amount = value, FromClick = fromClick,
-            });
-
-            if (block.Type == BlockType.Tnt && blastsThisChain < ChainLimit)
-            {
-                blastsThisChain++;
-                State.bestChain = Math.Max(State.bestChain, blastsThisChain);
-                pendingBlasts.Enqueue((row, col));
-            }
-
-            ApplyLayerMechanic(row, col, block, by);
-        }
-
-        private void ApplyLayerMechanic(int row, int col, Block block, DrillUnit by)
-        {
-            int layer = GameData.LayerOfRow(row);
-            if (block.Type == BlockType.Magma && blastsThisChain < Balance.MagmaChainLimit)
-            {
-                blastsThisChain++;
-                pendingBlasts.Enqueue((row, col));
-            }
-            if (block.Type == BlockType.Water) WashAround(row, col, by);
-            if (block.Type == BlockType.Ore && layer == Balance.CrystalLayer) ReflectFrom(row, col, block, by);
-            if (block.Type == BlockType.Chest && layer == Balance.RuinsLayer
-                && WorldGen.Unit(State.seed, row, col + 3000) < Balance.TrapChestChance)
-                pendingBlasts.Enqueue((row, col));
-            if (layer == Balance.LiquidLayer) refills.Enqueue((row, col, simTime + Balance.RefillSeconds));
-        }
-
-        // Crystal ore throws half its strength at everything within two cells.
-        private void ReflectFrom(int row, int col, Block block, DrillUnit by)
-        {
-            if (reflecting) return;
-            reflecting = true;
-            double damage = block.MaxHp * Balance.CrystalReflectRatio;
-            int reach = Balance.CrystalReflectRadius;
-            for (int r = Math.Max(0, row - reach); r <= row + reach; r++)
-            {
-                for (int c = Math.Max(0, col - reach); c <= Math.Min(Balance.Columns - 1, col + reach); c++)
-                {
-                    var near = Row(r)[c];
-                    if (!near.Alive || near.Type == BlockType.BossRoot) continue;
-                    near.Hp -= damage;
-                    if (near.Hp <= 0) Break(r, c, near, false, true, by);
-                }
-            }
-            reflecting = false;
-        }
-
-        // Burst water shoves nearby drills sideways and carries off any loose blocks.
-        private void WashAround(int row, int col, DrillUnit by)
-        {
-            foreach (var unit in Units)
-            {
-                double dx = unit.Body.X - col;
-                if (Math.Abs(dx) > Balance.WaterRadius || Math.Abs(unit.Body.Y - row) > Balance.WaterRadius) continue;
-                unit.Body.VelocityX += (dx >= 0 ? 1 : -1) * Balance.WaterPushSpeed;
-            }
-            int reach = Balance.WaterRadius;
-            for (int r = Math.Max(0, row - reach); r <= row + reach; r++)
-            {
-                for (int c = Math.Max(0, col - reach); c <= Math.Min(Balance.Columns - 1, col + reach); c++)
-                {
-                    var near = Row(r)[c];
-                    if (near.Alive && near.Type == BlockType.Sand) Break(r, c, near, false, true, by);
-                }
-            }
-        }
-
-        private void AdvanceLayerMechanics(double dt)
-        {
-            simTime += dt;
-            int layer = GameData.LayerOfRow(State.depth);
-
-            if (overheatLeft > 0) overheatLeft -= dt;
-            if (layer == Balance.MohoLayer)
-            {
-                heatClock += dt;
-                if (heatClock >= Balance.OverheatPeriodSeconds)
-                {
-                    heatClock = 0;
-                    overheatLeft = Balance.OverheatSeconds;
-                    if (!InFrenzy) Events.Add(new SimEvent { Kind = SimEventKind.Overheated });
-                }
-            }
-
-            if (layer == Balance.ConvectionLayer)
-            {
-                convectionClock += dt;
-                if (convectionClock >= Balance.ConvectionSeconds)
-                {
-                    convectionClock = 0;
-                    ShiftRows();
-                }
-            }
-
-            while (refills.Count > 0 && refills.Peek().time <= simTime)
-            {
-                var (row, col, _) = refills.Dequeue();
-                if (!rows.TryGetValue(row, out var blocks) || occupied.ContainsKey(CellKey(row, col))) continue;
-                if (!blocks[col].Alive) WorldGen.Fill(blocks[col], State.seed, row, col, 0, 0);
-            }
-        }
-
-        // The rows ahead of the drills creep sideways, alternate rows in opposite directions.
-        private void ShiftRows()
-        {
-            for (int row = State.depth + 2; row <= State.depth + Balance.LooseWindowRows; row++)
-            {
-                if (IsBossRow(row) || !rows.TryGetValue(row, out var blocks)) continue;
-                if (row % 2 == 0)
-                {
-                    var last = blocks[Balance.Columns - 1];
-                    Array.Copy(blocks, 0, blocks, 1, Balance.Columns - 1);
-                    blocks[0] = last;
-                }
-                else
-                {
-                    var first = blocks[0];
-                    Array.Copy(blocks, 1, blocks, 0, Balance.Columns - 1);
-                    blocks[Balance.Columns - 1] = first;
-                }
-            }
-        }
 
         private void RollRareDrop(int row)
         {
@@ -1050,39 +569,11 @@ namespace DeepDrill.Core
             }
         }
 
-        private void RunBlasts()
-        {
-            if (insideBlast) return;
-            insideBlast = true;
-            while (pendingBlasts.Count > 0)
-            {
-                var (row, col) = pendingBlasts.Dequeue();
-                Explode(row, col, BlastRadius);
-            }
-            insideBlast = false;
-            blastsThisChain = 0;
-        }
-
-        private void Explode(int row, int col, int radius)
-        {
-            Events.Add(new SimEvent { Kind = SimEventKind.Explosion, Row = row, Col = col, Amount = radius });
-            for (int r = Math.Max(0, row - radius); r <= row + radius; r++)
-            {
-                for (int c = Math.Max(0, col - radius); c <= Math.Min(Balance.Columns - 1, col + radius); c++)
-                {
-                    int dr = r - row, dc = c - col;
-                    if (dr * dr + dc * dc > radius * radius + 1) continue;
-                    var block = Row(r)[c];
-                    if (block.Alive && block.Type != BlockType.BossRoot) Break(r, c, block, false, true, Lead);
-                }
-            }
-        }
-
         private void UpdateDepth()
         {
             int feet = Lead.Body.FeetRow;
             if (feet <= State.depth) return;
-            for (int row = State.depth; row < feet; row++) rows.Remove(row - KeptRowsAbove);
+            world.DropAbove(feet);
             int layer = GameData.LayerOfRow(feet);
             bool entered = layer != GameData.LayerOfRow(State.depth);
             State.depth = feet;
@@ -1090,35 +581,6 @@ namespace DeepDrill.Core
             State.maxDepthEver = Math.Max(State.maxDepthEver, feet);
             Events.Add(new SimEvent { Kind = SimEventKind.DepthChanged, Row = feet });
             if (entered) Events.Add(new SimEvent { Kind = SimEventKind.LayerEntered, Amount = layer });
-        }
-
-        // Loose blocks drop one cell per step, bottom row first so a whole column falls together.
-        // They settle on the body of a drill rather than through it.
-        private void AdvanceLoose(double dt)
-        {
-            looseClock += dt;
-            while (looseClock >= Balance.LooseStepSeconds)
-            {
-                looseClock -= Balance.LooseStepSeconds;
-                StepLoose();
-            }
-        }
-
-        private void StepLoose()
-        {
-            int top = Math.Max(0, State.depth - Balance.LooseWindowRows);
-            for (int row = State.depth + Balance.LooseWindowRows; row >= top; row--)
-            {
-                if (!rows.TryGetValue(row, out var upper) || !rows.TryGetValue(row + 1, out var lower)) continue;
-                for (int col = 0; col < Balance.Columns; col++)
-                {
-                    if (upper[col].Type != BlockType.Sand || !upper[col].Alive) continue;
-                    if (lower[col].Alive || occupied.ContainsKey(CellKey(row + 1, col))) continue;
-                    var moved = upper[col];
-                    upper[col] = lower[col];
-                    lower[col] = moved;
-                }
-            }
         }
 
         private static long CellKey(int row, int col) => row * 64L + col;
@@ -1253,33 +715,6 @@ namespace DeepDrill.Core
             Events.Add(new SimEvent { Kind = SimEventKind.BossArmorBroken });
         }
 
-        private void DefeatBoss()
-        {
-            var layer = CurrentBoss;
-            int bossRow = layer.RowEnd;
-            BossActive = false;
-            State.bossesDefeated++;
-            State.bossesEver = Math.Max(State.bossesEver, State.bossesDefeated);
-
-            double value = Balance.OreValue(bossRow, Balance.BossRewardValue);
-            State.coins += value;
-            State.totalIncome += value;
-            incomeBuckets[incomeIndex] += value;
-
-            int col = Lead.Body.Column;
-            for (int row = bossRow; row < bossRow + Balance.BossRows; row++)
-            {
-                rows.Remove(row); // the rest of the row grows back as ordinary ground
-                for (int c = col - Balance.BossBreachHalfWidth; c <= col + Balance.BossBreachHalfWidth; c++)
-                    Carve(row, c);
-            }
-
-            Events.Add(new SimEvent
-            {
-                Kind = SimEventKind.BossDefeated, Row = bossRow, Col = col, Amount = value,
-            });
-        }
-
         private void AdvanceCombo(double dt)
         {
             if (Combo == 0) return;
@@ -1297,7 +732,7 @@ namespace DeepDrill.Core
             Events.Add(new SimEvent { Kind = SimEventKind.FrenzyEnded });
             if (Effect(SkillEffect.frenzy_quake) > 0)
             {
-                Explode(RoundToInt(Lead.Body.TipY), RoundToInt(Lead.Body.TipX), Balance.FrenzyQuakeRadius);
+                Explode(Lead.Body.FeetRow, Lead.Body.Column, Balance.FrenzyQuakeRadius);
                 RunBlasts();
             }
         }

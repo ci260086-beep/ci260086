@@ -1,11 +1,11 @@
-﻿using System;
+using System;
 
 namespace DeepDrill.Core
 {
     /// <summary>
-    /// Hand-written physics for one small drill, in tile units. X grows right, Y grows down, block
-    /// (row, col) is the unit square centred on (col, row). Angle is degrees: 0 points straight down,
-    /// negative tips the nose left, positive right. Solid callbacks answer (row, col).
+    /// Physics for one small drill against pixel ground, in tile units. X grows right, Y grows down.
+    /// Angle is degrees: 0 points straight down, negative tips the nose left, positive right. Foot
+    /// and side probes sample the ground, so slopes tip and slide the body and pits catch it.
     /// </summary>
     public sealed class DrillBody
     {
@@ -19,11 +19,13 @@ namespace DeepDrill.Core
         public const double TiltDamping = 9;
         public const double HalfWidth = 0.25;
         public const double HalfHeight = 0.375;
+        public const double FootSpread = 0.2;
         public const double TipReach = 0.5;
-        public const double CentreRate = 6;
         public const double StepSeconds = 1.0 / 30;
 
-        private const double FootProbe = 0.01;
+        private const double Pixel = 1.0 / 16;
+        private const double FootProbe = 0.02;
+        private const int MaxStepUpPixels = 3;
 
         public double X;
         public double Y;
@@ -32,7 +34,7 @@ namespace DeepDrill.Core
         public double Angle;
         public double AngularVelocity;
 
-        /// <summary>Set by the sim while standing on another drill: -1 slide left, 1 slide right.</summary>
+        /// <summary>Set by the sim while crowded by another drill: -1 drift left, 1 drift right.</summary>
         public int Nudge;
 
         public bool Grounded { get; private set; }
@@ -55,35 +57,36 @@ namespace DeepDrill.Core
         }
 
         /// <summary>Advances one fixed step. Returns the landing speed, or 0 if it did not land.</summary>
-        public double Step(double dt, Func<int, int, bool> solid)
+        public double Step(double dt, Func<double, double, bool> solid)
         {
-            int row = Round(Y + HalfHeight + FootProbe);
-            int col = Round(X);
-            Grounded = solid(row, col);
+            StepOutOfGround(solid);
+
+            double feet = Y + HalfHeight + FootProbe;
+            bool left = solid(X - FootSpread, feet);
+            bool centre = solid(X, feet);
+            bool right = solid(X + FootSpread, feet);
+            Grounded = left || centre || right;
 
             double targetAngle = 0;
             if (Grounded)
             {
-                bool left = solid(row, col - 1);
-                bool right = solid(row, col + 1);
                 VelocityY = 0;
-                if (left == right && Nudge == 0)
+                int side = Nudge != 0 ? Nudge : (left == right ? 0 : (left ? 1 : -1));
+                if (side == 0)
                 {
                     VelocityX = Approach(VelocityX, 0, GroundFriction * dt);
                 }
                 else
                 {
-                    // standing beside a hole, or on another drill: the body tips and slides off
-                    double side = Nudge != 0 ? Nudge : (left ? 1 : -1);
+                    // only one foot on the ground, or crowded: tip towards the open side and slide
                     targetAngle = side * MaxTilt;
                     VelocityX += side * SlideAcceleration * dt;
                 }
             }
             else
             {
-                // falling: settle into the middle of the column so the drill fits the hole below
                 VelocityY = Math.Min(VelocityY + Gravity * dt, MaxFallSpeed);
-                VelocityX = (col - X) * CentreRate;
+                VelocityX = Approach(VelocityX, 0, GroundFriction * 0.25 * dt);
                 targetAngle = MaxTilt * Clamp(VelocityX / MaxSlideSpeed, -1, 1);
             }
 
@@ -96,12 +99,18 @@ namespace DeepDrill.Core
             return impact;
         }
 
-        private void MoveSideways(double dt, Func<int, int, bool> solid)
+        // Sand can bury a drill; it climbs out a few pixels at a time rather than sticking in place.
+        private void StepOutOfGround(Func<double, double, bool> solid)
+        {
+            for (int i = 0; i < MaxStepUpPixels && solid(X, Y + HalfHeight - Pixel); i++) Y -= Pixel;
+        }
+
+        private void MoveSideways(double dt, Func<double, double, bool> solid)
         {
             if (VelocityX == 0) return;
             double next = X + VelocityX * dt;
-            int col = Round(next + Math.Sign(VelocityX) * HalfWidth);
-            if (col != Round(X) && solid(Round(Y), col))
+            double edge = next + Math.Sign(VelocityX) * HalfWidth;
+            if (solid(edge, Y) || solid(edge, Y - HalfHeight * 0.6))
             {
                 VelocityX = 0;
                 return;
@@ -109,19 +118,23 @@ namespace DeepDrill.Core
             X = next;
         }
 
-        private double MoveDown(double dt, Func<int, int, bool> solid)
+        private double MoveDown(double dt, Func<double, double, bool> solid)
         {
             if (VelocityY <= 0) return 0;
-            double next = Y + VelocityY * dt;
-            int row = Round(next + HalfHeight);
-            if (solid(row, Round(X)) && next + HalfHeight > row - 0.5)
+            double left = VelocityY * dt;
+            while (left > 0)
             {
-                double impact = VelocityY;
-                Y = row - 0.5 - HalfHeight;
-                VelocityY = 0;
-                return impact;
+                double step = Math.Min(left, Pixel);
+                double feet = Y + step + HalfHeight;
+                if (solid(X, feet) || solid(X - FootSpread, feet) || solid(X + FootSpread, feet))
+                {
+                    double impact = VelocityY;
+                    VelocityY = 0;
+                    return impact;
+                }
+                Y += step;
+                left -= step;
             }
-            Y = next;
             return 0;
         }
 

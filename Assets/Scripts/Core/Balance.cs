@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 
 namespace DeepDrill.Core
 {
@@ -42,7 +42,7 @@ namespace DeepDrill.Core
         public const int BaseChainLimit = 2;
         public const double BlastDrillSplash = 0.5;
 
-        public const double LooseStepSeconds = 0.12;
+        public const double SandPixelStepSeconds = 1.0 / 30;
         public const int LooseWindowRows = 12;
 
         public const int SimulatedDrills = 300; // owned count has no cap; the rest add their power to these
