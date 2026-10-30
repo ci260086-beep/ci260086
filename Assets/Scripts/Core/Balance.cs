@@ -70,6 +70,8 @@ namespace DeepDrill.Core
         public const int RareMaxDupes = 10;
         public const double RareDupeBonus = 0.5;
 
+        public const double EventCoinFloor = 5;
+
         // layer mechanics, indexed from zero as in GameData.Layers
         public const int CrystalLayer = 2;
         public const int WaterLayer = 3;

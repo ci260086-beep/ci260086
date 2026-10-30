@@ -64,6 +64,7 @@ namespace DeepDrill.Core
         public List<string> achievements = new List<string>();
         public List<int> familyBest = new List<int>();     // most of a family bought in one run
         public List<double> layerPixels = new List<double>(); // pixels ever dug per layer
+        public int eventsClaimed;
 
         public bool AnyBossDown => bossesDefeated > 0;
 

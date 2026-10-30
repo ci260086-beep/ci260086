@@ -43,6 +43,7 @@ public static class Pace
                 decide = 0;
                 Spend(sim);
                 sim.StartFrenzy();
+                sim.ClaimEvent();
             }
 
             int layer = GameData.LayerOfRow(sim.State.maxDepth);

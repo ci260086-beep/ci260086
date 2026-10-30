@@ -6,7 +6,7 @@
 
 - **仓库：** https://github.com/ci260086-beep/ci260086 ，主分支是 `master`。不要 force push。合并进 `master` 前先等用户确认。
 - **分支：** `master`（`de825d3`，第一版）；`v2`（`8f3b4c6`，第三阶段第 0 步）；`phase3-step2`（从 `v2` 分出，正在做第 2 步）；`terrain-pixel`（`e7d03fb`，已包含在 `v2` 里，检出在 `Builds/wtp`）；`wip-v2`（旧存档分支）。
-- **第三阶段进度：** 计划在 `tools/Design/phase3_plan.md`。用户决定在 `phase3-step2` 这一条分支上把第 1 到第 8 步全部做完，每步只跑编译和单元测试，最后统一做完整测试和节奏调参。第 0、2 步已提交。第 2 步：`milestones.json`、`GameSim.MilestonesOf/MasteryOf`、`HudView.Mastery.cs`（图鉴的“里程碑”“精通”标签页，未实机看过）。
+- **第三阶段进度：** 计划在 `tools/Design/phase3_plan.md`。用户决定在 `phase3-step2` 这一条分支上把第 1 到第 8 步全部做完，每步只跑编译和单元测试，最后统一做完整测试和节奏调参。第 0、2、1 步已提交。第 2 步：`milestones.json`、`GameSim.MilestonesOf/MasteryOf`、`HudView.Mastery.cs`（图鉴的“里程碑”“精通”标签页，未实机看过）。
 - **第四阶段计划：** https://claude.ai/artifact/CKUBNxSWKeDQZEUQSTgwkF
 - **用户已定：** 横屏 320×180；逐像素地形；手动起步（解锁自动钻探前只能点击）；定价 6 元人民币；不做广告和付费加速。
 - **节奏目标：** 第一次重铸约 30 到 45 分钟；第 1 局到第 4 到 5 层；之后每层约 8 到 15 分钟；10 到 15 局到地心。
@@ -15,6 +15,7 @@
 - **编译和测试：** Unity 没开时，运行 `tools\check.ps1 -Stage 名字`（先跑 EditMode 测试，再试玩截图）。Unity 开着时用工程外命令：`dotnet build tools\outside\Check.csproj` 检查 Core 和 Game 能否编译；`dotnet build tools\outside\Run.csproj -p:NUnitDll=<nunit.framework.dll 路径>` 后运行 `tools\outside\out\run\Run.exe` 跑测试。跑 Unity 前先确认用户没开 Play 模式。列表里的 `Unity Hub\...\unity.exe serve` 是 Hub，不是编辑器，要看 `Temp\UnityLockfile`。
 - **节奏模拟：** `dotnet build tools\outside\Pace.csproj -c Release`，再运行 `tools\outside\out\pace\Pace.exe Assets\Resources\Data [模拟小时] [真实秒数上限] [种子]`。
 - **已知问题：** 第 3 至 12 层的特殊机制只有测试，没有实机看过；Windows 打包未解决（见下一节）；磁力钻的“吸取 3 格内掉落”没做；节奏调参留到全部做完后统一进行。
+- **第 1 步：** 黄金事件和地核不稳：`GameSim.Events.cs`、`HudView.Events.cs`，数值在 `phase3.json` 的 events，未实机看过。
 - **节奏现状（调到一半）：** 种子 7、11、23、42 的第一次重铸在 21 到 36 分钟，第 1 局到第 4 层，第 6 层在 24 到 38 分钟，约 18 局以上才接近地心，HpGrowthDeep 1.012 尚未验证。HpRamp 到 4.5 以上时第一局会卡在第 2 层 Boss。旋钮：`Balance.HpRamp/HpGrowthDeep/OreValuePower/ShardBonus/BossHpScale`，生成器里的 `TIER_DMG_MULT`、`BUY_GROWTH`、圈价倍数和技能价格增长率。
 - **本阶段修过的旧 bug：** 连锁炸药一帧炸穿全图（现在限 24 次、24 行内）；爆炸无视血量（现在按伤害预算，`blast_dmg` 生效）；钻头悬空导致 Boss 不触发；爆破钻溅射没实现。
 

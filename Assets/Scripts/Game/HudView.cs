@@ -200,6 +200,7 @@ namespace DeepDrill.Game
             dragGhost.gameObject.SetActive(false);
 
             BuildBossBanner();
+            BuildSurfaceEvent();
 
             toastLabel = Floating("", 0, 140, Stage.DigWidth, 18, 13, TextAnchor.MiddleCenter);
             toastLabel.color = CoinColor;
@@ -678,7 +679,7 @@ namespace DeepDrill.Game
             UpdateBoss();
             UpdateRebirth(dt);
             UpdateOffline(dt);
-
+            UpdateSurfaceEvent();
         }
 
         // The opening: tap the drill, then spend the first coins on auto drilling.

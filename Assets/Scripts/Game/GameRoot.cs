@@ -276,6 +276,15 @@ namespace DeepDrill.Game
                     hud.ShowToast($"成就：{GameData.Achievements[(int)e.Amount].Name}", 3f);
                     break;
 
+                case SimEventKind.SurfaceEventAppeared:
+                    sound.Play("upgrade", 0.5f, 0.4f, true);
+                    break;
+
+                case SimEventKind.SurfaceEventClaimed:
+                    sound.Play("merge", 0.7f);
+                    world.Shake(0.15f, 2f);
+                    break;
+
                 case SimEventKind.MilestoneReached:
                     hud.ShowToast($"里程碑：{GameData.Milestones[(int)e.Amount][e.Row].Desc}", 3f);
                     break;

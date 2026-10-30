@@ -28,6 +28,8 @@ namespace DeepDrill.Core
         DrillBoosted,
         MilestoneReached,
         MasteryUp,
+        SurfaceEventAppeared,
+        SurfaceEventClaimed,
     }
 
     public struct SimEvent
@@ -242,6 +244,7 @@ namespace DeepDrill.Core
                     * (1 + Balance.ShardBonus * State.shards)
                     * drillBonus
                     * ComboMultiplier
+                    * DamageBuffMult
                     * frenzy;
             }
         }
@@ -260,6 +263,7 @@ namespace DeepDrill.Core
 
         public double SpeedMultiplier =>
             (1 + Effect(SkillEffect.speed_pct) / 100)
+            * SpeedBuffMult
             * (InFrenzy ? Balance.FrenzySpeedMultiplier : (Overheating ? Balance.OverheatSpeed : 1));
 
         /// <summary>In the Moho layer drills overheat in bursts; frenzy cools them.</summary>
@@ -319,6 +323,7 @@ namespace DeepDrill.Core
             AdvanceBoss(dt);
             AdvanceHits(dt);
             AdvanceHousekeeping(dt);
+            AdvanceEvents(dt);
         }
 
         public bool FamilyUnlocked(int family) => ReachedLayer >= GameData.Families[family].UnlockLayer;

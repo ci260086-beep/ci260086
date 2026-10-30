@@ -98,6 +98,28 @@ namespace DeepDrill.Core
         public string Desc;
     }
 
+    public enum EventKind { coins, frenzy, damage, speed, lose }
+
+    public sealed class EventOutcome
+    {
+        public EventKind Kind;
+        public double Weight;
+        public double Amount;
+        public double Seconds;
+        public string Desc;
+    }
+
+    public sealed class EventTable
+    {
+        public double EveryMin;
+        public double EveryMax;
+        public double Lifetime;
+        public double UnstableShare;
+        public int UnstableFromLayer; // zero based
+        public List<EventOutcome> Golden = new List<EventOutcome>();
+        public List<EventOutcome> Unstable = new List<EventOutcome>();
+    }
+
     /// <summary>
     /// The numbers from tools/Design/gen_design_data.py. The reader callback fetches a file by
     /// name, so Unity and the tests can supply the JSON their own way.
@@ -120,6 +142,7 @@ namespace DeepDrill.Core
         public static List<double> MasteryBlocks;          // blocks dug in a layer for each level
         public static double MasteryDamagePct;
         public static double MasteryValuePct;
+        public static EventTable Events;
 
         private static Dictionary<string, SkillDef> skillsById;
 
@@ -136,6 +159,7 @@ namespace DeepDrill.Core
             LoadAchievements(read("achievements"));
             LoadRares(read("rare_items"));
             LoadMilestones(read("milestones"));
+            LoadPhase3(read("phase3"));
         }
 
         public static SkillDef Skill(string id) => skillsById.TryGetValue(id, out var s) ? s : null;
@@ -321,6 +345,43 @@ namespace DeepDrill.Core
             foreach (var blocks in Arr(mastery["blocks"])) MasteryBlocks.Add((double)blocks);
             MasteryDamagePct = Num(mastery, "damagePct");
             MasteryValuePct = Num(mastery, "valuePct");
+        }
+
+        // hand-written, unlike the rest: it holds no formulas, so it has no generator
+        private static void LoadPhase3(string json)
+        {
+            var root = Obj(MiniJson.Parse(json));
+            LoadEvents(Obj(root["events"]));
+        }
+
+        private static void LoadEvents(Dictionary<string, object> o)
+        {
+            Events = new EventTable
+            {
+                EveryMin = Num(o, "everyMin"),
+                EveryMax = Num(o, "everyMax"),
+                Lifetime = Num(o, "lifetime"),
+                UnstableShare = Num(o, "unstableShare"),
+                UnstableFromLayer = (int)Num(o, "unstableFromLayer") - 1,
+            };
+            LoadOutcomes(Arr(o["golden"]), Events.Golden);
+            LoadOutcomes(Arr(o["unstable"]), Events.Unstable);
+        }
+
+        private static void LoadOutcomes(List<object> items, List<EventOutcome> into)
+        {
+            foreach (var item in items)
+            {
+                var o = Obj(item);
+                into.Add(new EventOutcome
+                {
+                    Kind = (EventKind)Enum.Parse(typeof(EventKind), Str(o, "kind")),
+                    Weight = Num(o, "weight"),
+                    Amount = Num(o, "amount"),
+                    Seconds = Num(o, "seconds"),
+                    Desc = Str(o, "desc"),
+                });
+            }
         }
 
         private static void LoadRares(string json)
