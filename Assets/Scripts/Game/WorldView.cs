@@ -104,7 +104,8 @@ namespace DeepDrill.Game
             chestOverlay = art.Get("chest_overlay");
             bossShell = art.Get("boss_shell");
             bossHide = art.Get("boss_hide");
-            bossFaces = new[] { art.Get("boss_face"), art.Get("beetle_face") };
+            bossFaces = new Sprite[layers];
+            for (int s = 0; s < layers; s++) bossFaces[s] = art.Get($"boss_face_{s}");
 
             bossFace = MakeRenderer("bossFace", 4, transform);
 
@@ -184,7 +185,7 @@ namespace DeepDrill.Game
             bossFace.enabled = boss != null;
             if (boss != null)
             {
-                bossFace.sprite = bossFaces[boss.Index % bossFaces.Length];
+                bossFace.sprite = bossFaces[boss.Index];
                 bossFace.transform.position = new Vector3(Mathf.Round(leadX), -(boss.RowEnd + 0.5f), 0);
             }
 

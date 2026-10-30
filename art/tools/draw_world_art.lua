@@ -349,6 +349,58 @@ for layer = 1, 12 do
   end
 end
 
+-- 12 guardian faces, 48x32 over the boss wall: eyes, mouth and horns vary, colours follow the layer
+for layer = 1, 12 do
+  local v = LAYERS[layer]
+  local ink, dark, glow, tooth = hex(v[1]), hex(v[2]), hex(v[6]), hex(v[5])
+  local g = canvas(48, 32)
+  local eyes = (layer - 1) % 3 + 1
+  local eyeR = 7 - eyes
+  for e = 1, eyes do
+    local ex = math.floor(48 * e / (eyes + 1))
+    for y = 4, 16 do
+      for x = ex - eyeR - 1, ex + eyeR + 1 do
+        if ((x - ex) / (eyeR + 1)) ^ 2 + ((y - 10) / 5) ^ 2 <= 1 then g:set(x, y, dark) end
+      end
+    end
+    g:rect(ex - 1, 8, ex + 1, 11, glow)
+    g:set(ex, 9, hex("ffffff"))
+  end
+
+  local mouth = (layer - 1) % 4
+  if mouth == 0 then -- jagged
+    for x = 8, 39 do
+      local jag = (x % 6 < 3) and 0 or 2
+      g:rect(x, 21 + jag, x, 27 - jag, ink)
+    end
+    for x = 9, 38, 6 do g:rect(x, 21, x + 1, 23, tooth) end
+  elseif mouth == 1 then -- round maw
+    for y = 18, 30 do
+      for x = 12, 35 do
+        if ((x - 23.5) / 12) ^ 2 + ((y - 24) / 6) ^ 2 <= 1 then g:set(x, y, ink) end
+      end
+    end
+    g:rect(16, 21, 31, 21, tooth)
+  elseif mouth == 2 then -- mandibles
+    for i = 0, 7 do
+      g:rect(10 - i, 20 + i, 16 - i, 21 + i, tooth)
+      g:rect(31 + i, 20 + i, 37 + i, 21 + i, tooth)
+    end
+  else -- grille
+    g:rect(10, 21, 37, 27, ink)
+    for x = 12, 36, 4 do g:rect(x, 21, x, 27, tooth) end
+  end
+
+  if layer % 2 == 0 then -- horns on every second guardian
+    for i = 0, 3 do
+      g:rect(4 + i, 3 - i, 6 + i, 4 - i, tooth)
+      g:rect(41 - i, 3 - i, 43 - i, 4 - i, tooth)
+    end
+  end
+  outline(g, ink)
+  save(g, "Layers/boss_face_" .. (layer - 1))
+end
+
 -- achievement badge: the page tints it, and shows a black silhouette until earned
 local badge = canvas(16, 16)
 for y = 2, 13 do
