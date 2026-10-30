@@ -97,6 +97,13 @@ public static class Pace
         }
 
         while (sim.MergeAll()) { }
+
+        // ore goes to the factory, crystals to research, explorers out on the middle trip
+        for (int i = 0; i < GameData.Factory.Count; i++)
+            while (sim.UpgradeFactory(i)) { }
+        for (int i = 0; i < GameData.Research.Count; i++)
+            if (sim.StartResearch(i)) break;
+        while (sim.SendExpedition(1)) { }
     }
 
     private static string Minutes(double seconds) => $"{seconds / 60:0.0}m";

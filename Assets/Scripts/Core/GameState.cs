@@ -89,6 +89,10 @@ namespace DeepDrill.Core
         public int challenge = -1;
         public List<int> challengesDone = new List<int>();
 
+        public int warps;
+        public int starPoints;
+        public List<int> constellation = new List<int>(); // level per star
+
         public bool AnyBossDown => bossesDefeated > 0;
 
         public int BoughtOf(int family) => family < bought.Count ? bought[family] : 0;

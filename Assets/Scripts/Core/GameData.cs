@@ -160,6 +160,27 @@ namespace DeepDrill.Core
         public BonusDef Reward;
     }
 
+    public sealed class PlanetDef
+    {
+        public string Name;
+        public string Desc;
+        public double Damage;
+        public double Income;
+        public double Shards;
+        public double Gravity;
+        public bool Heat;
+    }
+
+    public sealed class StarDef
+    {
+        public string Name;
+        public SkillEffect Effect;
+        public double PerLevel;
+        public int MaxLevel;
+        public int Cost;
+        public string Desc;
+    }
+
     public enum RebirthPerk { coins, root, drills, hangar, skills }
 
     public sealed class RebirthMilestone
@@ -227,6 +248,8 @@ namespace DeepDrill.Core
         public static List<ExpeditionDef> Expeditions;
         public static double RescueChance;
         public static List<ChallengeDef> Challenges;
+        public static List<PlanetDef> Planets;
+        public static List<StarDef> Constellation;
 
         private static Dictionary<string, SkillDef> skillsById;
 
@@ -436,6 +459,37 @@ namespace DeepDrill.Core
         {
             var root = Obj(MiniJson.Parse(json));
             LoadEvents(Obj(root["events"]));
+
+            Planets = new List<PlanetDef>();
+            foreach (var item in Arr(root["planets"]))
+            {
+                var o = Obj(item);
+                Planets.Add(new PlanetDef
+                {
+                    Name = Str(o, "name"),
+                    Desc = Str(o, "desc"),
+                    Damage = Num(o, "damage"),
+                    Income = Num(o, "income"),
+                    Shards = Num(o, "shards"),
+                    Gravity = Num(o, "gravity"),
+                    Heat = (bool)o["heat"],
+                });
+            }
+
+            Constellation = new List<StarDef>();
+            foreach (var item in Arr(root["constellation"]))
+            {
+                var o = Obj(item);
+                Constellation.Add(new StarDef
+                {
+                    Name = Str(o, "name"),
+                    Effect = (SkillEffect)Enum.Parse(typeof(SkillEffect), Str(o, "effect")),
+                    PerLevel = Num(o, "perLevel"),
+                    MaxLevel = (int)Num(o, "maxLevel"),
+                    Cost = (int)Num(o, "cost"),
+                    Desc = Str(o, "desc"),
+                });
+            }
 
             Challenges = new List<ChallengeDef>();
             foreach (var item in Arr(root["challenges"]))

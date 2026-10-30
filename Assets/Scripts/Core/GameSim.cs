@@ -35,6 +35,8 @@ namespace DeepDrill.Core
         ExpeditionReturned,
         ExplorerRescued,
         ChallengeDone,
+        RunRestarted,
+        Warped,
     }
 
     public struct SimEvent
@@ -178,14 +180,14 @@ namespace DeepDrill.Core
 
         public int ShardsOnRebirth =>
             (int)Math.Floor(Balance.ShardsForRebirth(State.maxDepth, State.totalIncome)
-                * (1 + (Effect(SkillEffect.shard_pct) + 5 * AchievementCount("rebirth_")) / 100));
+                * (1 + (Effect(SkillEffect.shard_pct) + 5 * AchievementCount("rebirth_")) / 100) * Planet.Shards);
         public bool CanRebirth => State.AnyBossDown && ShardsOnRebirth > 0 && State.challenge < 0;
 
         /// <summary>Shards this run has earned per minute so far, zero until the run has settled.</summary>
         public double ShardsPerMinute =>
             State.runSeconds < Balance.RebirthRateMinSeconds ? 0
                 : Balance.ShardProgress(State.maxDepth, State.totalIncome)
-                    * (1 + (Effect(SkillEffect.shard_pct) + 5 * AchievementCount("rebirth_")) / 100)
+                    * (1 + (Effect(SkillEffect.shard_pct) + 5 * AchievementCount("rebirth_")) / 100) * Planet.Shards
                     / (State.runSeconds / 60);
 
         /// <summary>True once a run of some length has slipped well below its best rate, the moment a rebirth pays most.</summary>
@@ -252,6 +254,7 @@ namespace DeepDrill.Core
                     * DamageBuffMult
                     * (1 + metaDamage / 100)
                     * ChallengeDamage
+                    * Planet.Damage
                     * frenzy;
             }
         }
@@ -306,7 +309,8 @@ namespace DeepDrill.Core
             (1 + Effect(SkillEffect.gold_pct) / 100)
             * (1 + (2 * AchievementCount("reach_") + RareBonus(2, 5)) / 100)
             * (1 + metaIncome / 100)
-            * ChallengePay;
+            * ChallengePay
+            * Planet.Income;
 
         public int SimulationLimit => Balance.SimulatedDrills + (int)Effect(SkillEffect.hangar_slots);
 

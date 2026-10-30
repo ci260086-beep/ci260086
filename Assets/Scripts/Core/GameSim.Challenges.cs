@@ -23,6 +23,7 @@ namespace DeepDrill.Core
             if (!CanStartChallenge(index)) return false;
             ResetRun();
             State.challenge = index;
+            Events.Add(new SimEvent { Kind = SimEventKind.RunRestarted });
             return true;
         }
 
@@ -31,6 +32,7 @@ namespace DeepDrill.Core
             if (State.challenge < 0) return false;
             State.challenge = -1;
             ResetRun();
+            Events.Add(new SimEvent { Kind = SimEventKind.RunRestarted });
             return true;
         }
 
@@ -42,6 +44,7 @@ namespace DeepDrill.Core
             State.challengesDone.Add(index);
             State.challenge = -1;
             ResetRun();
+            Events.Add(new SimEvent { Kind = SimEventKind.RunRestarted });
             Events.Add(new SimEvent { Kind = SimEventKind.ChallengeDone, Amount = index });
         }
 

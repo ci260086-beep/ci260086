@@ -37,6 +37,9 @@ namespace DeepDrill.Core
         /// <summary>Set by the sim while crowded by another drill: -1 drift left, 1 drift right.</summary>
         public int Nudge;
 
+        /// <summary>The current planet's pull, as a share of the home planet's.</summary>
+        public double GravityScale = 1;
+
         public bool Grounded { get; private set; }
 
         /// <summary>True when the last step tried to slide and rock stopped the body.</summary>
@@ -89,7 +92,7 @@ namespace DeepDrill.Core
             }
             else
             {
-                VelocityY = Math.Min(VelocityY + Gravity * dt, MaxFallSpeed);
+                VelocityY = Math.Min(VelocityY + Gravity * GravityScale * dt, MaxFallSpeed * GravityScale);
                 VelocityX = Approach(VelocityX, 0, GroundFriction * 0.25 * dt);
                 targetAngle = MaxTilt * Clamp(VelocityX / MaxSlideSpeed, -1, 1);
             }

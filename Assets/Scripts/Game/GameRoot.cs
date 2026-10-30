@@ -303,8 +303,16 @@ namespace DeepDrill.Game
 
                 case SimEventKind.ChallengeDone:
                     hud.ShowToast($"挑战完成：{GameData.Challenges[(int)e.Amount].Reward.Desc}", 5f);
+                    break;
+
+                case SimEventKind.RunRestarted:
+                    hud.ClearInFlight();
                     world.SnapToDrill();
                     SaveNow();
+                    break;
+
+                case SimEventKind.Warped:
+                    hud.ShowToast($"星系跃迁：抵达{sim.Planet.Name}，获得 {e.Amount:0} 星点", 5f);
                     break;
 
                 case SimEventKind.MilestoneReached:

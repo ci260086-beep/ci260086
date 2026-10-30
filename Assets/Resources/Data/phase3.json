@@ -1,4 +1,19 @@
 {
+ "planets": [
+  {"name": "地球", "desc": "没有特殊规则", "damage": 1, "income": 1, "shards": 1, "gravity": 1, "heat": false},
+  {"name": "月壤星", "desc": "低重力：钻头下落很慢，但伤害 ×2", "damage": 2, "income": 1, "shards": 1, "gravity": 0.35, "heat": false},
+  {"name": "熔岩星", "desc": "满地高温：非狂热时伤害只剩四分之一，收入 ×4", "damage": 1, "income": 4, "shards": 1, "gravity": 1, "heat": true},
+  {"name": "富矿星", "desc": "矿物翻倍，但岩层硬度也翻倍", "damage": 0.5, "income": 2, "shards": 1, "gravity": 1, "heat": false},
+  {"name": "碎晶星", "desc": "重铸碎片 ×2，收入减半", "damage": 1, "income": 0.5, "shards": 2, "gravity": 1, "heat": false}
+ ],
+ "constellation": [
+  {"name": "猎钻座", "effect": "dmg_pct", "perLevel": 100, "maxLevel": 10, "cost": 1, "desc": "全部伤害 +100%/级"},
+  {"name": "金牛座", "effect": "gold_pct", "perLevel": 100, "maxLevel": 10, "cost": 1, "desc": "全部收入 +100%/级"},
+  {"name": "疾风座", "effect": "speed_pct", "perLevel": 15, "maxLevel": 10, "cost": 1, "desc": "攻速 +15%/级"},
+  {"name": "星核座", "effect": "shard_pct", "perLevel": 25, "maxLevel": 10, "cost": 2, "desc": "重铸碎片 +25%/级"},
+  {"name": "晨星座", "effect": "start_gold", "perLevel": 20, "maxLevel": 5, "cost": 2, "desc": "开局金币 ×20/级，并保留自动钻探"},
+  {"name": "长夜座", "effect": "offline_hours", "perLevel": 2, "maxLevel": 5, "cost": 2, "desc": "离线上限 +2 小时/级"}
+ ],
  "challenges": [
   {"name": "徒手深井", "rule": "no_skills", "amount": 1, "targetRow": 250, "desc": "只能买根节点，不能买技能", "reward": {"effect": "dmg_pct", "amount": 100, "desc": "永久全部伤害 +100%"}},
   {"name": "独钻深井", "rule": "no_drills", "amount": 1, "targetRow": 250, "desc": "不能买钻头", "reward": {"effect": "speed_pct", "amount": 30, "desc": "永久攻速 +30%"}},

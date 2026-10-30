@@ -87,7 +87,7 @@ namespace DeepDrill.Core
         private int Dig(int cx, int cy, int radius, double damage, bool fromClick, bool crit, DrillUnit by)
         {
             double budget = damage * (crit ? CritMultiplier : 1);
-            if (GameData.LayerOfRow(cy / Tile) == Balance.CoreLayer && !InFrenzy) budget *= Balance.HeatDamageRatio;
+            if ((Planet.Heat || GameData.LayerOfRow(cy / Tile) == Balance.CoreLayer) && !InFrenzy) budget *= Balance.HeatDamageRatio;
             double dealt = budget;
             double trait = familyTrait[by.Family];
             bool heavy = by.Family == HeavyFamily;
@@ -405,6 +405,7 @@ namespace DeepDrill.Core
                 foreach (var unit in Units)
                 {
                     stepper = unit;
+                    unit.Body.GravityScale = Planet.Gravity;
                     UpdateFooting(unit);
                     long before = CellKey(unit.Body.BodyRow, unit.Body.Column);
                     double impact = unit.Body.Step(DrillBody.StepSeconds, solidForStepper);

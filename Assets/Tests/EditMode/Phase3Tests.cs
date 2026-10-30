@@ -549,5 +549,106 @@ namespace DeepDrill.Tests
         }
 
         #endregion
+
+        #region step 8: warp, constellation and planets
+
+        private static GameSim AtTheCentre()
+        {
+            var sim = CoreTests.NewSim();
+            sim.State.maxDepthEver = GameData.TotalRows;
+            return sim;
+        }
+
+        [Test]
+        public void Warp_NeedsTheCentre()
+        {
+            Assert.IsFalse(CoreTests.NewSim().Warp());
+            Assert.IsTrue(AtTheCentre().Warp());
+        }
+
+        [Test]
+        public void Warp_TradesShardsForStarPoints()
+        {
+            var sim = AtTheCentre();
+            sim.State.shards = 999;
+            sim.Warp();
+            Assert.AreEqual(4, sim.State.starPoints);
+            Assert.AreEqual(0, sim.State.shards);
+            Assert.AreEqual(0, sim.State.maxDepthEver);
+            Assert.AreEqual(1, sim.State.warps);
+        }
+
+        [Test]
+        public void Warp_KeepsWhatWasEarnedForGood()
+        {
+            var sim = AtTheCentre();
+            sim.State.ores = 100;
+            sim.UpgradeFactory(0);
+            sim.State.rebirths = 5;
+            sim.State.AddLayerPixel(0);
+            sim.Warp();
+            Assert.AreEqual(1, sim.FactoryLevel(0));
+            Assert.AreEqual(5, sim.State.rebirths);
+            Assert.Greater(sim.State.LayerPixelsOf(0), 0);
+        }
+
+        [Test]
+        public void Warp_ChangesThePlanetAndItsRule()
+        {
+            var sim = AtTheCentre();
+            Assert.AreEqual("地球", sim.Planet.Name);
+            int code = DrillCode.Make(0, 0);
+            double before = sim.DamageOf(code);
+            sim.Warp();
+            Assert.AreEqual("月壤星", sim.Planet.Name);
+            sim.GrantSkill(GameSim.RootSkill, 1);
+            Assert.AreEqual(before * sim.Planet.Damage, sim.DamageOf(code), 1e-9);
+        }
+
+        [Test]
+        public void Planet_LowGravityFallsSlower()
+        {
+            var sim = AtTheCentre();
+            sim.Warp();
+            sim.Tick(0.1);
+            Assert.AreEqual(sim.Planet.Gravity, sim.Lead.Body.GravityScale, 1e-9);
+        }
+
+        [Test]
+        public void Planet_ShardMultiplierApplies()
+        {
+            var sim = AtTheCentre();
+            sim.State.bossesDefeated = 1;
+            sim.State.maxDepth = 400;
+            sim.State.totalIncome = 1e6;
+            int home = sim.ShardsOnRebirth;
+            sim.State.warps = GameData.Planets.FindIndex(p => p.Shards > 1);
+            Assert.AreEqual(home * 2, sim.ShardsOnRebirth, 1);
+        }
+
+        [Test]
+        public void Constellation_SpendsPointsAndStacks()
+        {
+            var sim = CoreTests.NewSim();
+            int code = DrillCode.Make(0, 0);
+            double before = sim.DamageOf(code);
+            sim.State.starPoints = 3;
+            Assert.IsTrue(sim.BuyStar(0));
+            Assert.AreEqual(2, sim.State.starPoints);
+            Assert.AreEqual(before * 2, sim.DamageOf(code), 1e-9);
+            Assert.IsTrue(sim.BuyStar(0));
+            Assert.AreEqual(0, sim.State.starPoints, "the second level costs two");
+            Assert.IsFalse(sim.BuyStar(0));
+        }
+
+        [Test]
+        public void NewFields_StartEmpty()
+        {
+            Assert.AreEqual(-1, new GameState().school);
+            Assert.AreEqual(-1, new GameState().research);
+            Assert.AreEqual(-1, new GameState().challenge);
+        }
+
+        #endregion
     }
 }

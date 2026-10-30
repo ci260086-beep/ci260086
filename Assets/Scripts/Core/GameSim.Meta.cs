@@ -46,6 +46,7 @@ namespace DeepDrill.Core
             ApplyFactory();
             ApplyResearch();
             ApplyChallenges();
+            ApplyConstellation();
         }
 
         // The gifts a new run starts with, once enough rebirths are behind the player.

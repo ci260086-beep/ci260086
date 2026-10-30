@@ -32,6 +32,7 @@ namespace DeepDrill.Game
         private Transform basePage;
         private Text baseInfo;
         private int baseTab;
+        private float warpArmed;
 
         private void BuildBasePage()
         {
@@ -49,6 +50,7 @@ namespace DeepDrill.Game
             BuildResearchTab();
             BuildExpeditionTab();
             BuildChallengeTab();
+            BuildStarTab();
             ShowBaseTab(0);
         }
 
@@ -104,6 +106,7 @@ namespace DeepDrill.Game
 
         private void UpdateBase()
         {
+            if (warpArmed > 0) warpArmed -= TextSeconds;
             foreach (var row in baseRows[baseTab])
             {
                 row.Label.text = row.Text();
@@ -219,6 +222,35 @@ namespace DeepDrill.Game
                     () => sim.ChallengeDone(index) ? "已完成" : "进入", () => sim.StartChallenge(index), () => sim.CanStartChallenge(index));
                 AddBaseRow(2 + i * 2, () => $"  奖励：{def.Reward.Desc}");
             }
+        }
+
+        private void BuildStarTab()
+        {
+            NewBaseTab("星图");
+            AddBaseRow(0, () => $"当前行星：{sim.Planet.Name}。{sim.Planet.Desc}");
+            AddBaseRow(1, () => sim.CanWarp ? $"跃迁得 {sim.StarPointsOnWarp} 星点，碎片和本星进度清零" : "挖到地心后可以跃迁",
+                () => warpArmed > 0 ? "再点确认" : "星系跃迁", OnWarpClicked, () => sim.CanWarp);
+            AddBaseRow(2, () => $"星点 {sim.State.starPoints}   已跃迁 {sim.State.warps} 次");
+            for (int i = 0; i < GameData.Constellation.Count; i++)
+            {
+                int index = i;
+                var star = GameData.Constellation[i];
+                AddBaseRow(3 + i, () => $"{star.Name} {sim.StarLevel(index)}/{star.MaxLevel}：{star.Desc}",
+                    () => sim.StarLevel(index) >= star.MaxLevel ? "满级" : $"{sim.StarCost(index)} 星点",
+                    () => sim.BuyStar(index), () => sim.CanBuyStar(index));
+            }
+        }
+
+        // A warp wipes a whole planet, so it takes a second click, like a rebirth.
+        private void OnWarpClicked()
+        {
+            if (warpArmed > 0)
+            {
+                warpArmed = 0;
+                sim.Warp();
+                return;
+            }
+            warpArmed = RebirthConfirmSeconds;
         }
 
         // Steps through the layer bottoms, then off again.
