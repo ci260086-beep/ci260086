@@ -797,8 +797,9 @@ namespace DeepDrill.Game
                 return;
             }
             string armor = sim.BossArmor > 0 ? " 护甲" : "";
-            bossLabel.text = $"{sim.CurrentBoss.BossName}{armor} {NumberFormat.Short(sim.BossHp)}  " +
-                $"{Mathf.CeilToInt((float)sim.BossTimeLeft)}秒";
+            bossLabel.text = sim.BossMoveWindingUp || sim.BossMoveRunning
+                ? $"{sim.CurrentBoss.BossName}：{sim.CurrentBossMove.Name}  {Mathf.CeilToInt((float)sim.BossTimeLeft)}秒"
+                : $"{sim.CurrentBoss.BossName}{armor} {NumberFormat.Short(sim.BossHp)}  {Mathf.CeilToInt((float)sim.BossTimeLeft)}秒";
             double fill = Math.Max(0, sim.BossHp / sim.BossMaxHp);
             bossFill.rectTransform.sizeDelta = new Vector2((float)(fill * (BossBarWidth - 2)), 5);
             double armorFill = sim.BossMaxArmor > 0 ? sim.BossArmor / sim.BossMaxArmor : 0;

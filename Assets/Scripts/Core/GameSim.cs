@@ -17,6 +17,9 @@ namespace DeepDrill.Core
         BossDefeated,
         BossFailed,
         BossArmorBroken,
+        BossMoveWarned,
+        BossMoveStruck,
+        BossMoveEnded,
         Rebirth,
         LayerEntered,
         DrillsChanged,
@@ -296,6 +299,7 @@ namespace DeepDrill.Core
         public double SpeedMultiplier =>
             (1 + Effect(SkillEffect.speed_pct) / 100)
             * SpeedBuffMult
+            * MoveSpeed
             * (InFrenzy ? Balance.FrenzySpeedMultiplier : (Overheating ? Balance.OverheatSpeed : 1));
 
         /// <summary>In the Moho layer drills overheat in bursts; frenzy cools them.</summary>
@@ -713,7 +717,7 @@ namespace DeepDrill.Core
 
         private void AdvanceHits(double dt)
         {
-            if (!AutoDrillUnlocked) return;
+            if (!AutoDrillUnlocked || DrillsBound) return;
             foreach (var unit in Units)
             {
                 unit.HitClock += dt * HitsPerSecond(unit.Code);
@@ -906,6 +910,7 @@ namespace DeepDrill.Core
                 return;
             }
 
+            AdvanceBossMove(dt);
             BossTimeLeft -= dt;
             if (BossTimeLeft > 0) return;
             // it recovers: the player gets another attempt, usually after upgrading
@@ -918,6 +923,7 @@ namespace DeepDrill.Core
             BossHp = BossMaxHp;
             BossArmor = BossMaxArmor;
             BossTimeLeft = BossDuration;
+            ResetBossMove();
         }
 
         // Armour soaks the full hit and lets a reduced share through until it is gone.

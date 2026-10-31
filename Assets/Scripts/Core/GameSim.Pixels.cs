@@ -319,7 +319,7 @@ namespace DeepDrill.Core
             // chips off the guardian pay like the dirt the swing would have dug; without this a drill
             // that reaches a guardian too weak to beat it earns nothing and can never catch up
             Earn(Balance.OreValue(row, Balance.DirtValue) * Balance.BossChipShare * amount / Balance.BlockHp(row) * IncomeMultiplier);
-            amount *= 1 + Effect(SkillEffect.boss_pct) / 100;
+            amount *= (1 + Effect(SkillEffect.boss_pct) / 100) * MoveDamage;
             HitBossArmor(ref amount);
             BossHp -= amount;
             Events.Add(new SimEvent
@@ -336,6 +336,7 @@ namespace DeepDrill.Core
             var unit = UnitNear(x, y);
             if (unit != null)
             {
+                TapFree();
                 unit.LastSwing = simTime;
                 DigFor(unit, DigRadiusOf(unit), DamageOf(unit.Code) * (1 + Effect(SkillEffect.click_pct) / 100), true, RollCrit(), unit);
                 return true;

@@ -19,6 +19,7 @@ namespace DeepDrill.Game
         private const float LayerSeconds = 2.5f;
         private const float BossShotSeconds = 0.6f;
         private const int BaseTabs = 7;
+        private const int MoveShotLayer = 7;
         private const int FullSwarm = 1000;
         private const float MeasureSeconds = 5f;
         private const int SlowFrames = 4;
@@ -220,6 +221,13 @@ namespace DeepDrill.Game
             root.Hud.ShowMerged(DrillCode.Make(0, MergeShotTier)); // the pop-up must stay clear of the guardian
             yield return new WaitForSeconds(BossShotSeconds);
             yield return Shot($"boss_{layer + 1:00}");
+            if (layer != MoveShotLayer) yield break;
+
+            root.Sim.HurryBossMove();
+            yield return new WaitForSeconds(0.8f);
+            yield return Shot("boss_windup");
+            yield return new WaitForSeconds(1f);
+            yield return Shot("boss_move");
         }
 
         private IEnumerator Shot(string name)

@@ -41,6 +41,9 @@ namespace DeepDrill.Game
         private const float ChunkUnits = PixelChunk.Size / Stage.PixelsPerUnit;
 
         private static readonly Color FrenzyTint = new Color(1f, 0.55f, 0.5f);
+        private static readonly Color BoundTint = new Color(0.55f, 0.45f, 0.35f);
+        private static readonly Color BossWarnTint = new Color(1f, 0.25f, 0.2f);
+        private const float BossWarnRate = 14f;
         private static readonly float[] ParallaxRates = { 0.2f, 0.45f, 0.7f };
         private static readonly string[] ParallaxNames = { "far", "mid", "near" };
         private static readonly Color SkyColor = new Color32(0x8f, 0xc9, 0xe6, 0xff);
@@ -210,6 +213,9 @@ namespace DeepDrill.Game
             if (boss != null)
             {
                 bossFace.sprite = bossFaces[boss.Index];
+                // the guardian flashes as it winds up, the player's cue that a move is coming
+                float flash = sim.BossMoveWindingUp ? 0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * BossWarnRate) : 0f;
+                bossFace.color = Color.Lerp(Color.white, BossWarnTint, flash);
                 bossFace.transform.position = new Vector3(Mathf.Round(leadX), -(boss.RowEnd + 0.5f), 0);
             }
         }
@@ -319,7 +325,7 @@ namespace DeepDrill.Game
                 sr.enabled = true;
                 var frames = drillFrames[unit.Code];
                 sr.sprite = frames[((int)drillClock + i) % frames.Length]; // offset so they do not spin in step
-                sr.color = sim.InFrenzy ? FrenzyTint : Color.white;
+                sr.color = sim.DrillsBound ? BoundTint : (sim.InFrenzy ? FrenzyTint : Color.white);
                 int tier = DrillCode.Tier(unit.Code);
                 drillGlows[used - 1] = GlowOf(tier);
                 // heat haze: a whole-pixel sideways wobble while in frenzy

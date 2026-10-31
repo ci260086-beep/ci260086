@@ -160,6 +160,19 @@ namespace DeepDrill.Core
         public BonusDef Reward;
     }
 
+    public enum BossMoveKind { bind, armor, weaken, slow, push, immune, heal }
+
+    public sealed class BossMoveDef
+    {
+        public string Name;
+        public string Desc;
+        public BossMoveKind Kind;
+        public double Every;
+        public double Windup;
+        public double Seconds;
+        public double Amount;
+    }
+
     public sealed class PlanetDef
     {
         public string Name;
@@ -249,6 +262,7 @@ namespace DeepDrill.Core
         public static double RescueChance;
         public static List<ChallengeDef> Challenges;
         public static List<PlanetDef> Planets;
+        public static List<BossMoveDef> BossMoves;
         public static List<StarDef> Constellation;
 
         private static Dictionary<string, SkillDef> skillsById;
@@ -459,6 +473,22 @@ namespace DeepDrill.Core
         {
             var root = Obj(MiniJson.Parse(json));
             LoadEvents(Obj(root["events"]));
+
+            BossMoves = new List<BossMoveDef>();
+            foreach (var item in Arr(root["bossMoves"]))
+            {
+                var o = Obj(item);
+                BossMoves.Add(new BossMoveDef
+                {
+                    Name = Str(o, "name"),
+                    Desc = Str(o, "desc"),
+                    Kind = (BossMoveKind)Enum.Parse(typeof(BossMoveKind), Str(o, "kind")),
+                    Every = Num(o, "every"),
+                    Windup = Num(o, "windup"),
+                    Seconds = Num(o, "seconds"),
+                    Amount = Num(o, "amount"),
+                });
+            }
 
             Planets = new List<PlanetDef>();
             foreach (var item in Arr(root["planets"]))

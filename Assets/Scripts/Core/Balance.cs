@@ -68,6 +68,9 @@ namespace DeepDrill.Core
         public const int BossBreachHalfWidth = 3;
         public const double BossChipShare = 2; // hitting a guardian pays like digging dirt, so a stalled fight still funds upgrades
 
+        public const double TapFreeSeconds = 0.25;
+        public const double TapFreeFloor = 0.05;
+
         public const int RareMaxDupes = 10;
         public const double RareDupeBonus = 0.5;
 

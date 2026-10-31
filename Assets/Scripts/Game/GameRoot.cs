@@ -225,6 +225,19 @@ namespace DeepDrill.Game
                     hud.ShowToast($"{sim.CurrentBoss.BossName}恢复了，升级后再来", 3f);
                     break;
 
+                case SimEventKind.BossMoveWarned:
+                    hud.ShowToast($"{sim.CurrentBoss.BossName}要放{sim.CurrentBossMove.Name}了！", 1.5f);
+                    sound.Play("boss", 0.4f, 0.3f, true);
+                    break;
+
+                case SimEventKind.BossMoveStruck:
+                    hud.ShowToast(sim.CurrentBossMove.Desc, 2.5f);
+                    world.Shake(0.3f, 4f);
+                    break;
+
+                case SimEventKind.BossMoveEnded:
+                    break;
+
                 case SimEventKind.BossArmorBroken:
                     hud.ShowToast("甲壳碎了！", 2f);
                     world.Shake(0.3f, 4f);

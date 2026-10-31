@@ -7,6 +7,88 @@ namespace DeepDrill.Tests
     /// <summary>The systems of the third phase, one region per step of the plan.</summary>
     public class Phase3Tests
     {
+        private static GameSim InFight(int layer)
+        {
+            var sim = CoreTests.NewSim();
+            sim.State.bossesDefeated = layer;
+            sim.Teleport(GameData.Layers[layer].RowEnd, 20);
+            for (int i = 0; i < 40 && !sim.BossActive; i++) sim.Tick(0.05);
+            Assert.IsTrue(sim.BossActive);
+            return sim;
+        }
+
+        private static void WaitForMove(GameSim sim)
+        {
+            var move = sim.CurrentBossMove;
+            for (double t = 0; t < move.Every + move.Windup + 0.2 && !sim.BossMoveRunning; t += 0.05)
+            {
+                sim.Tick(0.05);
+                if (sim.Events.Exists(e => e.Kind == SimEventKind.BossMoveStruck)) return;
+            }
+        }
+
+        [Test]
+        public void BossMoves_CoverEveryGuardian()
+        {
+            CoreTests.NewSim();
+            Assert.AreEqual(GameData.Layers.Count, GameData.BossMoves.Count);
+        }
+
+        [Test]
+        public void BossMove_WarnsBeforeItStrikes()
+        {
+            var sim = InFight(0);
+            sim.Events.Clear();
+            for (double t = 0; t < sim.CurrentBossMove.Every + 0.2; t += 0.05) sim.Tick(0.05);
+            Assert.IsTrue(sim.Events.Exists(e => e.Kind == SimEventKind.BossMoveWarned));
+            Assert.IsFalse(sim.Events.Exists(e => e.Kind == SimEventKind.BossMoveStruck));
+            Assert.IsTrue(sim.BossMoveWindingUp);
+        }
+
+        [Test]
+        public void Bind_StopsTheDrillsAndTappingFreesThem()
+        {
+            var sim = InFight(0);
+            WaitForMove(sim);
+            Assert.IsTrue(sim.DrillsBound);
+            double swung = sim.Lead.LastSwing;
+            sim.Tick(0.2);
+            Assert.AreEqual(swung, sim.Lead.LastSwing, 1e-9, "a bound drill does not swing");
+
+            var body = sim.Lead.Body;
+            for (int i = 0; i < 20 && sim.DrillsBound; i++)
+            {
+                sim.ClickPixel((int)System.Math.Floor((body.X + 0.5) * 16), (int)System.Math.Floor((body.Y + 0.5) * 16));
+                sim.Tick(0.01);
+            }
+            Assert.IsFalse(sim.DrillsBound, "tapping wears the hold down");
+        }
+
+        [Test]
+        public void Immune_TakesNoDamage()
+        {
+            int layer = GameData.BossMoves.FindIndex(m => m.Kind == BossMoveKind.immune);
+            var sim = InFight(layer);
+            WaitForMove(sim);
+            Assert.IsTrue(sim.BossMoveRunning);
+            double hp = sim.BossHp + sim.BossArmor;
+            var body = sim.Lead.Body;
+            for (int i = 0; i < 5; i++)
+                sim.ClickPixel((int)System.Math.Floor((body.X + 0.5) * 16), GameData.Layers[layer].RowEnd * 16 + 8);
+            Assert.AreEqual(hp, sim.BossHp + sim.BossArmor, 1e-6);
+        }
+
+        [Test]
+        public void Heal_GivesBackHealth()
+        {
+            int layer = GameData.BossMoves.FindIndex(m => m.Kind == BossMoveKind.heal);
+            var sim = InFight(layer);
+            WaitForMove(sim);
+            Assert.Greater(sim.BossHp, 0);
+            Assert.LessOrEqual(sim.BossHp, sim.BossMaxHp);
+            Assert.AreEqual(1, sim.Events.Count(e => e.Kind == SimEventKind.BossMoveStruck), "it struck once");
+        }
+
         private static void Run(GameSim sim, double seconds)
         {
             for (double t = 0; t < seconds; t += 0.5) sim.Tick(0.5);
