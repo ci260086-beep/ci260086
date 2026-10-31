@@ -172,7 +172,10 @@ namespace DeepDrill.Tests
             for (int i = 0; i < 400; i++) sim.Tick(0.05);
 
             Assert.LessOrEqual(sim.State.maxDepth, PixelWorld.FloorRow + 1);
-            Assert.AreEqual(Mat.Wall, sim.World.Get(20 * PixelWorld.TileSize, (PixelWorld.FloorRow + 1) * PixelWorld.TileSize));
+            int x = 20 * PixelWorld.TileSize, y = (PixelWorld.FloorRow + 1) * PixelWorld.TileSize;
+            Assert.AreEqual(Mat.Wall, sim.World.Get(x, y));
+            sim.World.CarveCircle(x, y, 4 * PixelWorld.TileSize);
+            Assert.AreEqual(Mat.Wall, sim.World.Get(x, y), "the last guardian's breach stops at the bedrock too");
         }
 
         [Test]
