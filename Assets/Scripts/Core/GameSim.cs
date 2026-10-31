@@ -744,7 +744,9 @@ namespace DeepDrill.Core
         {
             int feet = Lead.Body.FeetRow;
             if (feet <= State.depth) return;
-            world.DropAbove(feet);
+            int top = feet; // chunks stay until the last straggler has left them, or they rebuild every row
+            foreach (var unit in Units) top = Math.Min(top, unit.Body.FeetRow);
+            world.DropAbove(top);
             world.PrepareBelow(feet);
             int layer = GameData.LayerOfRow(feet);
             bool entered = layer != GameData.LayerOfRow(State.depth);

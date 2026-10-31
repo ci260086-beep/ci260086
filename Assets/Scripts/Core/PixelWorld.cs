@@ -63,6 +63,7 @@ namespace DeepDrill.Core
         public const int TileSize = 16;
         public const int Width = Balance.Columns * TileSize;
         private const int KeepChunksAbove = 8;
+        private const int ChunksAhead = 4; // reaches past the rows sand is simulated on, so nothing builds on the main thread
         private const int WarpCell = 8;
         private const float WarpPixels = 4f;
         private const float StoneRadius = 7f;
@@ -137,7 +138,7 @@ namespace DeepDrill.Core
         public void PrepareBelow(int row)
         {
             int cy = row * TileSize / PixelChunk.Size;
-            for (int ahead = 1; ahead <= 2; ahead++)
+            for (int ahead = 1; ahead <= ChunksAhead; ahead++)
                 for (int cx = 0; cx * PixelChunk.Size < Width; cx++)
                     Prepare(cx, cy + ahead);
         }
