@@ -34,6 +34,12 @@ namespace DeepDrill.Game
             }
         }
 
+        /// <summary>Moves the save aside, so the next load starts a new game and the old one can be put back.</summary>
+        public void Archive()
+        {
+            if (File.Exists(path)) File.Move(path, path + ".old-" + DateTime.Now.ToString("yyyyMMdd-HHmmss"));
+        }
+
         public void Save(GameState state)
         {
             state.lastSaveUnixSeconds = DateTimeOffset.UtcNow.ToUnixTimeSeconds();

@@ -160,6 +160,21 @@ namespace DeepDrill.Tests
         }
 
         [Test]
+        public void BulkBuy_StopsWhenTheCoinsRunOut()
+        {
+            var sim = CoreTests.NewSim();
+            double price = sim.DrillsCost(0, 3);
+            sim.State.coins = price + 1;
+            Assert.AreEqual(3, sim.AffordableDrills(0, 10));
+
+            int before = sim.State.drills.Count;
+            Assert.AreEqual(3, sim.BuyDrills(0, 10));
+            Assert.AreEqual(before + 3, sim.State.drills.Count);
+            Assert.AreEqual(1, sim.State.coins, 1e-6);
+            Assert.AreEqual(before + 3, sim.Units.Count);
+        }
+
+        [Test]
         public void Bedrock_HoldsUnderTheCentre()
         {
             var sim = CoreTests.NewSim();

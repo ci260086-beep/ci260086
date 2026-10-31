@@ -41,6 +41,7 @@ namespace DeepDrill.Game
         {
             root = gameRoot;
             folder = shotFolder;
+            root.Hud.GuidesOff = true;
             Directory.CreateDirectory(folder);
             StartCoroutine(Run());
         }
@@ -140,6 +141,24 @@ namespace DeepDrill.Game
                 yield return Shot($"base_{tab}");
             }
             root.Hud.ShowHangarPage();
+            yield return new WaitForSeconds(0.2f);
+            yield return Shot("stats_hangar");
+            root.Hud.CycleBulk();
+            yield return new WaitForSeconds(0.2f);
+            yield return Shot("bulk");
+            root.Hud.CycleBulk();
+            root.Hud.CycleBulk();
+            root.Hud.ShowPage(3);
+            yield return new WaitForSeconds(0.2f);
+            yield return Shot("stats");
+            root.Hud.ShowPage(4);
+            yield return new WaitForSeconds(0.2f);
+            yield return Shot("settings");
+            root.Hud.ShowHangarPage();
+            root.Hud.ShowCard("boss");
+            yield return new WaitForSecondsRealtime(0.3f);
+            yield return Shot("card");
+            root.Hud.CloseCard();
             yield return ShootBoss(0);
 
             for (int s = 1; s < GameData.Layers.Count; s++)
@@ -163,11 +182,7 @@ namespace DeepDrill.Game
 
 
             VerifySaveRoundTrip();
-#if UNITY_EDITOR
-            UnityEditor.EditorApplication.Exit(0);
-#else
-            Application.Quit();
-#endif
+            root.StartNewGame(); // the restart ends the run once it has come back up
         }
 
         // Runs the frame clock for a few seconds and logs the slowest frames, part by part.

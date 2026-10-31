@@ -14,6 +14,11 @@ namespace DeepDrill.Game
     public sealed partial class HudView : MonoBehaviour
     {
         private const int FamilyCardHeight = 15;
+        private const int BulkButtonWidth = 18;
+        private const int BulkMax = 2;
+        private const int MaxBulkDrills = 500;
+        private static readonly string[] BulkNames = { "×1", "×10", "最多" };
+        private static readonly int[] BulkSizes = { 1, 10, 1 };
         private const int HangarCellSize = 14;
         private const int HangarColumns = 5;
         private const int DrillIconWidth = 8;
@@ -127,6 +132,10 @@ namespace DeepDrill.Game
         private Image meterFill;
         private Image bossBar, bossFill, bossArmorFill;
         private Text bossLabel;
+        private Text newGameLabel;
+        private Text bulkLabel;
+        private float newGameArmed;
+        private int bulkMode;
         private Text bannerSubtitle;
         private Button rebirthButton;
         private Text rebirthLabel;
@@ -159,6 +168,7 @@ namespace DeepDrill.Game
         public Vector2 OreTarget => new Vector2(8, 36);
 
         public event Action SaveRequested;
+        public event Action NewGameRequested;
 
         public static string KindName(int code) =>
             GameData.Materials[DrillCode.Tier(code)] + GameData.Families[DrillCode.Family(code)].Name;
@@ -216,6 +226,7 @@ namespace DeepDrill.Game
             BuildBossBanner();
             BuildSurfaceEvent();
             BuildMergeCard();
+            BuildGuide();
 
             toastLabel = Floating("", 0, 140, Stage.DigWidth, 18, 13, TextAnchor.MiddleCenter);
             toastLabel.color = CoinColor;
@@ -454,6 +465,8 @@ namespace DeepDrill.Game
 
             var hangar = NewPage(panel.transform, "钻头机库");
             BuildHangar(hangar.transform);
+            var bulk = Ui.Button(hangar.transform, Font, BulkNames[0], 3, 2, BulkButtonWidth, 12, 6, CardBright, out bulkLabel);
+            bulk.onClick.AddListener(CycleBulk);
 
             // the two full-screen pages keep their slots so rail indexes line up
             pages.Add(new GameObject("TreeSlot"));
@@ -462,15 +475,14 @@ namespace DeepDrill.Game
             pageTitles.Add("图鉴");
 
             var stats = NewPage(panel.transform, "统计");
-            statsLabel = Ui.Label(stats.transform, Font, "", 4, PanelTitleHeight, Stage.PanelWidth - 8, 120, 7, TextAnchor.UpperLeft);
-            statsLabel.lineSpacing = 1.2f;
+            statsLabel = Ui.Label(stats.transform, Font, "", 4, PanelTitleHeight, Stage.PanelWidth - 8, 126, 6, TextAnchor.UpperLeft);
             rebirthButton = Ui.Button(stats.transform, Font, "", 3, 144, Stage.PanelWidth - 6, 18, 7, FrenzyColor, out rebirthLabel);
             rebirthButton.onClick.AddListener(OnRebirthClicked);
 
             var settings = NewPage(panel.transform, "设置");
             pages.Add(new GameObject("BaseSlot"));
             pageTitles.Add("基地");
-            var save = Ui.Button(settings.transform, Font, "立即保存", 4, PanelTitleHeight + 2, Stage.PanelWidth - 8, 16, 7,
+            var save = Ui.Button(settings.transform, Font, "立即保存", 4, PanelTitleHeight + 2, Stage.PanelWidth - 8, 14, 7,
                 CardBright, out _);
             save.onClick.AddListener(() =>
             {
@@ -478,7 +490,7 @@ namespace DeepDrill.Game
                 ShowToast("已保存", 1.5f);
             });
 
-            var shake = Ui.Button(settings.transform, Font, "", 4, PanelTitleHeight + 20, Stage.PanelWidth - 8, 16, 7, CardBright, out Text shakeLabel);
+            var shake = Ui.Button(settings.transform, Font, "", 4, PanelTitleHeight + 18, Stage.PanelWidth - 8, 14, 7, CardBright, out Text shakeLabel);
             shakeLabel.text = "震屏：" + GameSettings.ShakeNames[GameSettings.ShakeLevel];
             shake.onClick.AddListener(() =>
             {
@@ -486,14 +498,53 @@ namespace DeepDrill.Game
                 shakeLabel.text = "震屏：" + GameSettings.ShakeNames[GameSettings.ShakeLevel];
             });
 
-            var particles = Ui.Button(settings.transform, Font, "", 4, PanelTitleHeight + 38, Stage.PanelWidth - 8, 16, 7, CardBright, out Text particleLabel);
+            var particles = Ui.Button(settings.transform, Font, "", 4, PanelTitleHeight + 34, Stage.PanelWidth - 8, 14, 7, CardBright, out Text particleLabel);
             particleLabel.text = "粒子：" + GameSettings.ParticleNames[GameSettings.ParticleLevel];
             particles.onClick.AddListener(() =>
             {
                 GameSettings.ParticleLevel = (GameSettings.ParticleLevel + 1) % GameSettings.ParticleNames.Length;
                 particleLabel.text = "粒子：" + GameSettings.ParticleNames[GameSettings.ParticleLevel];
             });
+
+            var sound = Ui.Button(settings.transform, Font, "", 4, PanelTitleHeight + 50, Stage.PanelWidth - 8, 14, 7, CardBright, out Text soundLabel);
+            soundLabel.text = "音量：" + GameSettings.SoundNames[GameSettings.SoundLevel];
+            sound.onClick.AddListener(() =>
+            {
+                GameSettings.SoundLevel = (GameSettings.SoundLevel + 1) % GameSettings.SoundNames.Length;
+                soundLabel.text = "音量：" + GameSettings.SoundNames[GameSettings.SoundLevel];
+            });
+
+            var fresh = Ui.Button(settings.transform, Font, "新游戏", 4, PanelTitleHeight + 66, Stage.PanelWidth - 8, 14, 7, CardBright, out newGameLabel);
+            fresh.onClick.AddListener(OnNewGameClicked);
+
+            var keys = Ui.Label(settings.transform, Font, "快捷键\n1-6 切换页面  Esc 返回\n空格 狂热  M 合成全部\nB 批量购买", 4, PanelTitleHeight + 84, Stage.PanelWidth - 8, 40, 6, TextAnchor.UpperLeft);
+            keys.color = SoftText;
+            keys.horizontalOverflow = HorizontalWrapMode.Wrap;
         }
+
+        // Wiping the game takes a second click within a few seconds, like a rebirth.
+        private void OnNewGameClicked()
+        {
+            if (newGameArmed > 0)
+            {
+                newGameArmed = 0;
+                NewGameRequested?.Invoke();
+                return;
+            }
+            newGameArmed = RebirthConfirmSeconds;
+            newGameLabel.text = "再点一次：旧存档会存到一旁";
+        }
+
+        /// <summary>Goes round one, ten and as many as the coins buy.</summary>
+        public void CycleBulk()
+        {
+            bulkMode = (bulkMode + 1) % BulkNames.Length;
+            bulkLabel.text = BulkNames[bulkMode];
+            if (currentPage == PageHangar) UpdateHangar();
+        }
+
+        private int BulkCount(int family) =>
+            bulkMode == BulkMax ? Mathf.Max(1, sim.AffordableDrills(family, MaxBulkDrills)) : BulkSizes[bulkMode];
 
         private GameObject NewPage(Transform parent, string title)
         {
@@ -569,7 +620,7 @@ namespace DeepDrill.Game
             var button = bg.gameObject.AddComponent<Button>();
             button.targetGraphic = bg;
             button.transition = Selectable.Transition.None;
-            button.onClick.AddListener(() => sim.BuyDrill(family.Index));
+            button.onClick.AddListener(() => sim.BuyDrills(family.Index, BulkCount(family.Index)));
             bg.gameObject.AddComponent<HoverRelay>().Entered = () =>
                 footerLabel.text = sim.FamilyUnlocked(family.Index)
                     ? family.Trait
@@ -689,6 +740,11 @@ namespace DeepDrill.Game
             var s = sim.State;
             float dt = Time.unscaledDeltaTime;
             if (dt > 0) fpsAverage = Mathf.Lerp(fpsAverage, 1f / dt, 0.05f);
+            if (newGameArmed > 0)
+            {
+                newGameArmed -= dt;
+                if (newGameArmed <= 0) newGameLabel.text = "新游戏";
+            }
 
             // numbers refresh ten times a second: strings every frame are the main source of garbage
             textClock += dt;
@@ -702,6 +758,7 @@ namespace DeepDrill.Game
                 depthLabel.text = $"{GameData.Layers[GameData.LayerOfRow(s.depth)].Name} {GameData.FormatDepth(s.depth)}";
                 versionLabel.text = $"v{Application.version}  {fpsAverage:0} FPS";
                 UpdateCombo();
+                UpdateGuideCards();
                 if (currentPage == PageHangar) UpdateHangar();
                 if (currentPage == PageTree) UpdateTree();
                 if (currentPage == PageGallery) UpdateGallery();
@@ -713,6 +770,7 @@ namespace DeepDrill.Game
             UpdateMeter();
             UpdateToast(dt);
             UpdateGuide();
+            UpdateGuideArrow();
             UpdateDarkness();
             UpdateFrenzyOverlay();
             UpdateBanner(dt);
@@ -838,7 +896,10 @@ namespace DeepDrill.Game
                 card.Background.color = can ? CardBright : CardDim;
                 card.Icon.color = unlocked ? Color.white : NotOwned;
                 card.Name.color = can ? Color.white : SoftText;
-                card.Price.text = unlocked ? NumberFormat.Short(sim.DrillPrice(f)) : "未解锁";
+                int count = BulkCount(f);
+                card.Price.text = !unlocked ? "未解锁"
+                    : count > 1 ? $"×{count} {NumberFormat.Short(sim.DrillsCost(f, count))}"
+                    : NumberFormat.Short(sim.DrillPrice(f));
                 card.Price.color = can ? CoinColor : DimText;
             }
             RefreshCells();
@@ -901,10 +962,15 @@ namespace DeepDrill.Game
         private void UpdateStats()
         {
             var s = sim.State;
+            int rares = 0;
+            foreach (var rare in s.rares) rares += rare.count > 0 ? 1 : 0;
             statsLabel.text =
-                $"最大深度\n{GameData.FormatDepth(s.maxDepthEver)}\n总收入\n{NumberFormat.Short(s.totalIncome)}\n" +
-                $"每秒伤害\n{NumberFormat.Short(sim.TotalDps)}\n钻头数量\n{NumberFormat.Short(s.drills.Count)}\n" +
-                $"星核碎片\n{s.shards}\n重铸次数\n{s.rebirths}";
+                $"本局时长 {FormatDuration(s.runSeconds)}\n本局最深 {GameData.FormatDepth(s.maxDepth)}\n" +
+                $"最大深度 {GameData.FormatDepth(s.maxDepthEver)}\n本局收入 {NumberFormat.Short(s.totalIncome)}\n" +
+                $"每秒伤害 {NumberFormat.Short(sim.TotalDps)}\n钻头 {NumberFormat.Short(s.drills.Count)}\n" +
+                $"最高连击 {s.bestCombo}\n累计合成 {s.mergesEver}\n打败 Boss {s.bossesEver}\n" +
+                $"星核碎片 {s.shards}\n重铸 {s.rebirths} 次  跃迁 {s.warps} 次\n" +
+                $"成就 {s.achievements.Count}/{GameData.Achievements.Count}\n稀有 {rares}/{GameData.Rares.Count}";
         }
     }
 }

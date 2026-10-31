@@ -392,6 +392,45 @@ namespace DeepDrill.Core
             return true;
         }
 
+        /// <summary>Buys up to a number of a family's drills in one go.</summary>
+        public int BuyDrills(int family, int count)
+        {
+            int bought = 0;
+            while (bought < count && CanBuyDrill(family))
+            {
+                State.coins -= DrillPrice(family);
+                State.AddBought(family);
+                State.drills.Add(DrillCode.Make(family, Math.Min(BuyTier, GameData.Tiers - 1)));
+                bought++;
+            }
+            if (bought == 0) return 0;
+            RebuildUnits();
+            Events.Add(new SimEvent { Kind = SimEventKind.DrillsChanged, Amount = family });
+            return bought;
+        }
+
+        /// <summary>What the next few of a family's drills would cost together.</summary>
+        public double DrillsCost(int family, int count)
+        {
+            double total = 0;
+            for (int i = 0; i < count; i++)
+                total += Balance.DrillPrice(GameData.Families[family].BasePrice, State.BoughtOf(family) + i, DiscountFraction, BuyTier);
+            return total;
+        }
+
+        /// <summary>How many of a family's drills the coins in hand would buy, up to a limit.</summary>
+        public int AffordableDrills(int family, int limit)
+        {
+            if (!FamilyUnlocked(family) || Under(ChallengeRule.no_drills)) return 0;
+            double coins = State.coins;
+            for (int i = 0; i < limit; i++)
+            {
+                coins -= Balance.DrillPrice(GameData.Families[family].BasePrice, State.BoughtOf(family) + i, DiscountFraction, BuyTier);
+                if (coins < 0) return i;
+            }
+            return limit;
+        }
+
         public bool CanMerge(int code)
         {
             if (DrillCode.Tier(code) + 1 >= GameData.Tiers) return false;

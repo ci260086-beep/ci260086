@@ -45,7 +45,7 @@ namespace DeepDrill.Game
             var source = sources[next];
             next = (next + 1) % sources.Count;
             source.pitch = 1f + Random.Range(-PitchJitter, PitchJitter) + extraPitch;
-            source.PlayOneShot(clips[name], volume);
+            source.PlayOneShot(clips[name], volume * GameSettings.SoundScale);
         }
 
         // noise 0 is a pure square wave, 1 pure noise

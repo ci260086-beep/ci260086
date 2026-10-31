@@ -12,6 +12,7 @@ namespace DeepDrill.Game
     {
         private const float AutosaveSeconds = 30f;
         private const int HitstopFrames = 2;
+        private const int PageKeys = 6;
         private const float HitstopCooldown = 0.5f;
         private const int DepthMilestone = 50;
         private const int MaxBitsPerSwing = 4;
@@ -46,6 +47,7 @@ namespace DeepDrill.Game
         private ArtLibrary art;
         private float autosave;
         private int hitstop;
+        private static bool restarted;
         private float slowMotion;
         private float hitstopCooldown;
 
@@ -67,6 +69,31 @@ namespace DeepDrill.Game
         }
 
         public void SnapCamera() => world.SnapToDrill();
+
+        /// <summary>Puts the save aside and rebuilds everything from a new game.</summary>
+        public void StartNewGame()
+        {
+            saves.Archive();
+            Time.timeScale = 1;
+            restarted = true;
+            foreach (var go in UnityEngine.SceneManagement.SceneManager.GetActiveScene().GetRootGameObjects()) Destroy(go);
+            new GameObject("Restart").AddComponent<Restart>();
+        }
+
+        // Waits a frame so the old objects are gone before the new ones are made.
+        private sealed class Restart : MonoBehaviour
+        {
+            private void Start()
+            {
+                Boot();
+                Destroy(gameObject);
+                if (CommandLine.Value("--shots") == null) return;
+                Debug.Log("[demo] new game started");
+#if UNITY_EDITOR
+                UnityEditor.EditorApplication.Exit(0);
+#endif
+            }
+        }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void Boot()
@@ -103,10 +130,11 @@ namespace DeepDrill.Game
             sound.Init();
 
             hud.SaveRequested += SaveNow;
+            hud.NewGameRequested += StartNewGame;
             if (offline > 0) hud.ShowOffline(sim.LastOffline);
 
             string shots = CommandLine.Value("--shots");
-            if (shots != null) gameObject.AddComponent<DemoDriver>().Init(this, shots);
+            if (shots != null && !restarted) gameObject.AddComponent<DemoDriver>().Init(this, shots);
         }
 
         private static Camera BuildCamera(RenderTexture target)
@@ -145,7 +173,7 @@ namespace DeepDrill.Game
             MaxTickMs = Mathf.Max(MaxTickMs, (float)timer.Elapsed.TotalMilliseconds);
 
             if (Input.GetMouseButtonDown(0)) HandleClick(Input.mousePosition);
-            if (Input.GetKeyDown(KeyCode.Space)) sim.StartFrenzy();
+            HandleKeys();
 
             DrainEvents();
 
@@ -162,6 +190,21 @@ namespace DeepDrill.Game
         }
 
         private void OnApplicationQuit() => SaveNow();
+
+        private void HandleKeys()
+        {
+            if (Input.GetKeyDown(KeyCode.Escape) || Input.GetKeyDown(KeyCode.Return))
+            {
+                if (hud.CardOpen) hud.CloseCard();
+                else if (Input.GetKeyDown(KeyCode.Escape)) hud.ShowHangarPage();
+            }
+            if (hud.CardOpen) return;
+            if (Input.GetKeyDown(KeyCode.Space)) sim.StartFrenzy();
+            if (Input.GetKeyDown(KeyCode.M)) sim.MergeAll();
+            if (Input.GetKeyDown(KeyCode.B)) hud.CycleBulk();
+            for (int i = 0; i < PageKeys; i++)
+                if (Input.GetKeyDown(KeyCode.Alpha1 + i)) hud.ShowPage(i);
+        }
 
         /// <summary>Taps inside the dig area only; the bars and panels swallow their own clicks.</summary>
         public void HandleClick(Vector2 screen)
