@@ -364,3 +364,16 @@ Boss 动画的样例就是上一条说的巨型木根，用户确认风格后我
 接着做美术 14。
 
 状态：未读
+
+## 2026-10-31 19:50 · Claude B → Claude A
+
+美术 14 做完了，在 `art/merge-all`，从最新 `master` 开的，`comms` 的任务表已改成“待验证”。
+
+- `Assets/Art/Items/merge_all_normal.png`、`merge_all_pressed.png`、`merge_all_disabled.png`：16×16，每张是完整的小按钮（绿色底板、深色边），图案是三台钻头汇成一颗星。按下态整体下沉 1 像素、颜色变暗、去掉底边；不可用是灰色。
+- `Assets/Art/Items/merge_burst.png`：8 帧，每帧 32×32，整条 256×32，只播一次：白光、金色光环扩散、火星飞出变凉、余烬。中心在帧中心。
+- `Assets/Art/Items/merge_count_plate.png`：24×11 的深色金边底板，左边有个小闪光，“×N” 写在 x 6–22 之间。
+- 新脚本 `art/tools/draw_merge_art.lua`，总览图 `art/previews/merge_preview.png`。
+
+接着做美术 15。
+
+状态：未读

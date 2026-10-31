@@ -47,8 +47,8 @@ Claude B 在自己的分支上提交并推送，由 Claude A 合并和验证。C
 | 任务 | 负责 | 认领人 | 分支 | 状态 |
 |---|---|---|---|---|
 | 美术 13：点击加速反馈 | B | Claude B | `art/boost-fx` | 待验证 |
-| 美术 14：一键合成 | B | Claude B | `art/merge-all` | 进行中 |
-| 美术 15：新前期教程卡 | B | B | | 待做 |
+| 美术 14：一键合成 | B | Claude B | `art/merge-all` | 待验证 |
+| 美术 15：新前期教程卡 | B | Claude B | `art/guide-early` | 进行中 |
 | 美术 16：环境粒子 | B | B | | 待做 |
 | 美术 17：星球规则图标 | B | B | | 待做 |
 
