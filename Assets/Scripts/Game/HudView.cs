@@ -15,6 +15,9 @@ namespace DeepDrill.Game
     {
         private const int FamilyCardHeight = 15;
         private const int BulkButtonWidth = 18;
+        private const int MergeAllWidth = 22;
+        private const int BoostBarHeight = 4;
+        private static readonly Color BoostColor = new Color32(0x70, 0xd8, 0xff, 0xff);
         private const int BulkMax = 2;
         private const int MaxBulkDrills = 500;
         private static readonly string[] BulkNames = { "×1", "×10", "最多" };
@@ -132,6 +135,10 @@ namespace DeepDrill.Game
         private Image meterFill;
         private Image bossBar, bossFill, bossArmorFill;
         private Text bossLabel;
+        private Text boostLabel;
+        private Text mergeAllLabel;
+        private Image boostFill;
+        private GameObject boostBar;
         private Text hintLabel;
         private float hintTime;
         private Text newGameLabel;
@@ -438,6 +445,14 @@ namespace DeepDrill.Game
             track.raycastTarget = false;
             meterFill = Ui.Panel(track.transform, "Fill", 1, 1, 0, MeterHeight - 2, FrenzyColor);
             meterFill.raycastTarget = false;
+            boostLabel = Floating("", x, MeterY - 16, MeterWidth, 8, 6, TextAnchor.MiddleLeft);
+            boostLabel.color = BoostColor;
+            var boostTrack = Ui.Panel(stageRoot, "BoostMeter", x, MeterY - 7, MeterWidth, BoostBarHeight, PanelColor);
+            boostTrack.raycastTarget = false;
+            boostFill = Ui.Panel(boostTrack.transform, "Fill", 1, 1, 0, BoostBarHeight - 2, BoostColor);
+            boostFill.raycastTarget = false;
+            boostBar = boostTrack.gameObject;
+            boostBar.SetActive(false);
             frenzyButton = Ui.Button(stageRoot, Font, "狂热", x + MeterWidth + 2, MeterY - 4, 26, 13, 7,
                 LockedColor, out frenzyButtonLabel);
             frenzyButtonImage = frenzyButton.GetComponent<Image>();
@@ -483,10 +498,13 @@ namespace DeepDrill.Game
             footerLabel.color = SoftText;
             footerLabel.horizontalOverflow = HorizontalWrapMode.Wrap;
 
-            var hangar = NewPage(panel.transform, "钻头机库");
+            var hangar = NewPage(panel.transform, "机库");
             BuildHangar(hangar.transform);
             var bulk = Ui.Button(hangar.transform, Font, BulkNames[0], 3, 2, BulkButtonWidth, 12, 6, CardBright, out bulkLabel);
             bulk.onClick.AddListener(CycleBulk);
+            var mergeAll = Ui.Button(hangar.transform, Font, "合成", Stage.PanelWidth - MergeAllWidth - 3, 2, MergeAllWidth, 12, 6, CardBright, out mergeAllLabel);
+            mergeAll.onClick.AddListener(() => sim.MergeEverything());
+            mergeAll.gameObject.AddComponent<HoverRelay>().Entered = () => footerLabel.text = "一键合成全部相同的钻头（C 键）";
 
             // the two full-screen pages keep their slots so rail indexes line up
             pages.Add(new GameObject("TreeSlot"));
@@ -537,7 +555,7 @@ namespace DeepDrill.Game
             var fresh = Ui.Button(settings.transform, Font, "新游戏", 4, PanelTitleHeight + 66, Stage.PanelWidth - 8, 14, 7, CardBright, out newGameLabel);
             fresh.onClick.AddListener(OnNewGameClicked);
 
-            var keys = Ui.Label(settings.transform, Font, "快捷键\n1-6 切换页面  Esc 返回\n空格 狂热  M 合成全部\nB 批量购买", 4, PanelTitleHeight + 84, Stage.PanelWidth - 8, 40, 6, TextAnchor.UpperLeft);
+            var keys = Ui.Label(settings.transform, Font, "快捷键\n1-6 切换页面  Esc 返回\n空格 狂热  C 一键合成\nB 批量购买", 4, PanelTitleHeight + 84, Stage.PanelWidth - 8, 40, 6, TextAnchor.UpperLeft);
             keys.color = SoftText;
             keys.horizontalOverflow = HorizontalWrapMode.Wrap;
         }
@@ -788,6 +806,7 @@ namespace DeepDrill.Game
 
             UpdateCoinPulse();
             UpdateMeter();
+            UpdateBoost();
             UpdateToast(dt);
             UpdateHint(dt);
             UpdateGuide();
@@ -807,16 +826,18 @@ namespace DeepDrill.Game
         private void UpdateGuide()
         {
             bool locked = !sim.AutoDrillUnlocked;
-            guideLabel.gameObject.SetActive(locked && currentPage != PageTree);
+            bool firstDrill = !locked && sim.State.BoughtOf(0) == 0;
+            guideLabel.gameObject.SetActive((locked && currentPage != PageTree) || (firstDrill && currentPage == PageHangar));
             float pulse = Mathf.PingPong(Time.unscaledTime * 2f, 1f);
+            double rootCost = sim.SkillCost(GameData.Skill(GameSim.RootSkill));
+            bool earned = sim.State.coins >= rootCost;
             if (locked)
-            {
-                bool earned = sim.State.coins >= 1;
-                guideLabel.text = earned ? "打开技能树，解锁自动钻探" : "点击钻头开始挖掘！";
-                guideLabel.color = Color.Lerp(CoinColor, Color.white, pulse);
-            }
+                guideLabel.text = earned ? "打开技能树，解锁自动挖掘" : $"点击钻头挖矿，攒够 {rootCost:0} 金币";
+            else if (firstDrill)
+                guideLabel.text = sim.CanBuyDrill(0) ? "买第一台钻头！" : $"赚到 {sim.DrillPrice(0):0} 金币，买第一台钻头";
+            guideLabel.color = Color.Lerp(CoinColor, Color.white, pulse);
 
-            bool flash = locked && sim.State.coins >= 1 && currentPage != PageTree;
+            bool flash = locked && earned && currentPage != PageTree;
             railButtons[PageTree].color = flash
                 ? Color.Lerp(RailColor, CoinColor, pulse)
                 : (currentPage == PageTree ? RailSelected : RailColor);
@@ -853,6 +874,15 @@ namespace DeepDrill.Game
             coinPulse = Mathf.Max(0, coinPulse - Time.unscaledDeltaTime * 6f);
             coinsLabel.rectTransform.localScale = Vector3.one * (1 + coinPulse * 0.25f);
             coinsLabel.color = Color.Lerp(CoinColor, Color.white, coinPulse);
+        }
+
+        private void UpdateBoost()
+        {
+            double boost = sim.ClickBoost;
+            boostBar.SetActive(boost > 0);
+            boostLabel.text = boost > 0 ? $"点击加速 +{boost * 100:0}%" : "";
+            if (boost <= 0) return;
+            boostFill.rectTransform.sizeDelta = new Vector2((float)(boost / Balance.ClickBoostMax) * (MeterWidth - 2), BoostBarHeight - 2);
         }
 
         private void UpdateMeter()

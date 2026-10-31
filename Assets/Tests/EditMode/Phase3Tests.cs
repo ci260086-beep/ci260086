@@ -251,7 +251,7 @@ namespace DeepDrill.Tests
             sim.State.autoSkills = true;
             sim.State.coins = 1000;
             sim.Tick(1.1);
-            Assert.Greater(sim.State.skills.Count, 1);
+            Assert.Greater(sim.State.LevelOf(GameSim.RootSkill), 1);
         }
 
         [Test]

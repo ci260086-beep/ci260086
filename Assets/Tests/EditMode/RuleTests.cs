@@ -198,9 +198,9 @@ namespace DeepDrill.Tests
             var sim = NewSim();
             sim.State.coins = 1e9;
             double first = sim.DrillPrice(0);
-            Assert.AreEqual(10, first, 1e-9);
+            Assert.AreEqual(6, first, 1e-9);
             Assert.IsTrue(sim.BuyDrill(0));
-            Assert.AreEqual(10 * GameData.BuyGrowth, sim.DrillPrice(0), 1e-9);
+            Assert.AreEqual(6 * GameData.BuyGrowth, sim.DrillPrice(0), 1e-9);
             Assert.AreEqual(2, sim.Units.Count);
         }
 
@@ -296,7 +296,7 @@ namespace DeepDrill.Tests
             Assert.IsFalse(sim.Buy("drill_01"), "root first");
             Assert.IsTrue(sim.Buy("root"));
             Assert.IsTrue(sim.Buy("drill_01"));
-            Assert.AreEqual(GameData.Skill("root").CostAt(0), 15, 1e-9);
+            Assert.AreEqual(GameData.Skill("root").CostAt(0), 5, 1e-9);
 
             var deep = GameData.Skills.Last(s => s.Branch == "drill");
             Assert.IsFalse(sim.Buy(deep.Id), "locked by layer");

@@ -383,7 +383,8 @@ namespace DeepDrill.Game
                 int tier = DrillCode.Tier(unit.Code);
                 drillGlows[used - 1] = GlowOf(tier);
                 // heat haze: a whole-pixel sideways wobble while in frenzy
-                float haze = sim.InFrenzy ? Mathf.Round(Mathf.Sin(Time.unscaledTime * 30f + i) * 1.2f) / Stage.PixelsPerUnit : 0f;
+                float shudder = sim.InFrenzy ? 1.2f : (float)sim.ClickBoost; // tapping shakes the drills, more the harder it is pushed
+                float haze = Mathf.Round(Mathf.Sin(Time.unscaledTime * 30f + i) * shudder) / Stage.PixelsPerUnit;
                 bool squash = unit.LastSwing >= 0 && sim.Now - unit.LastSwing < SquashSeconds;
                 sr.transform.localScale = squash ? new Vector3(SquashWidth, SquashHeight, 1) : Vector3.one;
                 sr.transform.SetPositionAndRotation(

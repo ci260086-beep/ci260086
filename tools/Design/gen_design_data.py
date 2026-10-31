@@ -41,7 +41,7 @@ TOTAL_ROWS = row
 MATERIALS = ["木", "石", "铜", "铁", "钢", "银", "金", "水晶", "钻石", "秘银", "黑曜", "星核"]
 TIER_DMG_MULT = 2.0
 FAMILIES = [
-    ("std",   "标准钻", 1.0, 3.0, "均衡，没有特殊效果", 1, 10),
+    ("std",   "标准钻", 1.0, 3.0, "均衡，没有特殊效果", 1, 6),
     ("swift", "疾风钻", 0.45, 8.0, "攻速快，连击积累 ×2", 2, 2.0e3),
     ("heavy", "重型钻", 4.5, 1.0, "对硬岩和超硬岩伤害 ×3，对 Boss ×1.5", 3, 6.0e4),
     ("blast", "爆破钻", 0.9, 3.0, "击碎岩块时爆炸，对周围 1 格造成 50% 伤害", 4, 1.5e6),
@@ -151,7 +151,7 @@ def ring_base_cost(k):
 
 skills = []
 skills.append({"id": "root", "name": "深渊钻头", "branch": "core", "effect": "dmg_pct", "perLevel": 5, "maxLevel": 10,
-               "baseCost": 15, "costGrowth": 1.5, "prereq": [], "x": 0.0, "y": 0.0, "ring": 0,
+               "baseCost": 5, "costGrowth": 1.5, "prereq": [], "x": 0.0, "y": 0.0, "ring": 0,
                "requiresLayer": 1, "desc": "第 1 级：自动钻探，所有钻头自动挖掘；第 2 级起全部钻头伤害 +5%/级"})
 for b, (bid, bname, nodes) in enumerate(BRANCHES):
     ang = math.radians(90 - 60 * b)

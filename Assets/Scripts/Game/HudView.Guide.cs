@@ -63,8 +63,8 @@ namespace DeepDrill.Game
             guideArrow.raycastTarget = false;
             guideArrow.gameObject.SetActive(false);
 
-            Card("tap", "点击挖掘", "点击钻头或它前面的岩石，就能挖掘赚金币。金币用来解锁自动钻探。", () => true);
-            Card("merge", "合成钻头", "把机库里两台相同的钻头拖到一起，就能合成一台更高级的。按 M 键一次合成全部。", HasTwins);
+            Card("tap", "点击挖掘", "点击钻头开始挖矿。攒够 5 金币，打开技能树解锁自动挖掘。之后继续点击可以让钻头临时加速。", () => true);
+            Card("merge", "合成钻头", "把机库里两台相同的钻头拖到一起，就能合成一台更高级的。点“合成”或按 C 键一次合成全部。", HasTwins);
             Card("boss", "守层 Boss", "每层底部都有 Boss，要在时限内打穿。它闪红时要放招，被缠住就连点钻头。打不过也没关系，升级后再来。", () => sim.BossActive);
             Card("rebirth", "地核重铸", "重铸会失去金币、钻头和技能，换来星核碎片。碎片永久提高伤害，下一局会快很多。觉得慢了就重铸。", () => sim.CanRebirth);
             Card("event", "黄金事件", "地面偶尔出现发光的矿石，点一下有好处。别错过，它们很快会消失。", () => sim.ActiveEvent == SurfaceEvent.Golden);
@@ -149,23 +149,28 @@ namespace DeepDrill.Game
         {
             bool show = false;
             Vector2 at = default;
-            if (!sim.AutoDrillUnlocked && sim.State.coins >= 1 && currentPage != PageTree)
+            if (!sim.AutoDrillUnlocked && sim.State.coins >= sim.SkillCost(GameData.Skill(GameSim.RootSkill)))
             {
                 show = true;
-                at = new Vector2(Stage.DigWidth + 2, RailArrowY);
+                at = currentPage == PageTree ? RootNodeArrow() : new Vector2(Stage.DigWidth + 2, RailArrowY);
             }
             else if (sim.AutoDrillUnlocked && sim.State.drills.Count == 1 && sim.CanBuyDrill(0) && currentPage == PageHangar)
             {
                 show = true;
                 at = new Vector2(Stage.PanelX + 30, FirstCardArrowY);
             }
-            show &= openCard == null && !GuidesOff;
+            show &= openCard == null;
             guideArrow.gameObject.SetActive(show);
             if (!show) return;
             float bounce = Mathf.Abs(Mathf.Sin(Time.unscaledTime * 5f)) * ArrowBounce;
             guideArrow.rectTransform.anchoredPosition = new Vector2(at.x, -(at.y + bounce));
             guideArrow.transform.SetAsLastSibling();
         }
+
+        // Just above the skill tree's first node, wherever the page has been panned to.
+        private Vector2 RootNodeArrow() => new Vector2(
+            Stage.Width / 2f + treeContent.anchoredPosition.x - ArrowSize / 2f,
+            Stage.Height / 2f - treeContent.anchoredPosition.y - RootSize * treeZoom / 2f - ArrowSize);
 
         private const int RailArrowY = 7;
         private const int FirstCardArrowY = 2;

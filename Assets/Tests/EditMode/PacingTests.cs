@@ -160,6 +160,70 @@ namespace DeepDrill.Tests
         }
 
         [Test]
+        public void Opening_CostsFiveThenSix()
+        {
+            var sim = CoreTests.FreshSim();
+            Assert.AreEqual(5, sim.SkillCost(GameData.Skill(GameSim.RootSkill)), 1e-9);
+            Assert.AreEqual(6, sim.DrillPrice(0), 1e-9);
+            sim.State.coins = 5;
+            Assert.IsTrue(sim.Buy(GameSim.RootSkill));
+            Assert.IsTrue(sim.AutoDrillUnlocked);
+            Assert.IsFalse(sim.CanBuyDrill(0));
+            sim.State.coins = 6;
+            Assert.IsTrue(sim.BuyDrill(0));
+        }
+
+        [Test]
+        public void ClickBoost_StacksToItsCapAndFades()
+        {
+            var sim = CoreTests.NewSim();
+            double set = sim.SpeedMultiplier;
+            sim.ClickPixel(0, 0);
+            Assert.AreEqual(Balance.ClickBoostPerTap, sim.ClickBoost, 1e-9);
+            Assert.AreEqual(set * (1 + Balance.ClickBoostPerTap), sim.SpeedMultiplier, 1e-9);
+
+            for (int i = 0; i < 100; i++) sim.ClickPixel(0, 0);
+            Assert.AreEqual(Balance.ClickBoostMax, sim.ClickBoost, 1e-9);
+
+            for (int i = 0; i < 40; i++) sim.Tick(0.1);
+            Assert.AreEqual(0, sim.ClickBoost, 1e-9);
+            Assert.AreEqual(set, sim.SpeedMultiplier, 1e-9, "without tapping the drills go back to their set speed");
+        }
+
+        [Test]
+        public void MergeEverything_CascadesAndSendsOneEvent()
+        {
+            var sim = CoreTests.NewSim();
+            sim.State.drills.Clear();
+            for (int i = 0; i < 8; i++) sim.State.drills.Add(DrillCode.Make(0, 0));
+            sim.State.drills.Add(DrillCode.Make(1, 0));
+            sim.SyncDrills();
+            sim.Events.Clear();
+
+            Assert.AreEqual(7, sim.MergeEverything());
+
+            Assert.AreEqual(2, sim.State.drills.Count);
+            Assert.Contains(DrillCode.Make(0, 3), sim.State.drills);
+            Assert.Contains(DrillCode.Make(1, 0), sim.State.drills);
+            Assert.AreEqual(7, sim.State.mergesEver, 1e-9);
+            Assert.AreEqual(1, sim.Events.FindAll(e => e.Kind == SimEventKind.DrillsMergedAll).Count);
+            Assert.AreEqual(0, sim.Events.FindAll(e => e.Kind == SimEventKind.DrillMerged).Count);
+            Assert.AreEqual(0, sim.MergeEverything(), "nothing is left to merge");
+        }
+
+        [Test]
+        public void MergeEverything_HandlesAHugeHangarQuickly()
+        {
+            var sim = CoreTests.NewSim();
+            sim.State.drills.Clear();
+            for (int i = 0; i < 20000; i++) sim.State.drills.Add(DrillCode.Make(i % 3, 0));
+            sim.SyncDrills();
+            var clock = System.Diagnostics.Stopwatch.StartNew();
+            sim.MergeEverything();
+            Assert.Less(clock.ElapsedMilliseconds, 100);
+        }
+
+        [Test]
         public void BulkBuy_StopsWhenTheCoinsRunOut()
         {
             var sim = CoreTests.NewSim();

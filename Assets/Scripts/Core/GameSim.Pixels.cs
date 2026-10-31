@@ -333,6 +333,7 @@ namespace DeepDrill.Core
         /// <summary>Player tap at a world pixel. Before auto drilling only tapping a drill does anything.</summary>
         public bool ClickPixel(int x, int y)
         {
+            if (AutoDrillUnlocked) ClickBoost = Math.Min(Balance.ClickBoostMax, ClickBoost + Balance.ClickBoostPerTap);
             var unit = UnitNear(x, y);
             if (unit != null)
             {

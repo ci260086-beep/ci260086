@@ -17,6 +17,7 @@ namespace DeepDrill.Core
         BossDefeated,
         BossFailed,
         BossArmorBroken,
+        DrillsMergedAll,
         BossMoveWarned,
         BossMoveStruck,
         BossMoveEnded,
@@ -179,6 +180,9 @@ namespace DeepDrill.Core
         public double BossArmor { get; private set; }
         public double BossTimeLeft { get; private set; }
 
+        /// <summary>The extra speed from tapping, which fades while the player's hands are still.</summary>
+        public double ClickBoost { get; private set; }
+
         /// <summary>The layer whose guardian is next, or null once all of them are down.</summary>
         public LayerDef CurrentBoss =>
             State.bossesDefeated < GameData.Layers.Count ? GameData.Layers[State.bossesDefeated] : null;
@@ -300,6 +304,7 @@ namespace DeepDrill.Core
             (1 + Effect(SkillEffect.speed_pct) / 100)
             * SpeedBuffMult
             * MoveSpeed
+            * (1 + ClickBoost)
             * (InFrenzy ? Balance.FrenzySpeedMultiplier : (Overheating ? Balance.OverheatSpeed : 1));
 
         /// <summary>In the Moho layer drills overheat in bursts; frenzy cools them.</summary>
@@ -357,6 +362,7 @@ namespace DeepDrill.Core
         {
             blastBudget = Balance.MaxBlastPixelsPerTick;
             RunBlasts();
+            ClickBoost = Math.Max(0, ClickBoost - Balance.ClickBoostDecay * dt);
             AdvanceRunClock(dt);
             AdvanceIncomeWindow(dt);
             AdvanceCombo(dt);
@@ -464,6 +470,54 @@ namespace DeepDrill.Core
             State.bestTier = Math.Max(State.bestTier, tier + 1);
             Events.Add(new SimEvent { Kind = SimEventKind.DrillMerged, Amount = DrillCode.Make(DrillCode.Family(code), tier) });
         }
+
+        /// <summary>
+        /// Merges everything that can be merged, tier by tier so each new drill can pair up again.
+        /// Works on counts, so a huge hangar costs no more than a small one, and sends one event.
+        /// </summary>
+        public int MergeEverything()
+        {
+            var counts = new SortedDictionary<int, int>();
+            foreach (int code in State.drills)
+                counts[TierFirst(code)] = counts.TryGetValue(TierFirst(code), out int n) ? n + 1 : 1;
+
+            int merges = 0, best = -1;
+            double lucky = (Effect(SkillEffect.merge_lucky) + AchievementCount("tier_")) / 100;
+            for (int tier = 0; tier < GameData.Tiers - 1; tier++)
+            {
+                for (int family = 0; family < GameData.Families.Count; family++)
+                {
+                    int key = tier * MergeKeyStep + family;
+                    if (!counts.TryGetValue(key, out int have) || have < 2) continue;
+                    int pairs = have / 2;
+                    counts[key] = have - pairs * 2;
+                    for (int i = 0; i < pairs; i++)
+                    {
+                        int up = Math.Min(GameData.Tiers - 1, tier + (random.NextDouble() < lucky ? 2 : 1));
+                        int upKey = up * MergeKeyStep + family;
+                        counts[upKey] = counts.TryGetValue(upKey, out int above) ? above + 1 : 1;
+                        State.bestTier = Math.Max(State.bestTier, up + 1);
+                        int code = DrillCode.Make(family, up);
+                        if (best < 0 || GameSim.KindDamage(code) > GameSim.KindDamage(best)) best = code;
+                        merges++;
+                    }
+                }
+            }
+            if (merges == 0) return 0;
+
+            State.mergesEver += merges;
+            State.drills.Clear();
+            foreach (var pair in counts)
+                for (int i = 0; i < pair.Value; i++)
+                    State.drills.Add(DrillCode.Make(pair.Key % MergeKeyStep, pair.Key / MergeKeyStep));
+            RebuildUnits();
+            Events.Add(new SimEvent { Kind = SimEventKind.DrillsMergedAll, Amount = best, Row = merges });
+            return merges;
+        }
+
+        private const int MergeKeyStep = 100;
+
+        private static int TierFirst(int code) => DrillCode.Tier(code) * MergeKeyStep + DrillCode.Family(code);
 
         /// <summary>Merges every pair that exists right now, one step up; true if any did.</summary>
         public bool MergeAll()

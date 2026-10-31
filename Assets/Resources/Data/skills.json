@@ -6,7 +6,7 @@
   "effect": "dmg_pct",
   "perLevel": 5,
   "maxLevel": 10,
-  "baseCost": 15,
+  "baseCost": 5,
   "costGrowth": 1.5,
   "prereq": [],
   "x": 0.0,

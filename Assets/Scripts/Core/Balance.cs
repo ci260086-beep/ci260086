@@ -68,6 +68,10 @@ namespace DeepDrill.Core
         public const int BossBreachHalfWidth = 3;
         public const double BossChipShare = 2; // hitting a guardian pays like digging dirt, so a stalled fight still funds upgrades
 
+        public const double ClickBoostPerTap = 0.12;
+        public const double ClickBoostMax = 1.0;
+        public const double ClickBoostDecay = 0.4; // per second, so a pause soon brings the drills back to their set speed
+
         public const double TapFreeSeconds = 0.25;
         public const double TapFreeFloor = 0.05;
 

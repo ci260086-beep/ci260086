@@ -211,7 +211,7 @@ namespace DeepDrill.Game
             }
             if (hud.CardOpen) return;
             if (Input.GetKeyDown(KeyCode.Space)) sim.StartFrenzy();
-            if (Input.GetKeyDown(KeyCode.M)) sim.MergeAll();
+            if (Input.GetKeyDown(KeyCode.C)) sim.MergeEverything();
             if (Input.GetKeyDown(KeyCode.B)) hud.CycleBulk();
             for (int i = 0; i < PageKeys; i++)
                 if (Input.GetKeyDown(KeyCode.Alpha1 + i)) hud.ShowPage(i);
@@ -337,6 +337,13 @@ namespace DeepDrill.Game
 
                 case SimEventKind.SkillBought:
                     sound.Play("upgrade", 0.6f, 0, true);
+                    break;
+
+                case SimEventKind.DrillsMergedAll:
+                    sound.Play("merge", 0.7f);
+                    OnMerged();
+                    hud.ShowMerged((int)e.Amount);
+                    hud.ShowToast($"合成了 {e.Row} 次，最高 {HudView.KindName((int)e.Amount)}", 2.5f);
                     break;
 
                 case SimEventKind.DrillMerged:

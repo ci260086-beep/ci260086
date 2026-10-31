@@ -19,6 +19,7 @@ namespace DeepDrill.Game
         private const float LayerSeconds = 2.5f;
         private const float BossShotSeconds = 0.6f;
         private const int BaseTabs = 7;
+        private const int BoostTaps = 5;
         private const int StarTab = 6;
         private const int LavaPlanet = 2;
         private const float OverheatWait = 8f;
@@ -66,9 +67,24 @@ namespace DeepDrill.Game
             Debug.Log($"[demo] tapped coins={sim.State.coins:0.0} auto={sim.AutoDrillUnlocked}");
             yield return Shot("intro_coins");
 
-            sim.State.coins = 15;
+            sim.State.coins = 5;
+            yield return new WaitForSeconds(0.3f);
+            yield return Shot("guide_rail");
+            root.Hud.ShowTreePage();
+            yield return new WaitForSeconds(0.5f);
+            yield return Shot("guide_node");
+            root.Hud.ShowHangarPage();
             sim.Buy(GameSim.RootSkill);
-            yield return new WaitForSeconds(4f);
+            sim.State.coins = 0;
+            yield return new WaitForSeconds(0.3f);
+            yield return Shot("guide_earn");
+            sim.State.coins = 6;
+            yield return new WaitForSeconds(0.3f);
+            yield return Shot("guide_buy");
+            for (int i = 0; i < BoostTaps; i++) root.ClickCell(sim.Lead.Body.BodyRow + 1, sim.Lead.Body.Column);
+            yield return new WaitForSeconds(0.2f);
+            yield return Shot("boost");
+            yield return new WaitForSeconds(3.5f);
             Debug.Log($"[demo] unlocked auto={sim.AutoDrillUnlocked} depth={sim.State.depth}");
             yield return Shot("unlocked");
 
@@ -101,6 +117,9 @@ namespace DeepDrill.Game
             yield return new WaitForSeconds(3f);
             yield return MeasureFrames();
             yield return Shot("swarm_full");
+            Debug.Log($"[demo] merge all {sim.MergeEverything()} merges, {sim.State.drills.Count} left");
+            yield return new WaitForSeconds(0.3f);
+            yield return Shot("merge_all");
 
             sim.State.coins = 1e30;
             sim.Buy("root");
