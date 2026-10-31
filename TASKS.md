@@ -27,11 +27,11 @@ Claude B 在自己的分支上提交并推送，由 Claude A 合并和验证。C
 |---|---|---|---|---|
 | 12 个 Boss 的独立造型 | B | Claude B | `art/boss-designs` | 完成 |
 | 美术 1：Boss 的 4 组动画 | B | B |  | 待做 |
-| 美术 2：第三阶段系统图标 | B | B |  | 待做 |
-| 美术 3：46 个成就图标 | B | B |  | 待做 |
-| 美术 4：技能效果图标 | B | B |  | 待做 |
+| 美术 2：第三阶段系统图标 | B | Claude B | `art/system-icons` | 待验证 |
+| 美术 3：46 个成就图标 | B | Claude B | `art/collection-icons` | 待验证 |
+| 美术 4：技能效果图标 | B | Claude B | `art/skill-icons` | 待验证 |
 | 美术 5：12 层专属装饰和岩块变体 | B | B |  | 待做 |
-| 美术 6：36 件稀有物品 | B | B |  | 待做 |
+| 美术 6：36 件稀有物品 | B | Claude B | `art/collection-icons` | 待验证 |
 | 美术 7：钻头家族造型加强 | B | B |  | 待做 |
 | 性能和手感：最慢一帧、磁力钻吸取、技能树收尾、8 小时挂机 | A | Claude A | `phase4-perf` | 进行中 |
 | 新手引导 | A | | | 待做 |
