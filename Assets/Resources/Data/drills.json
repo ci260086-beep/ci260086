@@ -14,7 +14,7 @@
   "星核"
  ],
  "tierDamageMult": 2.0,
- "buyPriceGrowth": 1.08,
+ "buyPriceGrowth": 1.11,
  "mergeRule": "两台同家族、同材质的钻头合成一台高一级材质；星核级不能再合成",
  "families": [
   {

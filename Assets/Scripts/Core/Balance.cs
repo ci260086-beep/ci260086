@@ -11,16 +11,16 @@ namespace DeepDrill.Core
         public const double HpBase = 10;
         public const double HpGrowth = 1.03;
         public const double ValueGrowth = 1.028;
-        public const double HpGrowthDeep = 1.012;
-        public const int HpDeepRow = 1050;  // below the crust the ground hardens more slowly, or the last layers cannot be reached
-        public const double HpRamp = 4;     // the ground toughens this many times over the first rows, on top of the growth
+        public const double HpGrowthDeep = 1.0155;
+        public const int HpDeepRow = 830;  // from the granite crust down the ground hardens more slowly, or the last layers cannot be reached
+        public const double HpRamp = 5;     // the ground toughens this many times over the first rows, on top of the growth
         public const double HpRampRows = 100;
 
-        public const double ShardBonus = 0.15;
+        public const double ShardBonus = 0.13;
         public const double HardRockHpMultiplier = 3;
         public const double LooseHpMultiplier = 0.5;
         public const double DirtValue = 0.5;
-        public const double OreValuePower = 0.7; // ore tiers multiply on top of depth, so left whole they outrun every price
+        public const double OreValuePower = 0.6; // ore tiers multiply on top of depth, so left whole they outrun every price
         public const double ChestValue = 25;
 
         public const double ChestChance = 0.005;
@@ -60,7 +60,7 @@ namespace DeepDrill.Core
         public const double StragglerColumns = 11;
 
         public const int BossRows = 2;
-        public const double BossHpScale = 0.05;
+        public const double BossHpScale = 0.04;
         public const double BossArmorRatio = 0.25;
         public const double BossArmorDamageRatio = 0.5;
         public const double BossRewardValue = 400;
@@ -114,7 +114,8 @@ namespace DeepDrill.Core
         public const double StartGold = 50;
         public const double RebirthRateMinSeconds = 60;
         public const double RebirthAdviceRatio = 0.85;
-        public const double RebirthAdviceMinSeconds = 900;
+        public const double RebirthAdviceMinSeconds = 720;
+        public const int RebirthAdviceMinShards = 60; // a run stuck at an early guardian is not worth ending
 
         public static double BlockHp(int row) =>
             HpBase * Math.Pow(HpGrowth, Math.Min(row, HpDeepRow)) * Math.Pow(HpGrowthDeep, Math.Max(0, row - HpDeepRow)) * (1 + (HpRamp - 1) * Math.Min(1, Math.Max(0, row) / HpRampRows));

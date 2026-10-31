@@ -40,7 +40,7 @@ namespace DeepDrill.Tests
         {
             var sim = CoreTests.NewSim();
             sim.State.bossesDefeated = 1;
-            sim.State.maxDepth = 400;
+            sim.State.maxDepth = 800;
             sim.State.totalIncome = 1e6;
             sim.State.runSeconds = 600;
             sim.State.peakShardRate = sim.ShardsPerMinute;
@@ -48,6 +48,22 @@ namespace DeepDrill.Tests
 
             sim.State.runSeconds = 900;
             Assert.IsTrue(sim.RebirthAdvised);
+        }
+
+        [Test]
+        public void RebirthAdvice_SkipsARunStuckAtAnEarlyGuardian()
+        {
+            var sim = CoreTests.NewSim();
+            sim.State.bossesDefeated = 1;
+            sim.State.maxDepth = 250;
+            sim.State.totalIncome = 1e4;
+            sim.State.runSeconds = 600;
+            sim.State.peakShardRate = sim.ShardsPerMinute;
+            sim.State.runSeconds = 1800;
+
+            Assert.IsTrue(sim.CanRebirth);
+            Assert.Less(sim.ShardsOnRebirth, Balance.RebirthAdviceMinShards);
+            Assert.IsFalse(sim.RebirthAdvised);
         }
 
         [Test]
@@ -76,6 +92,30 @@ namespace DeepDrill.Tests
                 sim.ClickPixel((int)System.Math.Floor((body.X + 0.5) * 16), (int)System.Math.Floor((body.Y + 0.5) * 16) + 14);
             }
             Assert.Greater(sim.State.maxDepth, 20);
+        }
+
+        [Test]
+        public void Perf_TwoHundredDrillsStayWithinAFrame()
+        {
+            var sim = CoreTests.NewSim();
+            for (int i = 0; i < 199; i++) sim.State.drills.Add(DrillCode.Make(i % 3, 6));
+            sim.SyncDrills();
+            sim.Teleport(300, 20);
+            for (int i = 0; i < 40; i++) sim.Tick(1.0 / 60); // let them settle first
+
+            var clock = System.Diagnostics.Stopwatch.StartNew();
+            double worst = 0;
+            const int Frames = 300;
+            for (int i = 0; i < Frames; i++)
+            {
+                double before = clock.Elapsed.TotalMilliseconds;
+                sim.Tick(1.0 / 60);
+                sim.Events.Clear();
+                worst = System.Math.Max(worst, clock.Elapsed.TotalMilliseconds - before);
+            }
+            double average = clock.Elapsed.TotalMilliseconds / Frames;
+            System.Console.WriteLine($"perf200 avg={average:0.00}ms worst={worst:0.00}ms units={sim.Units.Count}");
+            Assert.Less(average, 8, "rules must leave most of a 60 FPS frame for drawing");
         }
 
         [Test]

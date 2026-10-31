@@ -6,7 +6,7 @@
 
 - **仓库：** https://github.com/ci260086-beep/ci260086 ，主分支是 `master`。不要 force push。合并进 `master` 前先等用户确认。
 - **分支：** `master`（`de825d3`，第一版）；`v2`（`8f3b4c6`，第三阶段第 0 步）；`phase3-step2`（从 `v2` 分出，正在做第 2 步）；`terrain-pixel`（`e7d03fb`，已包含在 `v2` 里，检出在 `Builds/wtp`）；`wip-v2`（旧存档分支）。
-- **第三阶段进度：** 计划在 `tools/Design/phase3_plan.md`。用户决定在 `phase3-step2` 这一条分支上把第 1 到第 8 步全部做完，每步只跑编译和单元测试，最后统一做完整测试和节奏调参。第 0、2、1、3、4、5、6、7、8 步已提交。第 2 步：`milestones.json`、`GameSim.MilestonesOf/MasteryOf`、`HudView.Mastery.cs`（图鉴的“里程碑”“精通”标签页，未实机看过）。
+- **第三阶段进度：** 计划在 `tools/Design/phase3_plan.md`。用户决定在 `phase3-step2` 这一条分支上把第 1 到第 8 步全部做完，每步只跑编译和单元测试，最后统一做完整测试和节奏调参。第 0、2、1、3、4、5、6、7、8 步和完整测试、节奏调参都已提交：Unity 内 147 个测试全过，200 台钻头 60 FPS，最差一帧 24 毫秒。第 2 步：`milestones.json`、`GameSim.MilestonesOf/MasteryOf`、`HudView.Mastery.cs`（图鉴的“里程碑”“精通”标签页，未实机看过）。
 - **第四阶段计划：** https://claude.ai/artifact/CKUBNxSWKeDQZEUQSTgwkF
 - **用户已定：** 横屏 320×180；逐像素地形；手动起步（解锁自动钻探前只能点击）；定价 6 元人民币；不做广告和付费加速。
 - **节奏目标：** 第一次重铸约 30 到 45 分钟；第 1 局到第 4 到 5 层；之后每层约 8 到 15 分钟；10 到 15 局到地心。
@@ -14,7 +14,7 @@
 - **数据：** `Assets/Resources/Data/*.json`，由 `tools/Design/gen_design_data.py` 生成，改数值改这个脚本，运行方法见下一节。`GameData.Load` 按文件名读取。
 - **编译和测试：** Unity 没开时，运行 `tools\check.ps1 -Stage 名字`（先跑 EditMode 测试，再试玩截图）。Unity 开着时用工程外命令：`dotnet build tools\outside\Check.csproj` 检查 Core 和 Game 能否编译；`dotnet build tools\outside\Run.csproj -p:NUnitDll=<nunit.framework.dll 路径>` 后运行 `tools\outside\out\run\Run.exe` 跑测试。跑 Unity 前先确认用户没开 Play 模式。列表里的 `Unity Hub\...\unity.exe serve` 是 Hub，不是编辑器，要看 `Temp\UnityLockfile`。
 - **节奏模拟：** `dotnet build tools\outside\Pace.csproj -c Release`，再运行 `tools\outside\out\pace\Pace.exe Assets\Resources\Data [模拟小时] [真实秒数上限] [种子]`。
-- **已知问题：** 第 3 至 12 层的特殊机制只有测试，没有实机看过；Windows 打包未解决（见下一节）；磁力钻的“吸取 3 格内掉落”没做；节奏调参留到全部做完后统一进行。
+- **已知问题：** 第 3 至 12 层的特殊机制只有测试，没有实机看过；Windows 打包未解决（见下一节）；磁力钻的“吸取 3 格内掉落”没做；第 1 到 8 步的界面没有真人实机操作过。
 - **第 1 步：** 黄金事件和地核不稳：`GameSim.Events.cs`、`HudView.Events.cs`，数值在 `phase3.json` 的 events，未实机看过。
 - **第 3 步：** 重铸里程碑和自动化规则：`GameSim.Meta.cs`；基地页 `HudView.Base.cs`（标签页加行的通用框架，后面各系统都放这里）；永久加成统一走 `AddPermanent`。
 - **第 4 步：** 钻探流派：`GameSim.Schools.cs`，每局选一派，重铸后重置，通关该派给永久奖励，技能价格走 `SkillCost`。
@@ -22,7 +22,8 @@
 - **第 6 步：** 研究所和探险队：`GameSim.Lab.cs`，同时只能研究一项，结晶可加速，探险员来自远古遗迹宝箱，失败也会回来。
 - **第 7 步：** 挑战深井：`GameSim.Challenges.cs`，五条规则，到达目标深度给永久奖励；重置逻辑抽成 `ResetRun`。
 - **第 8 步：** 星系跃迁、星座图和行星规则：`GameSim.Warp.cs`，五颗行星按跃迁次数轮换，规则都在 `phase3.json` 的 planets，星点买星座，界面在基地页。
-- **节奏现状（调到一半）：** 种子 7、11、23、42 的第一次重铸在 21 到 36 分钟，第 1 局到第 4 层，第 6 层在 24 到 38 分钟，约 18 局以上才接近地心，HpGrowthDeep 1.012 尚未验证。HpRamp 到 4.5 以上时第一局会卡在第 2 层 Boss。旋钮：`Balance.HpRamp/HpGrowthDeep/OreValuePower/ShardBonus/BossHpScale`，生成器里的 `TIER_DMG_MULT`、`BUY_GROWTH`、圈价倍数和技能价格增长率。
+- **节奏现状（已调完一轮，全部来自 `Pace` 机器人，没有真人试玩）：** 10 个种子（7、11、23、42、3、99、5、64、128、1000）：第一次重铸 22.7 到 49.2 分钟，6 个在目标内，2 个偏快，2 个偏慢，都在第 4 层；9 到 13 局到地心，其中种子 5 是 9 局，其余都在 10 到 13 局；总时长 133 到 180 分钟；第一次重铸后平均每层 12 到 18 分钟，均值约 15。没解决：第 7 到 9 层常在几分钟内连过，第 11 到 12 层是最慢的一段。结果对 `HpGrowthDeep` 很敏感：1.0143 约 6 局，1.0165 超过 17 局，同一数值不同种子也会差几局。
+- **本轮数值：** `HpDeepRow` 1050→830，`HpGrowthDeep` 1.012→1.0155，`HpRamp` 4→5，`BossHpScale` 0.05→0.04，`ShardBonus` 0.15→0.13，`OreValuePower` 0.7→0.6，`BUY_GROWTH` 1.08→1.11，`RebirthAdviceMinSeconds` 900→720，新增 `RebirthAdviceMinShards` 60（不到 60 碎片不建议重铸，否则卡在早期 Boss 时会建议玩家为几个碎片重铸）；`phase3.json` 的金币事件减半。其余旋钮：`TIER_DMG_MULT`、圈价倍数和技能价格增长率。`phase3.json` 是手写的，不由生成器产出。
 - **本阶段修过的旧 bug：** 连锁炸药一帧炸穿全图（现在限 24 次、24 行内）；爆炸无视血量（现在按伤害预算，`blast_dmg` 生效）；钻头悬空导致 Boss 不触发；爆破钻溅射没实现。
 
 ## 第二版现状（`v2` 分支）

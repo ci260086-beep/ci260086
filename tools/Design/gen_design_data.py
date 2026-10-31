@@ -47,7 +47,7 @@ FAMILIES = [
     ("blast", "爆破钻", 0.9, 3.0, "击碎岩块时爆炸，对周围 1 格造成 50% 伤害", 4, 1.5e6),
     ("magnet", "磁力钻", 0.7, 3.0, "它击碎的矿物价值 ×2，并吸取 3 格内掉落", 5, 4.0e7),
 ]
-BUY_GROWTH = 1.08
+BUY_GROWTH = 1.11
 
 drills = {"materials": MATERIALS, "tierDamageMult": TIER_DMG_MULT, "buyPriceGrowth": BUY_GROWTH,
           "mergeRule": "两台同家族、同材质的钻头合成一台高一级材质；星核级不能再合成", "families": [], "kinds": []}

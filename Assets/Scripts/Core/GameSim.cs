@@ -194,6 +194,7 @@ namespace DeepDrill.Core
         public bool RebirthAdvised =>
             CanRebirth
             && State.runSeconds >= Balance.RebirthAdviceMinSeconds
+            && ShardsOnRebirth >= Balance.RebirthAdviceMinShards
             && ShardsPerMinute < State.peakShardRate * Balance.RebirthAdviceRatio;
 
         public int Combo { get; private set; }

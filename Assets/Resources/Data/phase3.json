@@ -79,13 +79,13 @@
   "unstableShare": 0.3,
   "unstableFromLayer": 3,
   "golden": [
-   {"kind": "coins", "weight": 5, "amount": 120, "seconds": 0, "desc": "金币雨"},
+   {"kind": "coins", "weight": 5, "amount": 60, "seconds": 0, "desc": "金币雨"},
    {"kind": "frenzy", "weight": 3, "amount": 1, "seconds": 0, "desc": "狂热充满"},
    {"kind": "damage", "weight": 3, "amount": 3, "seconds": 30, "desc": "伤害 ×3，持续 30 秒"},
    {"kind": "speed", "weight": 2, "amount": 2, "seconds": 30, "desc": "攻速 ×2，持续 30 秒"}
   ],
   "unstable": [
-   {"kind": "coins", "weight": 3, "amount": 600, "seconds": 0, "desc": "地核喷发：巨量金币"},
+   {"kind": "coins", "weight": 3, "amount": 300, "seconds": 0, "desc": "地核喷发：巨量金币"},
    {"kind": "damage", "weight": 3, "amount": 7, "seconds": 20, "desc": "过载：伤害 ×7，持续 20 秒"},
    {"kind": "speed", "weight": 3, "amount": 0.5, "seconds": 20, "desc": "震荡：攻速减半，持续 20 秒"},
    {"kind": "lose", "weight": 2, "amount": 0.1, "seconds": 0, "desc": "塌方：损失 10% 金币"}

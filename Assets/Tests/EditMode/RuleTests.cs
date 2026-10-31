@@ -125,7 +125,7 @@ namespace DeepDrill.Tests
         {
             Assert.AreEqual(10, Balance.BlockHp(0), 1e-9);
             Assert.AreEqual(10 * Math.Pow(1.03, 50) * (1 + (Balance.HpRamp - 1) / 2), Balance.BlockHp(50), 1e-9);
-            Assert.AreEqual(10 * Math.Pow(1.03, 1050) * Math.Pow(Balance.HpGrowthDeep, 10) * Balance.HpRamp, Balance.BlockHp(1060), 1e6);
+            Assert.AreEqual(1, Balance.BlockHp(Balance.HpDeepRow + 10) / (10 * Math.Pow(1.03, Balance.HpDeepRow) * Math.Pow(Balance.HpGrowthDeep, 10) * Balance.HpRamp), 1e-9);
             Assert.AreEqual(2 * Math.Pow(1.028, 10), Balance.OreValue(10, 2), 1e-9);
             EnsureData();
             Assert.AreEqual(10 * Math.Pow(GameData.BuyGrowth, 3) * 0.9 * 9, Balance.DrillPrice(10, 3, 0.1, 2), 1e-6);
