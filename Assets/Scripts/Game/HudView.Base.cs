@@ -15,6 +15,8 @@ namespace DeepDrill.Game
         private const int BaseTabWidth = 38;
         private const int PlanetIcon = 24;
         private const int PlanetCellWidth = 62;
+        private const int PlanetRuleIcon = 16;
+        private const int PlanetNode = 12;
         private const int PlanetStripLeft = 5;
         private const int PlanetStripTop = 139;
         private const int BaseTabHeight = 18;
@@ -34,6 +36,7 @@ namespace DeepDrill.Game
 
         private readonly List<GameObject> baseTabs = new List<GameObject>();
         private readonly List<Image> planetMarks = new List<Image>();
+        private readonly List<Image> planetNodes = new List<Image>();
         private readonly List<Image> baseTabButtons = new List<Image>();
         private readonly List<List<BaseRow>> baseRows = new List<List<BaseRow>>();
         private Transform basePage;
@@ -277,15 +280,26 @@ namespace DeepDrill.Game
                 planetMarks.Add(mark);
                 var icon = Ui.Icon(tab, art.Get("planet_" + i), x + 1, PlanetStripTop + 1, PlanetIcon);
                 icon.raycastTarget = false;
-                var name = Ui.Label(tab, Font, GameData.Planets[i].Name, x + PlanetIcon + 2, PlanetStripTop, PlanetCellWidth - PlanetIcon - 4, PlanetIcon + 2, 6, TextAnchor.MiddleLeft);
+                var name = Ui.Label(tab, Font, GameData.Planets[i].Name, x + PlanetIcon + 2, PlanetStripTop, PlanetCellWidth - PlanetIcon - 4, 11, 6, TextAnchor.MiddleLeft);
                 name.raycastTarget = false;
+                if (i > 0)
+                {
+                    var rule = Ui.Icon(tab, art.Get("planet_rule_" + i), x + PlanetIcon + 2, PlanetStripTop + 10, PlanetRuleIcon);
+                    rule.raycastTarget = false;
+                }
+                var node = Ui.Icon(tab, art.Get("star_node_locked"), x, PlanetStripTop, PlanetNode);
+                node.raycastTarget = false;
+                planetNodes.Add(node);
             }
         }
 
         private void UpdatePlanetStrip()
         {
             for (int i = 0; i < planetMarks.Count; i++)
+            {
                 planetMarks[i].color = i == sim.PlanetIndex ? new Color(CoinColor.r, CoinColor.g, CoinColor.b, 0.35f) : Color.clear;
+                planetNodes[i].sprite = art.Get(i == sim.PlanetIndex ? "star_node_current" : (i <= sim.State.warps ? "star_node_reached" : "star_node_locked"));
+            }
         }
 
         // A warp wipes a whole planet, so it takes a second click, like a rebirth.

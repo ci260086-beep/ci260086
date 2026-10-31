@@ -41,6 +41,7 @@ namespace DeepDrill.Game
             public bool Bounced;
             public bool Streak;
             public bool Drift;
+            public Sprite[] Frames;
         }
 
         private sealed class Anim
@@ -100,6 +101,8 @@ namespace DeepDrill.Game
             smokeFrames = art.Strip("fx_smoke", 16);
             ringFrames = art.Strip("fx_ring", 32);
             flashFrames = new[] { art.Get("fx_circle") };
+            moteFrames = new Sprite[GameData.Layers.Count][];
+            for (int l = 0; l < moteFrames.Length; l++) moteFrames[l] = art.Strip($"mote_{l}", MoteFrameWidth);
 
             for (int i = 0; i < AnimCount; i++)
             {
@@ -170,7 +173,9 @@ namespace DeepDrill.Game
                 nextBit = (nextBit + 1) % bits.Count;
                 Vector2 at = camera + new Vector2(UnityEngine.Random.Range(-10f, 4f), UnityEngine.Random.Range(-5.5f, 5.5f));
                 bit.Sprite.enabled = true;
-                bit.Sprite.color = Palette.Bright(layer, 0.55f);
+                bit.Frames = moteFrames[layer];
+                bit.Sprite.sprite = bit.Frames[0];
+                bit.Sprite.color = new Color(1, 1, 1, MoteAlpha);
                 bit.Sprite.transform.position = at;
                 bit.Sprite.transform.rotation = Quaternion.identity;
                 bit.Sprite.transform.localScale = Vector3.one;
@@ -189,6 +194,10 @@ namespace DeepDrill.Game
         // How thick the air is in each layer, from topsoil to the core.
         private static readonly float[] AmbientDensity = { 0.5f, 1.2f, 0.8f, 1.2f, 0.7f, 0.5f, 1.3f, 1.3f, 0.8f, 1.5f, 1.2f, 1.5f };
         private const float GlintShare = 0.25f;
+        private const int MoteFrameWidth = 8;
+        private const float MoteFrameSeconds = 0.2f;
+        private const float MoteAlpha = 0.8f;
+        private Sprite[][] moteFrames;
 
         private static Vector2 AmbientVelocity(int layer)
         {
@@ -220,6 +229,8 @@ namespace DeepDrill.Game
                 var bit = bits[nextBit];
                 nextBit = (nextBit + 1) % bits.Count;
                 bit.Sprite.enabled = true;
+                bit.Frames = null;
+                bit.Sprite.sprite = whitePixel;
                 bit.Sprite.color = color;
                 bit.Sprite.transform.position = world + UnityEngine.Random.insideUnitCircle * 0.4f;
                 bit.Sprite.transform.rotation = Quaternion.identity;
@@ -314,6 +325,7 @@ namespace DeepDrill.Game
                     bit.Sprite.enabled = false;
                     continue;
                 }
+                if (bit.Frames != null) bit.Sprite.sprite = bit.Frames[(int)(bit.Life / MoteFrameSeconds) % bit.Frames.Length];
                 if (!bit.Drift) bit.Velocity.y -= Gravity * dt;
                 var t = bit.Sprite.transform;
                 t.position += (Vector3)(bit.Velocity * dt);

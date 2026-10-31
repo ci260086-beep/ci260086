@@ -64,6 +64,9 @@ namespace DeepDrill.Game
             guideArrow.gameObject.SetActive(false);
 
             Card("tap", "点击挖掘", "点击钻头开始挖矿。攒够 5 金币，打开技能树解锁自动挖掘。之后继续点击可以让钻头临时加速。", () => true);
+            Card("skilltree", "打开技能树", "攒够 5 金币了。点右边的树形按钮打开技能树，第一个技能就是自动挖掘。", () => !sim.AutoDrillUnlocked && sim.State.coins >= sim.SkillCost(GameData.Skill(GameSim.RootSkill)));
+            Card("autodrill", "自动挖掘", "钻头现在会自己挖了。继续点击可以让它临时加速，停手就回到设定速度。", () => sim.AutoDrillUnlocked && sim.State.BoughtOf(0) == 0);
+            Card("firstdrill", "第一台钻头", "赚到 6 金币了。在机库买一台新钻头，钻头越多挖得越快。", () => sim.State.BoughtOf(0) == 0 && sim.CanBuyDrill(0));
             Card("merge", "合成钻头", "把机库里两台相同的钻头拖到一起，就能合成一台更高级的。点“合成”或按 C 键一次合成全部。", HasTwins);
             Card("boss", "守层 Boss", "每层底部都有 Boss，要在时限内打穿。它闪红时要放招，被缠住就连点钻头。打不过也没关系，升级后再来。", () => sim.BossActive);
             Card("rebirth", "地核重铸", "重铸会失去金币、钻头和技能，换来星核碎片。碎片永久提高伤害，下一局会快很多。觉得慢了就重铸。", () => sim.CanRebirth);

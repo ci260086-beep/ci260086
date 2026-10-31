@@ -15,8 +15,9 @@ namespace DeepDrill.Game
     {
         private const int FamilyCardHeight = 15;
         private const int BulkButtonWidth = 18;
-        private const int MergeAllWidth = 22;
-        private const int BoostBarHeight = 4;
+        private const int MergeAllWidth = 16;
+        private const int BoostBarWidth = 24;
+        private const int BoostBarHeight = 6;
         private static readonly Color BoostColor = new Color32(0x70, 0xd8, 0xff, 0xff);
         private const int BulkMax = 2;
         private const int MaxBulkDrills = 500;
@@ -136,7 +137,7 @@ namespace DeepDrill.Game
         private Image bossBar, bossFill, bossArmorFill;
         private Text bossLabel;
         private Text boostLabel;
-        private Text mergeAllLabel;
+        private Button mergeAllButton;
         private Image boostFill;
         private GameObject boostBar;
         private Text hintLabel;
@@ -351,8 +352,8 @@ namespace DeepDrill.Game
         {
             darkness = Ui.Panel(stageRoot, "Darkness", 0, 0, Stage.DigWidth, Stage.Height, Color.clear);
             darkness.raycastTarget = false;
-            var edge = Ui.Panel(stageRoot, "Vignette", 0, 0, Stage.DigWidth, Stage.Height, new Color(0.05f, 0.03f, 0.08f, 0.55f));
-            edge.sprite = art.Get("fx_vignette");
+            var edge = Ui.Panel(stageRoot, "Vignette", 0, 0, Stage.DigWidth, Stage.Height, new Color(1, 1, 1, 0.45f));
+            edge.sprite = art.Get("dig_edge_shade");
             edge.raycastTarget = false;
         }
 
@@ -445,11 +446,15 @@ namespace DeepDrill.Game
             track.raycastTarget = false;
             meterFill = Ui.Panel(track.transform, "Fill", 1, 1, 0, MeterHeight - 2, FrenzyColor);
             meterFill.raycastTarget = false;
-            boostLabel = Floating("", x, MeterY - 16, MeterWidth, 8, 6, TextAnchor.MiddleLeft);
+            boostLabel = Floating("", x + BoostBarWidth + 2, MeterY - 9, MeterWidth, 8, 6, TextAnchor.MiddleLeft);
             boostLabel.color = BoostColor;
-            var boostTrack = Ui.Panel(stageRoot, "BoostMeter", x, MeterY - 7, MeterWidth, BoostBarHeight, PanelColor);
+            var boostTrack = Ui.Panel(stageRoot, "BoostMeter", x, MeterY - 8, BoostBarWidth, BoostBarHeight, Color.white);
+            boostTrack.sprite = art.Get("boost_bar_empty");
             boostTrack.raycastTarget = false;
-            boostFill = Ui.Panel(boostTrack.transform, "Fill", 1, 1, 0, BoostBarHeight - 2, BoostColor);
+            boostFill = Ui.Panel(boostTrack.transform, "Fill", 0, 0, BoostBarWidth, BoostBarHeight, Color.white);
+            boostFill.sprite = art.Get("boost_bar_full");
+            boostFill.type = Image.Type.Filled;
+            boostFill.fillMethod = Image.FillMethod.Horizontal;
             boostFill.raycastTarget = false;
             boostBar = boostTrack.gameObject;
             boostBar.SetActive(false);
@@ -502,7 +507,12 @@ namespace DeepDrill.Game
             BuildHangar(hangar.transform);
             var bulk = Ui.Button(hangar.transform, Font, BulkNames[0], 3, 2, BulkButtonWidth, 12, 6, CardBright, out bulkLabel);
             bulk.onClick.AddListener(CycleBulk);
-            var mergeAll = Ui.Button(hangar.transform, Font, "合成", Stage.PanelWidth - MergeAllWidth - 3, 2, MergeAllWidth, 12, 6, CardBright, out mergeAllLabel);
+            mergeAllButton = Ui.Button(hangar.transform, Font, "", Stage.PanelWidth - MergeAllWidth - 3, 0, MergeAllWidth, MergeAllWidth, 6, Color.white, out _);
+            var mergeAll = mergeAllButton;
+            var mergeImage = mergeAll.GetComponent<Image>();
+            mergeImage.sprite = art.Get("merge_all_normal");
+            mergeAll.transition = Selectable.Transition.SpriteSwap;
+            mergeAll.spriteState = new SpriteState { pressedSprite = art.Get("merge_all_pressed"), disabledSprite = art.Get("merge_all_disabled") };
             mergeAll.onClick.AddListener(() => sim.MergeEverything());
             mergeAll.gameObject.AddComponent<HoverRelay>().Entered = () => footerLabel.text = "一键合成全部相同的钻头（C 键）";
 
@@ -882,7 +892,7 @@ namespace DeepDrill.Game
             boostBar.SetActive(boost > 0);
             boostLabel.text = boost > 0 ? $"点击加速 +{boost * 100:0}%" : "";
             if (boost <= 0) return;
-            boostFill.rectTransform.sizeDelta = new Vector2((float)(boost / Balance.ClickBoostMax) * (MeterWidth - 2), BoostBarHeight - 2);
+            boostFill.fillAmount = (float)(boost / Balance.ClickBoostMax);
         }
 
         private void UpdateMeter()
@@ -953,6 +963,7 @@ namespace DeepDrill.Game
                     : NumberFormat.Short(sim.DrillPrice(f));
                 card.Price.color = can ? CoinColor : DimText;
             }
+            mergeAllButton.interactable = HasTwins();
             RefreshCells();
         }
 

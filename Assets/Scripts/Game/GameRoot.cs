@@ -342,7 +342,7 @@ namespace DeepDrill.Game
                 case SimEventKind.DrillsMergedAll:
                     sound.Play("merge", 0.7f);
                     OnMerged();
-                    hud.ShowMerged((int)e.Amount);
+                    hud.ShowMergedAll((int)e.Amount, e.Row);
                     hud.ShowToast($"合成了 {e.Row} 次，最高 {HudView.KindName((int)e.Amount)}", 2.5f);
                     break;
 

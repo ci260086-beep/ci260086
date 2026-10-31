@@ -51,6 +51,11 @@ namespace DeepDrill.Game
         private static readonly Color BossWarnTint = new Color(1f, 0.25f, 0.2f);
         private const float BossWarnRate = 14f;
         private const int BossFrameWidth = 64;
+        private const int BoostFrameWidth = 16;
+        private const int BoostFxPool = 12;
+        private const double BoostFxFrom = 0.2;
+        private const float BoostFxStep = 0.08f;
+        private const float BoostFxLift = 0.33f;
         private const int MoveFxWidth = 32;
         private const int MoveFxPool = 30; // a swarm shows the effect on its first drills only
         private const float MoveFxStep = 0.12f;
@@ -89,6 +94,8 @@ namespace DeepDrill.Game
         private Dictionary<int, Sprite[]> drillFrames;
         private SpriteRenderer bossFace;
         private SpriteRenderer headlamp;
+        private Sprite[] boostFrames;
+        private readonly List<SpriteRenderer> boostFx = new List<SpriteRenderer>();
         private float bossHitLeft;
         private float bossDeathLeft;
         private int deadBoss;
@@ -162,6 +169,14 @@ namespace DeepDrill.Game
                 glow.enabled = false;
                 glows.Add(glow);
             }
+            boostFrames = art.Strip("boost_spark", BoostFrameWidth);
+            for (int i = 0; i < BoostFxPool; i++)
+            {
+                var fx = MakeRenderer("boostFx", 7, transform);
+                fx.enabled = false;
+                boostFx.Add(fx);
+            }
+
             headlamp = MakeRenderer("headlamp", 5, transform);
             headlamp.sprite = art.Get("fx_circle");
             headlamp.transform.localScale = new Vector3(HeadlampSize, HeadlampSize, 1);
@@ -241,6 +256,7 @@ namespace DeepDrill.Game
             drillClock += dt * DrillFramesPerSecond * (sim.InFrenzy ? 2f : 1f);
             DrawDrills(target);
             DrawMoveFx();
+            DrawBoostFx();
             DrawHeadlamp(leadX, leadY);
             DrawParallax(target);
             var timer = System.Diagnostics.Stopwatch.StartNew();
@@ -476,6 +492,25 @@ namespace DeepDrill.Game
                 return BossMoveFrame + Mathf.Min(BossMoveFrames - 1, (int)(t / BossMoveStep) % BossMoveFrames);
             if (bossHitLeft > 0) return BossHitFrame + (bossHitLeft > BossHitStep ? 0 : 1);
             return (int)(t / BossIdleStep) % BossIdleFrames;
+        }
+
+        // Tapped-up drills throw sparks; the first few on screen are enough to read it.
+        private void DrawBoostFx()
+        {
+            int used = 0;
+            if (sim.ClickBoost >= BoostFxFrom)
+            {
+                var frame = boostFrames[(int)(Time.unscaledTime / BoostFxStep) % boostFrames.Length];
+                for (int i = 0; i < drillPool.Count && used < boostFx.Count; i++)
+                {
+                    if (!drillPool[i].enabled) break;
+                    boostFx[used].sprite = frame;
+                    boostFx[used].transform.position = drillPool[i].transform.position + new Vector3(0, BoostFxLift, 0);
+                    boostFx[used].enabled = true;
+                    used++;
+                }
+            }
+            for (int i = used; i < boostFx.Count; i++) boostFx[i].enabled = false;
         }
 
         // The deeper the dark, the more the lead drill's own lamp matters.
