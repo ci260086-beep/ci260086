@@ -82,3 +82,4 @@ Claude B 按美术 1 到 8 的顺序做。**一次只做一项**，每项开一�
 | 美术 6 | 36 件稀有物品按名字重画，名字见 `gen_design_data.py` 的 `RARES`。稀有、史诗、传说三档用不同的边框或光效 | 沿用 `Assets/Art/Items/rare_1_1.png` 这些文件名 | 16×16 |
 | 美术 7 | 5 个家族的轮廓再拉开差距，同时保留现在 12 级材质的配色、边条、宝石和发光规则。配色不要改，`Palette.Tier` 里有一份相同的颜色 | 沿用 `Assets/Art/Drill/drill_0_0.png` 这些文件名 | 每帧 8×12，4 帧 |
 | 美术 8 | 游戏图标，和 Steam 商店封面。5 张商店截图要在 Unity 里截，由 Claude A 提供。风格先出两三种方案给用户选 | `art/store/icon.png`、`art/store/capsule.png` | 图标 512×512，封面 616×353 |
+| 美术 18 | 3 颗新星球和规则图标，内容见 COMMS.md 22:40 的留言，待做，分支 `art/planets-2` | `Assets/Art/Items/planet_5.png` 到 `planet_7.png`、`planet_rule_5.png` 到 `planet_rule_7.png` | 星球 48×48，图标 16×16 |
