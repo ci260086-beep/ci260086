@@ -17,6 +17,7 @@
 - **待查：** 有一次自动试玩 1000 台钻头掉到 16 FPS，`Update` 单帧约 400 毫秒，不在规则、事件和环境效果里，之后 7 轮没有复现。`DemoDriver` 会打出分段。
 - **流派和挑战：** 4 个流派各有专属规则，`SchoolDef.Trait` 对应 `GameSim.HasTrait`，在 `GameSim.Schools.cs`。通关过的流派可以当第二流派（`State.secondSchool`，只加加成和规则，不给分支折扣），机群派和精工派不能搭配。挑战新增 `no_click`、`no_merge`、`rush`，`rush` 用 `runSeconds` 计时。
 - **爆破派自动引爆的坑：** 爆炸有按岩石血量算的保底伤害，大半径的自动引爆会无视伤害打穿深层，把到地心压到全部 9 局，调间隔没用。所以 `Balance.PulseRadius` 固定为 1。
+- **暂停点（2026-10-31）：** 用户要求暂停，等通知再继续。`phase5-planets` 上 3 颗新星球的规则已写好，外部测试 177 条全过，还没跑 Unity。这条分支在 B 交 `planet_5` 到 `planet_7`、`planet_rule_5` 到 `planet_rule_7`（美术 18，分支 `art/planets-2`）之前不能开 Play，星图缺图会报错。继续时：合入美术；跑 `Pace.exe Data 8 1500 种子 星球`，地球 10 个种子要在 9 到 13 局，星球编号 5、6、7 各看 3 个种子；`tools\check.ps1`；看 planets、tide、storm 截图；过了再快进合并。节奏模拟没跑完，结果不算。第 ⑦ 音效等用户选音乐风格。
 - **分工：** 两个 Claude 同时开发时按 `TASKS.md` 执行，开工前先读。交流在 `comms` 分支的 `COMMS.md`。
 - **性能（已并入 `master`）：** 只开一个 Unity 时，200 台钻头 60 FPS，整帧最差 23 毫秒，其中游戏自身（PlayerLoop）9.3 毫秒；1000 台 60 FPS，整帧最差 26 毫秒，游戏自身 12.5 毫秒，逻辑 3.2 毫秒，绘制 0.5 毫秒。整帧还没到 20 毫秒，差值在 PlayerLoop 之外，判断是编辑器和垂直同步，没有打包版本可以证实。`DemoDriver.MeasureFrames` 会打出最慢几帧的分段。修过的根因：`DropAbove` 只看领头钻头，掉队钻头脚下的地形块每向下一行就同步重建，现在要等最后一台离开；地形块多预生成到 16 行；绘制时块内直接读数组，屏幕外的块每帧只绘一块。
 - **长时间运行：** `dotnet build tools\outside\Soak.csproj -c Release`，再运行 `tools\outside\out\soak\Soak.exe Assets\Resources\Data 8 7`。8 小时结果：不崩溃，内存 34 到 78 MB，没有持续增长，机器空闲时没有一步超过 100 毫秒。只测规则，不含 Unity 表现层。查清的两个问题：世界原来没有底，现在第 2552 行起是挖不动的基岩；后期大连锁一帧处理上百万像素，现在按 `Balance.MaxBlastPixelsPerTick` 分到多帧。同时开 Unity 跑时会出现 200 毫秒以上的假峰值，要在机器空闲时测。
