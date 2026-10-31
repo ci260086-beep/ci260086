@@ -128,6 +128,52 @@ save(arrow, "guide_arrow")
 ---------------------------------------------------------------------------------------------------
 -- the card pictures
 ---------------------------------------------------------------------------------------------------
+-- a white pointer with its tip at (x, y) and a few gold sparks round the tip
+local function tap(g, x, y)
+  g:pattern(x, y, {
+    "#.......",
+    "##......",
+    "#w#.....",
+    "#ww#....",
+    "#www#...",
+    "#wwww#..",
+    "#ww###..",
+    "#w##w#..",
+    "##..#w#.",
+    ".....##.",
+  }, { ["#"] = INK, w = WHITE })
+  for _, d in ipairs({ { -3, 0 }, { 0, -3 }, { -2, -2 } }) do g:set(x + d[1], y + d[2], GOLD_HI) end
+end
+
+-- a small grey gear centred on (cx, cy) with a green play mark in the hub
+local function gear(g, cx, cy)
+  for y = cy - 6, cy + 6 do
+    for x = cx - 6, cx + 6 do
+      local dx, dy = x - cx, y - cy
+      local d = math.sqrt(dx * dx + dy * dy)
+      if d <= 4.2 or (d <= 5.6 and math.cos(math.atan(dy, dx) * 8) > 0.2) then g:set(x, y, (dx + dy < -2) and S3 or S2) end
+    end
+  end
+  g:ellipse(cx, cy, 2.2, 2.2, K2)
+  g:pattern(cx - 1, cy - 2, { "g..", "gg.", "ggg", "gg.", "g.." }, { g = G4 })
+end
+
+-- a price tag: a gold coin and the amount in 3x5 digits, on an ink pill
+local PRICE_DIGITS = {
+  ["0"] = { "###", "#.#", "#.#", "#.#", "###" }, ["1"] = { ".#.", "##.", ".#.", ".#.", "###" },
+  ["2"] = { "##.", "..#", ".#.", "#..", "###" }, ["3"] = { "##.", "..#", ".#.", "..#", "##." },
+  ["4"] = { "#.#", "#.#", "###", "..#", "..#" }, ["5"] = { "###", "#..", "##.", "..#", "##." },
+  ["6"] = { ".##", "#..", "###", "#.#", "###" }, ["7"] = { "###", "..#", ".#.", ".#.", ".#." },
+  ["8"] = { "###", "#.#", "###", "#.#", "###" }, ["9"] = { "###", "#.#", "###", "..#", "##." },
+}
+local function price(g, x, y, amount)
+  local s = tostring(amount)
+  local w = 9 + #s * 4
+  g:rect(x + 1, y, x + w - 2, y + 8, INK); g:rect(x, y + 1, x + w - 1, y + 7, INK)
+  ball(g, x + 4, y + 4, 2.5, 2.5, O1, GOLD, GOLD_HI)
+  for i = 1, #s do g:pattern(x + 8 + (i - 1) * 4, y + 2, PRICE_DIGITS[s:sub(i, i)], { ["#"] = WHITE }) end
+end
+
 local SCENES = {
   -- 黄金事件: a drill strikes a seam and gold bursts out of the ground
   { "event", function(g)
@@ -353,6 +399,44 @@ local SCENES = {
     for _, p in ipairs({ { 8, 6 }, { 40, 24 }, { 6, 22 }, { 42, 10 } }) do
       g:set(p[1], p[2] - 1, WHITE); g:set(p[1], p[2], shard); g:set(p[1] - 1, p[2], shard); g:set(p[1] + 1, p[2], shard); g:set(p[1], p[2] + 1, shard)
     end
+  end },
+
+  -- 打开技能树: a pointer taps the tree button; lit nodes branch out beside it
+  { "skilltree", function(g)
+    local node, lit, branch = hex("4a3a6a"), hex("ffd24a"), hex("8a7ab8")
+    local nodes = { { 30, 16, true }, { 22, 8, true }, { 38, 8, false }, { 22, 24, false }, { 40, 23, false }, { 30, 4, false } }
+    for i = 2, #nodes do g:line(30, 16, nodes[i][1], nodes[i][2], branch) end
+    for _, n in ipairs(nodes) do
+      g:ellipse(n[1], n[2], 2.5, 2.5, INK)
+      g:ellipse(n[1], n[2], 1.6, 1.6, n[3] and lit or node)
+      if n[3] then g:set(n[1] - 1, n[2] - 1, WHITE) end
+    end
+    g:rect(3, 18, 13, 28, INK); g:rect(4, 19, 12, 27, hex("3a2a4a"))
+    g:ellipse(8, 21.5, 3, 2.5, G3); g:set(7, 20, G4); g:rect(8, 24, 8, 26, D3)
+    tap(g, 10, 12)
+  end },
+
+  -- 解锁自动挖掘: the drill digs on by itself, a gear turning beside it, for 5 gold
+  { "autodrill", function(g)
+    ground(g, 12, true)
+    for y = 12, 30 do for x = 20, 27 do g:set(x, y, CARD) end end
+    drill(g, 20, 17)
+    for _, y in ipairs({ 13, 15 }) do g:set(19, y, WHITE); g:set(28, y + 1, WHITE) end
+    gear(g, 37, 6)
+    price(g, 3, 2, 5)
+  end },
+
+  -- 购买第一台钻头: a new drill drops into an empty hangar slot, for 6 gold
+  { "firstdrill", function(g)
+    for i = 0, 3 do
+      local x = 6 + i * 10
+      g:rect(x, 18, x + 9, 28, INK); g:rect(x + 1, 19, x + 8, 27, i == 0 and hex("3e3050") or hex("2a2238"))
+    end
+    g:rect(7, 19, 14, 27, hex("4a3a62"))
+    drill(g, 7, 10)
+    g:pattern(8, 6, { "..#..", "..#..", "#####", "..#..", "..#.." }, { ["#"] = G4 })
+    for _, p in ipairs({ { 5, 14 }, { 16, 12 }, { 15, 22 } }) do g:set(p[1], p[2], WHITE) end
+    price(g, 25, 4, 6)
   end },
 }
 
