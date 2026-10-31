@@ -470,10 +470,11 @@ local function silhouette(g)
 end
 
 local silIcons = {}
-local function finish(g, name, list)
+local function finish(g, name, list, decorate)
   outline(g, INK)
-  save(g, "Items/" .. name)
   local s = silhouette(g)
+  if decorate then decorate(g) end
+  save(g, "Items/" .. name)
   save(s, "Items/" .. name .. "_sil")
   list[#list + 1] = { g = g, name = name }
   silIcons[#silIcons + 1] = { g = s, name = name }
@@ -975,13 +976,50 @@ local RARES = {
   end,
 }
 
+-- rarity, from the item's place in its layer: 1 稀有, 2 史诗, 3 传说. Every tier marks the corners in
+-- its colour; epic and legendary also glow round the outline, and legendary adds two sparkles.
+-- The silhouette is taken before this, so unfound items show only their shape.
+local RARITY = {
+  { corner = hex("5a9ae8"), glow = nil },
+  { corner = hex("b07af0"), glow = hex("b07af0", 150) },
+  { corner = GOLD_HI, glow = hex("ffd24a", 170), sparkle = WHITE },
+}
+
+local function rarity(tier)
+  local r = RARITY[tier]
+  return function(g)
+    if r.glow then
+      local add = {}
+      for y = 0, 15 do
+        for x = 0, 15 do
+          if not g:get(x, y) and ((x > 0 and g:get(x - 1, y) == INK) or (x < 15 and g:get(x + 1, y) == INK)
+              or (y > 0 and g:get(x, y - 1) == INK) or (y < 15 and g:get(x, y + 1) == INK)) then
+            add[#add + 1] = { x, y }
+          end
+        end
+      end
+      for _, p in ipairs(add) do g:set(p[1], p[2], r.glow) end
+    end
+    for _, c in ipairs({ { 0, 0, 1, 1 }, { 15, 0, -1, 1 }, { 0, 15, 1, -1 }, { 15, 15, -1, -1 } }) do
+      g:set(c[1], c[2], r.corner); g:set(c[1] + c[3], c[2], r.corner); g:set(c[1], c[2] + c[4], r.corner)
+    end
+    if r.sparkle then
+      for _, p in ipairs({ { 13, 2 }, { 2, 13 } }) do
+        g:set(p[1], p[2], r.sparkle)
+        g:set(p[1] - 1, p[2], r.corner); g:set(p[1] + 1, p[2], r.corner)
+        g:set(p[1], p[2] - 1, r.corner); g:set(p[1], p[2] + 1, r.corner)
+      end
+    end
+  end
+end
+
 local rareIcons = {}
 for layer = 1, 12 do
   for n = 1, 3 do
     local key = layer .. "_" .. n
     local g = canvas(16, 16)
     RARES[key](g)
-    finish(g, "rare_" .. key, rareIcons)
+    finish(g, "rare_" .. key, rareIcons, rarity(n))
   end
 end
 sheet("sheet_rares", rareIcons, 6, 6)
