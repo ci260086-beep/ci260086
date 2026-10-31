@@ -160,6 +160,22 @@ namespace DeepDrill.Tests
         }
 
         [Test]
+        public void Bedrock_HoldsUnderTheCentre()
+        {
+            var sim = CoreTests.NewSim();
+            sim.State.drills.Clear();
+            sim.State.drills.Add(DrillCode.Make(3, GameData.Tiers - 1));
+            sim.SyncDrills();
+            sim.State.bossesDefeated = GameData.Layers.Count;
+            sim.Teleport(PixelWorld.FloorRow - 2, 20);
+
+            for (int i = 0; i < 400; i++) sim.Tick(0.05);
+
+            Assert.LessOrEqual(sim.State.maxDepth, PixelWorld.FloorRow + 1);
+            Assert.AreEqual(Mat.Wall, sim.World.Get(20 * PixelWorld.TileSize, (PixelWorld.FloorRow + 1) * PixelWorld.TileSize));
+        }
+
+        [Test]
         public void Chunks_StayWhileADrillStillStandsOnThem()
         {
             var sim = CoreTests.NewSim();

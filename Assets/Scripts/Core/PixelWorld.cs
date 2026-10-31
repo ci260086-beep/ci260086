@@ -97,6 +97,9 @@ namespace DeepDrill.Core
 
         public IEnumerable<KeyValuePair<long, PixelChunk>> Chunks => chunks;
 
+        /// <summary>The first row of bedrock, just under the last guardian's band.</summary>
+        public static int FloorRow => GameData.TotalRows + Balance.BossRows;
+
         public int LoadedChunks => chunks.Count;
         public int ArchivedChunks => dugArchive.Count;
         public int KnownTiles => tiles.Count;
@@ -406,6 +409,12 @@ namespace DeepDrill.Core
             {
                 mat = Mat.Boss;
                 hp = 1f;
+                return;
+            }
+            if (row >= FloorRow)
+            {
+                mat = Mat.Wall; // bedrock: the planet ends here and nothing digs it
+                hp = 0f;
                 return;
             }
 

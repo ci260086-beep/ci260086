@@ -134,6 +134,7 @@ namespace DeepDrill.Core
         private int achievementsTallied = -1;
         private int raresTallied = -1;
         private int blastsThisChain;
+        private int blastBudget = Balance.MaxBlastPixelsPerTick;
         private bool insideBlast;
         private double simTime;
         private double heatClock;
@@ -347,6 +348,8 @@ namespace DeepDrill.Core
 
         public void Tick(double dt)
         {
+            blastBudget = Balance.MaxBlastPixelsPerTick;
+            RunBlasts();
             AdvanceRunClock(dt);
             AdvanceIncomeWindow(dt);
             AdvanceCombo(dt);

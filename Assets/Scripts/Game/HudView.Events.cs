@@ -7,7 +7,7 @@ namespace DeepDrill.Game
     /// <summary>The glowing nugget that surfaces in the dig area, and the buff line under the combo.</summary>
     public sealed partial class HudView
     {
-        private const int EventIconSize = 20;
+        private const int EventIconSize = 32;
         private const int EventMarginX = 30;
         private const int EventMarginTop = 40;
         private const int EventMarginBottom = 50;
@@ -21,7 +21,7 @@ namespace DeepDrill.Game
 
         private void BuildSurfaceEvent()
         {
-            eventIcon = Ui.Icon(stageRoot, art.Get("icon_coin"), 0, 0, EventIconSize);
+            eventIcon = Ui.Icon(stageRoot, art.Get("sys_event"), 0, 0, EventIconSize);
             eventIcon.raycastTarget = true;
             eventButton = eventIcon.gameObject.AddComponent<Button>();
             eventButton.targetGraphic = eventIcon;

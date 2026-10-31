@@ -13,8 +13,10 @@ namespace DeepDrill.Game
     public sealed partial class HudView
     {
         private const int BaseTabWidth = 38;
-        private const int BaseRowHeight = 15;
-        private const int BaseTop = 17;
+        private const int BaseTabHeight = 18;
+        private const int BaseTabIcon = 16;
+        private const int BaseRowHeight = 13;
+        private const int BaseTop = 21;
         private const int BaseButtonWidth = 54;
 
         private sealed class BaseRow
@@ -54,7 +56,7 @@ namespace DeepDrill.Game
             ShowBaseTab(0);
         }
 
-        private Transform NewBaseTab(string title)
+        private Transform NewBaseTab(string title, string icon = null)
         {
             int index = baseTabs.Count;
             var tab = new GameObject("Tab", typeof(RectTransform));
@@ -63,10 +65,22 @@ namespace DeepDrill.Game
             baseTabs.Add(tab);
             baseRows.Add(new List<BaseRow>());
 
-            var button = Ui.Button(basePage, Font, title, 4 + index * (BaseTabWidth + 1), 2, BaseTabWidth, 12, 7, RailColor, out _);
+            var button = Ui.Button(basePage, Font, title, 4 + index * (BaseTabWidth + 1), 2, BaseTabWidth, BaseTabHeight, 6, RailColor, out Text label);
+            if (icon != null)
+            {
+                Ui.Icon(button.transform, art.Get(icon), 1, 1, BaseTabIcon);
+                Ui.TopLeft(label.rectTransform, BaseTabIcon + 1, 0, BaseTabWidth - BaseTabIcon - 1, BaseTabHeight);
+            }
             button.onClick.AddListener(() => ShowBaseTab(index));
             baseTabButtons.Add(button.GetComponent<Image>());
             return tab.transform;
+        }
+
+        /// <summary>Opens the base page on one of its tabs; for the demo driver's screenshots.</summary>
+        public void ShowBasePage(int tab)
+        {
+            ShowPage(PageBase);
+            ShowBaseTab(tab);
         }
 
         private void ShowBaseTab(int index)
@@ -144,7 +158,7 @@ namespace DeepDrill.Game
 
         private void BuildSchoolTab()
         {
-            NewBaseTab("流派");
+            NewBaseTab("流派", "sys_school");
             AddBaseRow(0, () => !sim.SchoolsUnlocked ? "第一次重铸后解锁，每局选一派，重铸后可以重选"
                 : sim.CurrentSchool != null ? $"本局流派：{sim.CurrentSchool.Name}，下次重铸后可以换" : "本局还没选流派");
             for (int i = 0; i < GameData.Schools.Count; i++)
@@ -159,7 +173,7 @@ namespace DeepDrill.Game
 
         private void BuildFactoryTab()
         {
-            NewBaseTab("工厂");
+            NewBaseTab("工厂", "sys_factory");
             AddBaseRow(0, () => $"矿物 {NumberFormat.Short(sim.State.ores)}   地心结晶 {sim.Crystals}/{GameData.CrystalCap:0}" +
                 (sim.CrystalsFull ? "（已满）" : $"   下一颗 {sim.CrystalProgress * 100:0}%"));
             for (int i = 0; i < GameData.Factory.Count; i++)
@@ -176,7 +190,7 @@ namespace DeepDrill.Game
 
         private void BuildResearchTab()
         {
-            NewBaseTab("研究");
+            NewBaseTab("研究", "sys_lab");
             AddBaseRow(0, () => $"地心结晶 {sim.Crystals}   " + (sim.ActiveResearch != null
                     ? $"研究中：{sim.ActiveResearch.Name}，还要 {FormatDuration(sim.State.researchLeft)}" : "没有进行中的研究"),
                 () => "用结晶加速", () => sim.RushResearch(), () => sim.CanRushResearch);
@@ -191,7 +205,7 @@ namespace DeepDrill.Game
 
         private void BuildExpeditionTab()
         {
-            NewBaseTab("探险");
+            NewBaseTab("探险", "sys_expedition");
             AddBaseRow(0, () => $"探险员 {sim.State.explorers}，空闲 {sim.ExplorersIdle}。远古遗迹的宝箱里可能救出探险员");
             for (int i = 0; i < GameData.Expeditions.Count; i++)
             {
@@ -210,7 +224,7 @@ namespace DeepDrill.Game
 
         private void BuildChallengeTab()
         {
-            NewBaseTab("挑战");
+            NewBaseTab("挑战", "sys_challenge");
             AddBaseRow(0, () => sim.CurrentChallenge != null ? $"挑战中：{sim.CurrentChallenge.Name}，目标 {GameData.FormatDepth(sim.CurrentChallenge.TargetRow)}"
                     : sim.ChallengesUnlocked ? "进入挑战会放弃本局，不给碎片" : $"到达{GameData.Layers[Balance.ChallengeLayer].Name}后解锁",
                 () => "放弃", () => sim.AbandonChallenge(), () => sim.CurrentChallenge != null);
@@ -226,7 +240,7 @@ namespace DeepDrill.Game
 
         private void BuildStarTab()
         {
-            NewBaseTab("星图");
+            NewBaseTab("星图", "sys_constellation");
             AddBaseRow(0, () => $"当前行星：{sim.Planet.Name}。{sim.Planet.Desc}");
             AddBaseRow(1, () => sim.CanWarp ? $"跃迁得 {sim.StarPointsOnWarp} 星点，碎片和本星进度清零" : "挖到地心后可以跃迁",
                 () => warpArmed > 0 ? "再点确认" : "星系跃迁", OnWarpClicked, () => sim.CanWarp);

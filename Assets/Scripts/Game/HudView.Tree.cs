@@ -29,6 +29,7 @@ namespace DeepDrill.Game
         private const int KeySize = 17;
         private const int SmallSize = 13;
         private const int KeyRing = 10;
+        private const int SkillIconSize = 7;
 
         private sealed class BranchStyle
         {
@@ -219,7 +220,7 @@ namespace DeepDrill.Game
             tooltip = tooltipFrame.rectTransform;
             var inner = Ui.Panel(tooltip, "Inner", 1, 1, 130, 46, new Color32(0x14, 0x10, 0x20, 245));
             inner.raycastTarget = false;
-            tooltipIcon = Ui.Icon(inner.transform, art.Get("ticon_drill"), 4, 4, 10);
+            tooltipIcon = Ui.Icon(inner.transform, art.Get("tab_drill"), 5, 4, SkillIconSize);
             tooltipName = Ui.Label(inner.transform, Font, "", 18, 2, 110, 10, 8, TextAnchor.MiddleLeft);
             tooltipName.fontStyle = FontStyle.Bold;
             tooltipDesc = Ui.Label(inner.transform, Font, "", 4, 14, 124, 9, 6, TextAnchor.MiddleLeft);
@@ -235,6 +236,9 @@ namespace DeepDrill.Game
             rt.anchoredPosition = at;
             rt.sizeDelta = new Vector2(w, h);
         }
+
+        private static string SkillIcon(SkillDef skill) =>
+            skill.Id == GameSim.RootSkill ? "tab_drill" : "sicon_" + skill.Effect;
 
         private static Vector2 NodePosition(SkillDef s) => new Vector2((float)s.X * TreeUnit, (float)s.Y * TreeUnit);
 
@@ -310,8 +314,7 @@ namespace DeepDrill.Game
             node.Charge.color = style.Mid;
             node.Charge.gameObject.SetActive(false);
             node.Frame = Layer(hit.transform, $"node_frame_{size}", size);
-            string icon = root ? "tab_drill" : "ticon_" + skill.Branch;
-            node.Icon = Layer(hit.transform, icon, root ? 16 : 5);
+            node.Icon = Layer(hit.transform, SkillIcon(skill), root ? 16 : SkillIconSize);
 
             int shown = Mathf.Min(LevelDots, skill.MaxLevel);
             node.Dots = new Image[shown];
@@ -394,7 +397,7 @@ namespace DeepDrill.Game
             bool maxed = level >= skill.MaxLevel;
             tooltip.gameObject.SetActive(true);
             tooltipFrame.color = node.Style.Mid;
-            tooltipIcon.sprite = art.Get(skill.Id == GameSim.RootSkill ? "tab_drill" : "ticon_" + skill.Branch);
+            tooltipIcon.sprite = art.Get(SkillIcon(skill));
             tooltipIcon.color = node.Style.Bright;
             tooltipName.text = $"{skill.Name}  Lv{level}/{skill.MaxLevel}";
             tooltipName.color = node.Style.Bright;

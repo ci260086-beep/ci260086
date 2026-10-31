@@ -30,7 +30,8 @@ namespace DeepDrill.Game
         private const float ToastFadeSeconds = 0.6f;
         private const int BossBarWidth = 100;
         private const float RebirthConfirmSeconds = 4f;
-        private const int GalleryColumns = 22;
+        private const int GalleryColumns = 18;
+        private const int GalleryCell = 16;
         private const int ComboFlashStep = 10;
         private const float TextSeconds = 0.1f;
         private const float MaxDarkness = 0.4f;
@@ -57,7 +58,6 @@ namespace DeepDrill.Game
         private static readonly Color BuyColor = new Color32(0x4a, 0x7a, 0x2a, 0xff);
         private static readonly Color SoftText = new Color32(0xc4, 0x9a, 0x6c, 0xff);
         private static readonly Color DimText = new Color32(0x8c, 0x5f, 0x3f, 0xff);
-        private static readonly Color SilhouetteColor = new Color(0, 0, 0, 1);
         private static readonly Color NotOwned = new Color(0.25f, 0.25f, 0.28f, 1f);
         private static readonly Color[] ComboColors =
         {
@@ -110,6 +110,10 @@ namespace DeepDrill.Game
         private readonly List<Image> speedLines = new List<Image>();
         private readonly List<Image> achievementIcons = new List<Image>();
         private readonly List<Image> rareIcons = new List<Image>();
+        private readonly List<Sprite> achievementArt = new List<Sprite>();
+        private readonly List<Sprite> achievementShadows = new List<Sprite>();
+        private readonly List<Sprite> rareArt = new List<Sprite>();
+        private readonly List<Sprite> rareShadows = new List<Sprite>();
         private readonly List<Text> rareCounts = new List<Text>();
         private readonly List<int> sortedDrills = new List<int>();
 
@@ -259,6 +263,7 @@ namespace DeepDrill.Game
             bool fullScreen = index == PageTree || index == PageGallery || index == PageBase;
             sidePanel.SetActive(!fullScreen);
             FxLayer.gameObject.SetActive(!fullScreen); // digging carries on, but its numbers stay off these pages
+            foreach (var overlay in new Graphic[] { toastLabel, bannerTop, bannerBottom, bannerLabel }) overlay.gameObject.SetActive(!fullScreen);
             panelTitle.text = pageTitles[index];
             footerLabel.text = "";
         }
@@ -608,20 +613,24 @@ namespace DeepDrill.Game
             for (int i = 0; i < GameData.Achievements.Count; i++)
             {
                 var a = GameData.Achievements[i];
-                var icon = GalleryCellAt(collection, i, 16, art.Get("badge"),
+                var icon = GalleryCellAt(collection, i, 16, art.Get("ach_" + a.Id + "_sil"),
                     () => galleryInfo.text = $"{a.Name}  条件：{a.Cond}  奖励：{a.Reward}");
                 achievementIcons.Add(icon);
+                achievementArt.Add(art.Get("ach_" + a.Id));
+                achievementShadows.Add(icon.sprite);
             }
 
-            int rareTop = 18 + (GameData.Achievements.Count + GalleryColumns - 1) / GalleryColumns * 14;
+            int rareTop = 18 + (GameData.Achievements.Count + GalleryColumns - 1) / GalleryColumns * (GalleryCell + 1);
             Ui.Label(collection, Font, "稀有物品", 6, rareTop, 100, 10, 7, TextAnchor.MiddleLeft).color = SoftText;
             for (int i = 0; i < GameData.Rares.Count; i++)
             {
                 var r = GameData.Rares[i];
                 string file = "rare_" + r.Id.Substring("rare_".Length);
-                var icon = GalleryCellAt(collection, i, rareTop + 10, art.Get(file), () => DescribeRare(r));
+                var icon = GalleryCellAt(collection, i, rareTop + 10, art.Get(file + "_sil"), () => DescribeRare(r));
                 rareIcons.Add(icon);
-                var count = Ui.Label(icon.transform.parent, Font, "", 0, 9, 13, 5, 4, TextAnchor.MiddleRight);
+                rareArt.Add(art.Get(file));
+                rareShadows.Add(icon.sprite);
+                var count = Ui.Label(icon.transform.parent, Font, "", 0, GalleryCell - 5, GalleryCell, 5, 4, TextAnchor.MiddleRight);
                 rareCounts.Add(count);
             }
 
@@ -635,11 +644,10 @@ namespace DeepDrill.Game
 
         private Image GalleryCellAt(Transform parent, int index, int top, Sprite sprite, Action hover)
         {
-            const int size = 13;
-            float x = 6 + (index % GalleryColumns) * (size + 1);
-            float y = top + (index / GalleryColumns) * (size + 1);
-            var box = Ui.Panel(parent, "cell", x, y, size, size, RailColor);
-            var icon = Ui.Icon(box.transform, sprite, 0, 0, size);
+            float x = 6 + (index % GalleryColumns) * (GalleryCell + 1);
+            float y = top + (index / GalleryColumns) * (GalleryCell + 1);
+            var box = Ui.Panel(parent, "cell", x, y, GalleryCell, GalleryCell, RailColor);
+            var icon = Ui.Icon(box.transform, sprite, 0, 0, GalleryCell);
             box.gameObject.AddComponent<HoverRelay>().Entered = hover;
             return icon;
         }
@@ -871,11 +879,11 @@ namespace DeepDrill.Game
             {
                 int count = s.RareCountOf(GameData.Rares[i].Id);
                 if (count > 0) rares++;
-                rareIcons[i].color = count > 0 ? Color.white : SilhouetteColor;
+                rareIcons[i].sprite = count > 0 ? rareArt[i] : rareShadows[i];
                 rareCounts[i].text = count > 1 ? "x" + count : "";
             }
             for (int i = 0; i < achievementIcons.Count; i++)
-                achievementIcons[i].color = s.achievements.Contains(GameData.Achievements[i].Id) ? Color.white : SilhouetteColor;
+                achievementIcons[i].sprite = s.achievements.Contains(GameData.Achievements[i].Id) ? achievementArt[i] : achievementShadows[i];
             galleryCount.text = $"成就 {s.achievements.Count}/{GameData.Achievements.Count}   稀有物品 {rares}/{GameData.Rares.Count}";
             UpdateGalleryTabs();
         }

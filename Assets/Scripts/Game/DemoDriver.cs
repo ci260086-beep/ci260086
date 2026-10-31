@@ -18,6 +18,7 @@ namespace DeepDrill.Game
         private const int MergeShotTier = 6;
         private const float LayerSeconds = 2.5f;
         private const float BossShotSeconds = 0.6f;
+        private const int BaseTabs = 7;
         private const int FullSwarm = 1000;
         private const float MeasureSeconds = 5f;
         private const int SlowFrames = 4;
@@ -125,9 +126,17 @@ namespace DeepDrill.Game
 
             sim.State.AddRare("rare_1_1");
             sim.State.AddRare("rare_2_2");
+            sim.State.AddRare("rare_5_2");
+            sim.State.AddRare("rare_11_1");
             root.Hud.ShowGalleryPage();
             yield return new WaitForSeconds(0.3f);
             yield return Shot("gallery");
+            for (int tab = 0; tab < BaseTabs; tab++)
+            {
+                root.Hud.ShowBasePage(tab);
+                yield return new WaitForSeconds(0.2f);
+                yield return Shot($"base_{tab}");
+            }
             root.Hud.ShowHangarPage();
             yield return ShootBoss(0);
 

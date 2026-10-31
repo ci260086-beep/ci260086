@@ -99,7 +99,7 @@ namespace DeepDrill.Core
                 int x = cx + dx, y = cy + dy;
                 if (y < 0 || x < 0 || x >= PixelWorld.Width) continue;
                 byte mat = world.Get(x, y);
-                if (mat == Mat.Air) continue;
+                if (mat == Mat.Air || mat == Mat.Wall) continue;
 
                 if (mat == Mat.Boss)
                 {
@@ -166,7 +166,7 @@ namespace DeepDrill.Core
                     int px = cx + dx, py = y + dy;
                     if (py < 0 || px < 0 || px >= PixelWorld.Width) continue;
                     byte mat = world.Get(px, py);
-                    if (mat == Mat.Air || mat == Mat.Boss) continue;
+                    if (mat == Mat.Air || mat == Mat.Boss || mat == Mat.Wall) continue;
                     double hp = world.HpAt(px, py);
                     if (hp > overflow) { world.SetHp(px, py, (float)(hp - overflow)); return; }
                     overflow -= hp;
@@ -365,8 +365,10 @@ namespace DeepDrill.Core
         /// <summary>Sets off a charge at a tile; for the demo driver.</summary>
         public void Detonate(int row, int col)
         {
+            blastBudget = int.MaxValue;
             Explode(row, col, BlastRadius);
             RunBlasts();
+            blastBudget = Balance.MaxBlastPixelsPerTick;
         }
 
         /// <summary>Moves the lead drill to stand on the given row, clearing room for it.</summary>
@@ -531,13 +533,14 @@ namespace DeepDrill.Core
         {
             if (insideBlast) return;
             insideBlast = true;
-            while (pendingBlasts.Count > 0)
+            while (pendingBlasts.Count > 0 && blastBudget > 0)
             {
                 var (row, col) = pendingBlasts.Dequeue();
+                blastBudget -= ShapeFor(BlastRadius * Tile + Tile / 2).Length;
                 Explode(row, col, BlastRadius);
             }
             insideBlast = false;
-            blastsThisChain = 0;
+            if (pendingBlasts.Count == 0) blastsThisChain = 0; // what is left of a chain goes off next tick
         }
 
         private void Explode(int row, int col, int radius)
@@ -550,7 +553,7 @@ namespace DeepDrill.Core
                 int x = cx + dx, y = cy + dy;
                 if (y < 0 || x < 0 || x >= PixelWorld.Width) continue;
                 byte mat = world.Get(x, y);
-                if (mat == Mat.Air || mat == Mat.Boss) continue;
+                if (mat == Mat.Air || mat == Mat.Boss || mat == Mat.Wall) continue;
                 double hp = world.HpAt(x, y);
                 if (hp > budget)
                 {

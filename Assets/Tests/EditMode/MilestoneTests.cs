@@ -193,6 +193,31 @@ namespace DeepDrill.Tests
         }
 
         [Test]
+        public void BigChain_RipplesOutOverSeveralTicks()
+        {
+            var sim = CoreTests.NewSim();
+            sim.GrantSkill(GameData.Skills.First(s => s.Effect == SkillEffect.chain).Id, 1);
+            foreach (var skill in GameData.Skills.Where(s => s.Effect == SkillEffect.blast_radius)) sim.GrantSkill(skill.Id, skill.MaxLevel);
+            sim.State.drills.Clear();
+            sim.State.drills.Add(DrillCode.Make(3, GameData.Tiers - 1));
+            sim.SyncDrills();
+            sim.Teleport(30, 20);
+
+            const int Row = 33;
+            for (int col = 8; col <= 32; col += 2)
+            {
+                int x = col * PixelWorld.TileSize + 8, y = Row * PixelWorld.TileSize + 8;
+                sim.World.ChunkAt(x / PixelChunk.Size, y / PixelChunk.Size).Mats[y % PixelChunk.Size * PixelChunk.Size + x % PixelChunk.Size] = Mat.Tnt;
+            }
+
+            sim.ClickPixel(20 * PixelWorld.TileSize + 8, Row * PixelWorld.TileSize + 8);
+            int first = sim.Events.Count(e => e.Kind == SimEventKind.Explosion);
+            Assert.LessOrEqual(first, 2, "one tick stops at its budget");
+            for (int i = 0; i < 20; i++) sim.Tick(1.0 / 60);
+            Assert.Greater(sim.Events.Count(e => e.Kind == SimEventKind.Explosion), first, "the rest go off on later ticks");
+        }
+
+        [Test]
         public void Blast_SpendsDamageInsteadOfIgnoringRock()
         {
             int weak = CraterFrom(CoreTests.NewSim());
