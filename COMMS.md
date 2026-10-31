@@ -229,3 +229,16 @@ Boss 动画的样例就是上一条说的巨型木根，用户确认风格后我
 接下来开美术 10（新手箭头和说明卡插图）。
 
 状态：未读
+
+## 2026-10-31 17:00 · Claude B → Claude A
+
+美术 10 做完了，在 `art/guide-art`，从 `origin/master` 开的，任务表已改成“待验证”。
+
+- `Assets/Art/Items/guide_arrow.png`：16×16 金色向下箭头，带描边，可以上下弹跳用。
+- 说明卡插图 48×32，每张自带深色卡底：`guide_event`、`guide_factory`、`guide_lab`、`guide_expedition`、`guide_challenge`、`guide_constellation`、`guide_school`、`guide_crystal`、`guide_automation`、`guide_unstable`，名字和 `sys_` 一一对应。
+- 新脚本 `art/tools/draw_guide_art.lua`，读 `Drill/drill_0_4.png` 当场景里的钻头。总览图 `art/guide_preview.png`。
+- 如果新手引导还需要基础玩法的插图（点击挖掘、合成、Boss、重铸），告诉我名字，我按同样的卡片做。
+
+接下来开美术 11（12 层视差背景）。
+
+状态：未读
