@@ -16,6 +16,7 @@ namespace DeepDrill.Game
         private const int SwarmSize = 200;
         private const int MergeShotTier = 6;
         private const float LayerSeconds = 2.5f;
+        private const float BossShotSeconds = 0.6f;
 
         private GameRoot root;
         private string folder;
@@ -109,6 +110,7 @@ namespace DeepDrill.Game
             yield return new WaitForSeconds(0.3f);
             yield return Shot("gallery");
             root.Hud.ShowHangarPage();
+            yield return ShootBoss(0);
 
             for (int s = 1; s < GameData.Layers.Count; s++)
             {
@@ -126,15 +128,9 @@ namespace DeepDrill.Game
                 }
                 yield return new WaitForSeconds(LayerSeconds);
                 yield return Shot($"layer_{s + 1:00}");
+                yield return ShootBoss(s);
             }
 
-            sim.State.bossesDefeated = 2;
-            sim.Teleport(GameData.Layers[2].RowEnd - 1, Balance.StartColumn);
-            root.SnapCamera();
-            float wait = Time.time + 8f;
-            while (!sim.BossActive && Time.time < wait) yield return null;
-            yield return new WaitForSeconds(1f);
-            yield return Shot("boss");
 
             VerifySaveRoundTrip();
 #if UNITY_EDITOR
@@ -160,6 +156,17 @@ namespace DeepDrill.Game
             Debug.Log($"[demo] swarm units={root.Sim.Units.Count} owned={root.Sim.State.drills.Count} " +
                 $"depth={root.Sim.State.depth} fps={frames / 3f:0} worstFrameMs={worst * 1000:0} " +
                 $"worstTickMs={root.MaxTickMs:0.0} worstPaintMs={root.MaxDrawMs:0.0} gen0={System.GC.CollectionCount(0) - gcBefore}");
+        }
+
+        // Stops just above a layer's guardian; only works going deeper, as the bodies above are gone.
+        private IEnumerator ShootBoss(int layer)
+        {
+            var sim = root.Sim;
+            sim.State.bossesDefeated = layer;
+            sim.Teleport(GameData.Layers[layer].RowEnd - 1, Balance.StartColumn);
+            root.SnapCamera();
+            yield return new WaitForSeconds(BossShotSeconds);
+            yield return Shot($"boss_{layer + 1:00}");
         }
 
         private IEnumerator Shot(string name)
