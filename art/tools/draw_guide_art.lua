@@ -287,6 +287,73 @@ local SCENES = {
       g:line(s[1], s[2] - 2, s[1], s[2] + 2, hex("ff9a5a")); g:line(s[1] + 2, s[2] - 1, s[1] + 2, s[2] + 1, hex("ff9a5a"))
     end
   end },
+
+  -- 点击挖掘: a pointer taps a cracked block and chips fly off
+  { "tap", function(g)
+    ground(g, 14, true)
+    for y = 14, 30 do for x = 18, 29 do g:set(x, y, ((x + y) % 5 == 0) and D5 or hex("8c5f3f")) end end
+    g:line(23, 14, 21, 19, INK); g:line(21, 19, 24, 23, INK); g:line(24, 23, 22, 28, INK); g:line(21, 19, 18, 21, INK)
+    for _, p in ipairs({ { 15, 9 }, { 31, 8 }, { 13, 13 }, { 33, 12 } }) do g:rect(p[1], p[2], p[1] + 1, p[2] + 1, D5) end
+    g:pattern(25, 2, {
+      "#.......",
+      "##......",
+      "#w#.....",
+      "#ww#....",
+      "#www#...",
+      "#wwww#..",
+      "#ww###..",
+      "#w##w#..",
+      "##..#w#.",
+      ".....##.",
+    }, { ["#"] = INK, w = WHITE })
+    for _, d in ipairs({ { -3, 0 }, { 3, -1 }, { 0, -3 }, { -2, -3 }, { 2, 2 } }) do g:set(25 + d[1], 3 + d[2], GOLD_HI) end
+  end },
+
+  -- 合成: two drills of one material fuse into a drill of the next
+  { "merge", function(g)
+    local dimg = Image { fromFile = dir .. "/Drill/drill_0_2.png" }
+    local function small(x, y)
+      for dy = 0, 11 do for dx = 0, 7 do
+        local c = dimg:getPixel(dx, dy)
+        if pc.rgbaA(c) > 0 then g:set(x + dx, y + dy, c) end
+      end end
+    end
+    small(4, 4); small(4, 17)
+    g:line(14, 10, 19, 15, GOLD_HI); g:line(14, 23, 19, 18, GOLD_HI)
+    g:pattern(20, 14, { "#..", "##.", "###", "##.", "#.." }, { ["#"] = GOLD_HI })
+    for y = 3, 29 do for x = 25, 43 do
+      if ((x - 34) / 9) ^ 2 + ((y - 16) / 13) ^ 2 <= 1 and (x + y) % 2 == 0 then g:set(x, y, hex("3a2e54")) end
+    end end
+    drill(g, 30, 10)
+    for _, p in ipairs({ { 28, 7 }, { 40, 9 }, { 27, 22 }, { 41, 21 }, { 34, 5 } }) do g:set(p[1], p[2], WHITE) end
+  end },
+
+  -- Boss: the drill stands on a guardian's wall, a red health bar draining above
+  { "boss", function(g)
+    local wall, wallHi = hex("3a2418"), hex("5a3a24")
+    for y = 18, 30 do for x = 1, 46 do g:set(x, y, ((x * 3 + y * 7) % 6 == 0) and wallHi or wall) end end
+    g:ellipse(24, 24, 10, 6, hex("8c5f3f"))
+    g:rect(18, 22, 20, 23, hex("ffb43a")); g:rect(28, 22, 30, 23, hex("ffb43a"))
+    for x = 17, 31, 3 do g:rect(x, 27, x + 1, 28, hex("f0e0c0")) end
+    g:rect(16, 26, 32, 26, INK)
+    drill(g, 20, 6)
+    g:rect(4, 2, 43, 4, INK); g:rect(5, 3, 30, 3, RED); g:rect(31, 3, 42, 3, hex("4a1a1a"))
+  end },
+
+  -- 地核重铸: the core sends shards back up to the surface and the run starts again
+  { "rebirth", function(g)
+    ball(g, 24, 18, 9, 9, hex("a82a10"), hex("f07a20"), hex("ffe27a"))
+    g:ellipse(24, 18, 3, 3, WHITE)
+    for i = 0, 40 do
+      local t = i / 40 * 1.7 * math.pi + 0.6
+      g:set(24 + math.cos(t) * 13, 17 + math.sin(t) * 12, GOLD_HI)
+    end
+    g:pattern(33, 3, { "###", ".##", "#.#" }, { ["#"] = GOLD_HI })
+    local shard = hex("c8a0ff")
+    for _, p in ipairs({ { 8, 6 }, { 40, 24 }, { 6, 22 }, { 42, 10 } }) do
+      g:set(p[1], p[2] - 1, WHITE); g:set(p[1], p[2], shard); g:set(p[1] - 1, p[2], shard); g:set(p[1] + 1, p[2], shard); g:set(p[1], p[2] + 1, shard)
+    end
+  end },
 }
 
 local made = {}
