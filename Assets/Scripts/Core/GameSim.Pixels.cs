@@ -370,7 +370,7 @@ namespace DeepDrill.Core
             blastBudget = int.MaxValue;
             Explode(row, col, BlastRadius);
             RunBlasts();
-            blastBudget = Balance.MaxBlastPixelsPerTick;
+            blastBudget = 0;
         }
 
         /// <summary>Moves the lead drill to stand on the given row, clearing room for it.</summary>

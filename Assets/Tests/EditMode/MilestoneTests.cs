@@ -210,9 +210,12 @@ namespace DeepDrill.Tests
                 sim.World.ChunkAt(x / PixelChunk.Size, y / PixelChunk.Size).Mats[y % PixelChunk.Size * PixelChunk.Size + x % PixelChunk.Size] = Mat.Tnt;
             }
 
+            sim.Tick(1.0 / 60);
+            sim.Events.Clear();
             sim.ClickPixel(20 * PixelWorld.TileSize + 8, Row * PixelWorld.TileSize + 8);
+            sim.Tick(1.0 / 60);
             int first = sim.Events.Count(e => e.Kind == SimEventKind.Explosion);
-            Assert.LessOrEqual(first, 2, "one tick stops at its budget");
+            Assert.LessOrEqual(first, 3, "one tick stops at its budget");
             for (int i = 0; i < 20; i++) sim.Tick(1.0 / 60);
             Assert.Greater(sim.Events.Count(e => e.Kind == SimEventKind.Explosion), first, "the rest go off on later ticks");
         }

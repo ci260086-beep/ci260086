@@ -47,7 +47,7 @@ namespace DeepDrill.Core
         public const int BaseChainLimit = 2;
         public const int LinkedChainLimit = 24;
         public const int ChainReachRows = 24; // a chain stops here, or one spark runs through the whole planet in a frame
-        public const int MaxBlastPixelsPerTick = 30000; // a late-game chain ripples out over frames instead of stalling one
+        public const int MaxBlastPixelsPerSecond = 1800000; // a late-game chain ripples out over frames instead of stalling one
         public const double BlastSwings = 30;
         public const double BlastFloorTiles = 8; // however weak the drills, a charge still clears a small hole
         public const double BlastDrillSplash = 0.5;

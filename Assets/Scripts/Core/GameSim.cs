@@ -138,7 +138,7 @@ namespace DeepDrill.Core
         private int achievementsTallied = -1;
         private int raresTallied = -1;
         private int blastsThisChain;
-        private int blastBudget = Balance.MaxBlastPixelsPerTick;
+        private int blastBudget;
         private bool insideBlast;
         private double simTime;
         private double heatClock;
@@ -360,7 +360,7 @@ namespace DeepDrill.Core
 
         public void Tick(double dt)
         {
-            blastBudget = Balance.MaxBlastPixelsPerTick;
+            blastBudget = (int)(Balance.MaxBlastPixelsPerSecond * dt); // by time, so any step length blasts at the same rate
             RunBlasts();
             ClickBoost = Math.Max(0, ClickBoost - Balance.ClickBoostDecay * dt);
             AdvanceRunClock(dt);
