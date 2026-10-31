@@ -13,7 +13,9 @@ namespace DeepDrill.Game
         private const float MergeFadeSeconds = 0.3f;
         private const float MergeOvershoot = 1.35f;
         private const float MergeBusySeconds = 0.5f;
-        private const int MergeGlowSize = 96;
+        private const int MergeGlowSize = 64;
+        private const int MergeCardRight = 40; // tucked into a corner, clear of the guardian and the banner
+        private const int MergeCardBottom = 48;
         private const float CellPopSeconds = 0.35f;
         private const float CellPopScale = 0.5f;
 
@@ -28,7 +30,7 @@ namespace DeepDrill.Game
             var go = new GameObject("MergeCard", typeof(RectTransform));
             go.transform.SetParent(stageRoot, false);
             mergeCard = (RectTransform)go.transform;
-            Ui.TopLeft(mergeCard, Stage.DigWidth / 2f, Stage.Height / 2f, 0, 0);
+            Ui.TopLeft(mergeCard, Stage.DigWidth - MergeCardRight, Stage.Height - MergeCardBottom, 0, 0);
 
             mergeGlow = Layer(mergeCard, "node_glow", MergeGlowSize);
             mergeGlow.material = GlowMaterial;

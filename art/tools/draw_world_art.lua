@@ -406,56 +406,389 @@ for layer = 1, 12 do
   end
 end
 
--- 12 guardian faces, 48x32 over the boss wall: eyes, mouth and horns vary, colours follow the layer
+-- 12 guardians, 64x32 over the two-row boss wall. Each has its own silhouette; the body uses the
+-- layer's ramp (the wall itself is ramp 1-2, so bodies sit at 3-6) plus a few accents of its own.
+local function ellipse(g, cx, cy, rx, ry, c)
+  for y = math.floor(cy - ry), math.ceil(cy + ry) do
+    for x = math.floor(cx - rx), math.ceil(cx + rx) do
+      if ((x - cx) / rx) ^ 2 + ((y - cy) / ry) ^ 2 <= 1 then g:set(x, y, c) end
+    end
+  end
+end
+
+local function line(g, x0, y0, x1, y1, c, thick)
+  local n = math.max(math.abs(x1 - x0), math.abs(y1 - y0))
+  for i = 0, n do
+    local t = n == 0 and 0 or i / n
+    local x, y = math.floor(x0 + (x1 - x0) * t + 0.5), math.floor(y0 + (y1 - y0) * t + 0.5)
+    g:set(x, y, c)
+    if thick then g:set(x + 1, y, c); g:set(x, y + 1, c) end
+  end
+end
+
+local function tri(g, ax, ay, bx, by, cx, cy, c)
+  local function side(px, py, qx, qy, x, y) return (qx - px) * (y - py) - (qy - py) * (x - px) end
+  for y = math.min(ay, by, cy), math.max(ay, by, cy) do
+    for x = math.min(ax, bx, cx), math.max(ax, bx, cx) do
+      local d1, d2, d3 = side(ax, ay, bx, by, x, y), side(bx, by, cx, cy, x, y), side(cx, cy, ax, ay, x, y)
+      if not ((d1 < 0 or d2 < 0 or d3 < 0) and (d1 > 0 or d2 > 0 or d3 > 0)) then g:set(x, y, c) end
+    end
+  end
+end
+
+-- copies the left half onto the right, so a face is drawn once
+local function mirror(g)
+  for y = 0, g.h - 1 do
+    for x = 0, g.w // 2 - 1 do g.px[y * g.w + g.w - 1 - x] = g.px[y * g.w + x] end
+  end
+end
+
+-- top edges of a colour catch the light, bottom edges fall into shade
+local function rim(g, base, hi, lo)
+  local paint = {}
+  for y = 0, g.h - 1 do
+    for x = 0, g.w - 1 do
+      if g:get(x, y) == base then
+        if y == 0 or not g:get(x, y - 1) then paint[#paint + 1] = { x, y, hi }
+        elseif y == g.h - 1 or not g:get(x, y + 1) then paint[#paint + 1] = { x, y, lo } end
+      end
+    end
+  end
+  for _, p in ipairs(paint) do g:set(p[1], p[2], p[3]) end
+end
+
+-- recolours pixels of one colour where a pattern says so: grain, speckle, stripes
+local function texture(g, base, c, test)
+  for y = 0, g.h - 1 do
+    for x = 0, g.w - 1 do
+      if g:get(x, y) == base and test(x, y) then g:set(x, y, c) end
+    end
+  end
+end
+
+local function eye(g, x, y, w, h, glow)
+  g:rect(x, y, x + w - 1, y + h - 1, glow)
+  g:set(x, y, hex("ffffff"))
+end
+
+local BOSS_INK = hex("140c12")
+local BOSS_FACES = {}
+local WHITE = hex("ffffff")
+
+local GUARDIANS = {
+  -- 巨型木根: a gnarled stump with knot-hole eyes, roots clawing out to both sides
+  function(g, p)
+    for i = 0, 1 do
+      line(g, 16, 18 + i * 5, 3, 26 + i * 4, p[3], true)
+      line(g, 16, 12 + i * 3, 4, 5 + i * 6, p[3], true)
+    end
+    line(g, 3, 26, 0, 22, p[3]); line(g, 4, 5, 1, 8, p[3])
+    ellipse(g, 32, 17, 17, 14, p[4])
+    texture(g, p[4], p[3], function(x, y) return (x + (y // 5) % 2) % 4 == 0 end)
+    ellipse(g, 24, 14, 4, 3, p[1])
+    eye(g, 23, 13, 3, 2, hex("ffb43a"))
+    tri(g, 21, 23, 32, 21, 32, 28, p[1])
+    for x = 22, 31, 3 do tri(g, x, 22, x + 2, 22, x + 1, 24, p[6]) end
+    mirror(g)
+    -- one broken branch and a few leaves keep it from looking carved
+    line(g, 40, 4, 46, 0, p[3], true)
+    ellipse(g, 30, 2, 3, 2, hex("76a83a")); g:set(29, 1, hex("a8d45a")); g:set(30, 1, hex("a8d45a"))
+    ellipse(g, 47, 1, 2, 1, hex("76a83a"))
+    rim(g, p[4], p[5], p[2])
+  end,
+
+  -- 岩甲虫: a domed beetle shell split down the middle, mandibles up towards the drill
+  function(g, p)
+    for i = 0, 2 do
+      local y = 14 + i * 6
+      line(g, 16, y, 6, y - 3 + i * 2, p[3], true)
+      line(g, 6, y - 3 + i * 2, 1, y + 2 + i, p[3])
+    end
+    ellipse(g, 32, 21, 20, 10, p[4])
+    texture(g, p[4], p[3], function(_, y) return y % 6 == 0 end)
+    ellipse(g, 24, 15, 4, 2, p[6])
+    ellipse(g, 32, 8, 9, 5, p[3])
+    tri(g, 24, 6, 27, 4, 20, 0, p[6])
+    tri(g, 24, 6, 20, 0, 22, 6, p[5])
+    eye(g, 27, 7, 2, 2, hex("e84a2e"))
+    mirror(g)
+    g:rect(31, 12, 32, 31, p[2])
+    rim(g, p[4], p[5], p[2])
+    rim(g, p[3], p[4], p[2])
+  end,
+
+  -- 水晶巨像: a shield-shaped stone face crowned with cyan crystal spires
+  function(g, p)
+    local cdark, cmid, clight = hex("2a8ab8"), hex("5ac8e0"), hex("c8fbff")
+    local function crystal(x0, x1, top, base)
+      local mid = (x0 + x1) // 2
+      tri(g, x0, base, x1, base, mid, top, cmid)
+      tri(g, x0, base, mid, base, mid, top, clight)
+      line(g, mid, top, mid, base, cdark)
+    end
+    crystal(4, 10, 14, 30)
+    crystal(11, 18, 6, 26)
+    g:rect(19, 9, 32, 20, p[3])
+    tri(g, 19, 20, 32, 20, 32, 31, p[3])
+    crystal(22, 28, 0, 10)
+    crystal(29, 34, 0, 9)
+    line(g, 20, 21, 27, 28, p[4])
+    line(g, 21, 11, 26, 13, p[4])
+    g:rect(23, 15, 28, 16, p[1])
+    eye(g, 24, 15, 4, 1, clight)
+    mirror(g)
+    line(g, 27, 25, 31, 24, p[1]); line(g, 31, 24, 34, 26, p[1]); line(g, 34, 26, 37, 24, p[1])
+    rim(g, p[3], p[5], p[2])
+  end,
+
+  -- 盲眼巨鱼: a wide gaping head with milky blind eyes, needle teeth and trailing barbels
+  function(g, p)
+    tri(g, 9, 9, 0, 1, 3, 18, p[3])
+    tri(g, 9, 12, 2, 18, 1, 24, p[3])
+    ellipse(g, 32, 15, 24, 14, p[4])
+    texture(g, p[4], p[5], function(_, y) return y >= 20 end)
+    for x = 22, 31, 4 do tri(g, x, 2, x + 3, 2, x + 2, -1, p[3]) end
+    ellipse(g, 18, 11, 3.5, 3, hex("b0c0cc"))
+    ellipse(g, 18, 11, 2, 2, hex("e4eef2"))
+    ellipse(g, 32, 23, 16, 6, hex("0a0a1a"))
+    for x = 18, 31, 3 do
+      tri(g, x, 18, x + 1, 18, x, 21, p[6])
+      tri(g, x + 1, 29, x + 2, 29, x + 1, 26, p[6])
+    end
+    line(g, 16, 23, 7, 28, p[5]); line(g, 7, 28, 4, 31, p[5])
+    g:set(12, 6, hex("70e8f8")); g:set(9, 14, hex("70e8f8")); g:set(14, 4, hex("70e8f8"))
+    mirror(g)
+    rim(g, p[4], p[6], p[2])
+  end,
+
+  -- 石像守卫: a carved stone mask between two pillars, a gold rune burning on its brow
+  function(g, p)
+    local gold, goldDark = hex("ffd24a"), hex("b8862a")
+    g:rect(7, 4, 13, 31, p[3])
+    g:rect(6, 4, 14, 5, p[5]); g:rect(7, 11, 13, 11, gold); g:rect(7, 24, 13, 24, gold)
+    g:rect(15, 2, 32, 31, p[4])
+    tri(g, 15, 2, 18, 2, 15, 5, nil)
+    g:rect(16, 3, 32, 3, p[3])
+    g:rect(17, 8, 32, 10, p[5])
+    g:rect(20, 12, 27, 17, p[1])
+    g:rect(22, 14, 25, 15, gold); g:set(22, 14, WHITE)
+    g:rect(30, 12, 32, 20, p[3]); g:rect(30, 12, 30, 20, p[5])
+    g:rect(22, 23, 32, 27, p[1])
+    for x = 23, 32, 3 do g:rect(x, 23, x, 27, p[4]) end
+    mirror(g)
+    -- the rune, and cracks that only run down one side
+    g:set(32, 3, gold); g:set(31, 4, gold); g:set(32, 4, goldDark); g:set(33, 4, gold); g:set(32, 5, gold)
+    g:set(32, 6, goldDark)
+    line(g, 44, 3, 41, 9, p[2]); line(g, 41, 9, 43, 13, p[2])
+    line(g, 18, 26, 21, 31, p[2])
+  end,
+
+  -- 花岗岩魔像: a small sunken head between huge speckled shoulders, fists planted at the sides
+  function(g, p)
+    ellipse(g, 15, 19, 13, 11, p[4])
+    g:rect(0, 22, 9, 31, p[5])
+    for y = 24, 30, 3 do g:rect(1, y, 8, y, p[3]) end
+    g:rect(23, 6, 32, 25, p[4])
+    g:rect(22, 9, 32, 11, p[5])
+    g:rect(26, 13, 29, 15, p[1])
+    eye(g, 27, 14, 2, 1, hex("ff8a2a"))
+    g:rect(28, 20, 32, 20, p[1])
+    line(g, 14, 9, 18, 16, p[2]); line(g, 18, 16, 14, 26, p[2])
+    mirror(g)
+    texture(g, p[4], p[6], function(x, y) return (x * 7 + y * 13) % 11 == 0 end)
+    texture(g, p[4], p[2], function(x, y) return (x * 5 + y * 3) % 13 == 0 end)
+    rim(g, p[4], p[5], p[3])
+  end,
+
+  -- 莫霍守门人: a horned helmet with a T-shaped visor standing in front of a portcullis
+  function(g, p)
+    local iron, ironHi, bone, boneLo = hex("4a4a5a"), hex("8a8a9a"), hex("e8dcc0"), hex("a89878")
+    for x = 9, 32, 5 do g:rect(x, 18, x + 1, 31, iron); g:set(x, 18, ironHi) end
+    g:rect(6, 24, 32, 25, iron); g:rect(6, 24, 32, 24, ironHi)
+    g:rect(6, 29, 32, 30, iron)
+    ellipse(g, 32, 12, 14, 11, p[4])
+    tri(g, 19, 6, 22, 12, 3, 0, bone)
+    tri(g, 19, 6, 3, 0, 8, 1, boneLo)
+    g:rect(18, 21, 32, 23, p[5])
+    g:rect(22, 12, 32, 14, BOSS_INK)
+    g:rect(30, 14, 32, 22, BOSS_INK)
+    eye(g, 24, 13, 3, 1, hex("ff3a2a"))
+    g:set(20, 18, ironHi); g:set(20, 9, ironHi)
+    mirror(g)
+    rim(g, p[4], p[6], p[2])
+    -- magma glowing through the gate behind
+    g:set(14, 27, hex("f07a20")); g:set(15, 27, hex("ffc050")); g:set(48, 21, hex("f07a20"))
+  end,
+
+  -- 熔岩巨蛇: an arrow head rearing over its own coils, magma showing between the scales
+  function(g, p)
+    local magma, hot = hex("f07a20"), hex("ffe27a")
+    for x = 0, 63 do
+      local cy = math.floor(24 + 4 * math.sin(x / 6) + 0.5)
+      g:rect(x, cy - 3, x, cy + 3, p[4])
+      g:set(x, cy + 3, p[5])
+      if x % 5 == 0 then g:rect(x, cy - 2, x, cy + 1, magma) end
+    end
+    g:rect(29, 14, 34, 22, p[4])
+    ellipse(g, 32, 8, 12, 6, p[4])
+    tri(g, 20, 8, 44, 8, 32, 20, p[4])
+    for x = 22, 42, 4 do g:set(x, 2, magma); g:set(x + 1, 1, hot) end
+    texture(g, p[4], p[3], function(x, y) return y < 18 and (x + y) % 4 == 0 end)
+    g:rect(24, 6, 27, 8, hot); g:rect(26, 6, 26, 8, BOSS_INK)
+    g:rect(37, 6, 40, 8, hot); g:rect(37, 6, 37, 8, BOSS_INK)
+    g:set(29, 12, BOSS_INK); g:set(35, 12, BOSS_INK)
+    tri(g, 27, 15, 28, 15, 28, 18, WHITE); tri(g, 36, 15, 37, 15, 36, 18, WHITE)
+    line(g, 32, 19, 32, 24, hex("e84a2e")); g:set(31, 25, hex("e84a2e")); g:set(33, 25, hex("e84a2e"))
+    rim(g, p[4], p[6], p[2])
+  end,
+
+  -- 相变之灵: one spirit caught mid-change, faceted solid on the left, melting liquid on the right
+  function(g, p)
+    ellipse(g, 32, 13, 17, 12, p[5])
+    for x = 15, 49 do
+      local tail = math.floor(26 + 3 * math.sin(x / 2.5) + 0.5)
+      g:rect(x, 20, x, tail, p[5])
+    end
+    for y = 0, g.h - 1 do
+      for x = 0, 31 do
+        if g:get(x, y) == p[5] and (x + y) % 7 < 2 then g:set(x, y, p[6]) end
+        if g:get(x, y) == p[5] and (x - y) % 9 == 0 then g:set(x, y, p[4]) end
+      end
+      for x = 32, 63 do
+        if g:get(x, y) == p[5] then
+          g:set(x, y, (y + math.floor(2 * math.sin(x / 3))) % 5 == 0 and hex("e8ffff", 200) or hex("5ad8c8", 190))
+        end
+      end
+    end
+    for _, x in ipairs({ 38, 44, 50 }) do g:rect(x, 22, x, 29, hex("5ad8c8", 190)); g:set(x, 31, hex("e8ffff")) end
+    ellipse(g, 25, 12, 3, 4, BOSS_INK); g:set(24, 10, WHITE)
+    ellipse(g, 39, 12, 3, 4, BOSS_INK); g:rect(39, 16, 39, 19, BOSS_INK)
+    line(g, 26, 20, 30, 19, BOSS_INK); line(g, 31, 20, 34, 21, BOSS_INK); line(g, 35, 21, 38, 19, BOSS_INK)
+    tri(g, 6, 8, 9, 5, 9, 11, p[6]); tri(g, 4, 20, 6, 18, 6, 22, p[6])
+    ellipse(g, 57, 7, 2, 2, hex("5ad8c8", 190)); ellipse(g, 59, 18, 1, 1, hex("5ad8c8", 190))
+  end,
+
+  -- 地幔巨鲸: a vast head-on whale, pleated throat, twin blowholes spouting magma past the drill
+  function(g, p)
+    local spout, hot = hex("f07a20"), hex("ffc050")
+    tri(g, 10, 24, 20, 28, 0, 31, p[3])
+    ellipse(g, 32, 18, 30, 13, p[4])
+    for y = 22, 31, 2 do
+      for x = 0, 31 do if g:get(x, y) == p[4] then g:set(x, y, p[5]) end end
+    end
+    for x = 4, 31 do
+      local y = math.floor(17 + 3 * ((x - 4) / 27) ^ 2 + 0.5)
+      g:rect(x, y, x, y + 1, BOSS_INK)
+    end
+    ellipse(g, 11, 13, 3, 2.5, p[1])
+    eye(g, 10, 13, 2, 1, hot)
+    for _, b in ipairs({ { 18, 9 }, { 14, 11 }, { 21, 13 } }) do
+      ellipse(g, b[1], b[2], 1.5, 1.5, p[6]); g:set(b[1], b[2], spout)
+    end
+    ellipse(g, 24, 6, 2, 1, BOSS_INK)
+    for i, d in ipairs({ { 0, 4 }, { -1, 3 }, { 1, 3 }, { -2, 1 }, { 0, 2 }, { -3, 0 }, { -1, 0 } }) do
+      g:set(24 + d[1], d[2], i % 2 == 0 and hot or spout)
+    end
+    g:set(24, 1, hex("ffe27a"))
+    mirror(g)
+    rim(g, p[4], p[6], p[2])
+  end,
+
+  -- 磁暴旋涡: a three-armed spiral round a storm eye, held between a north and a south pole
+  function(g, p)
+    ellipse(g, 32, 16, 25, 14, p[2])
+    for arm = 0, 2 do
+      for s = 0, 120 do
+        local t = s / 10
+        local r = 2 + t * 1.9
+        local a = t + arm * 2.094
+        local x, y = math.floor(32 + r * math.cos(a) * 1.6 + 0.5), math.floor(16 + r * math.sin(a) * 0.85 + 0.5)
+        if g:get(x, y) then g:set(x, y, s < 50 and p[6] or p[5]) end
+      end
+    end
+    ellipse(g, 32, 16, 4, 3, hex("ffe27a"))
+    ellipse(g, 32, 16, 2.5, 2, WHITE)
+    g:rect(32, 15, 32, 17, BOSS_INK)
+    local red, blue = hex("e84a2e"), hex("3a8ae8")
+    g:rect(0, 11, 5, 20, red); g:rect(0, 11, 5, 11, hex("ff9a7a")); g:rect(1, 14, 4, 14, WHITE)
+    g:rect(58, 11, 63, 20, blue); g:rect(58, 11, 63, 11, hex("8ac8ff"))
+    g:rect(59, 14, 62, 14, WHITE); g:rect(60, 13, 61, 15, WHITE)
+    local arc = hex("c8f0ff")
+    line(g, 6, 15, 9, 12, arc); line(g, 9, 12, 11, 17, arc); line(g, 11, 17, 14, 14, arc)
+    line(g, 57, 16, 54, 19, arc); line(g, 54, 19, 52, 14, arc); line(g, 52, 14, 49, 18, arc)
+    line(g, 30, 0, 33, 2, arc); line(g, 33, 2, 31, 4, arc)
+  end,
+
+  -- 地核心脏: a white-hot heart with arteries, veins of light running out through the wall
+  function(g, p)
+    local hot, mid, cool = hex("fff0b0"), hex("ffc860"), hex("e8803a")
+    line(g, 15, 17, 6, 21, cool, true); line(g, 6, 21, 0, 19, cool)
+    line(g, 6, 21, 3, 28, cool); line(g, 13, 9, 4, 5, cool); line(g, 4, 5, 1, 7, cool)
+    line(g, 20, 25, 13, 31, cool)
+    ellipse(g, 25, 12, 10, 9, cool)
+    tri(g, 15, 14, 32, 14, 32, 31, cool)
+    g:rect(26, 0, 30, 5, p[3]); g:rect(26, 0, 30, 0, p[5]); g:rect(27, 1, 29, 1, BOSS_INK)
+    mirror(g)
+    for y = 0, g.h - 1 do
+      for x = 0, g.w - 1 do
+        if g:get(x, y) == cool then
+          local d = ((x - 32) / 14) ^ 2 + ((y - 15) / 11) ^ 2
+          if d < 0.15 then g:set(x, y, WHITE) elseif d < 0.4 then g:set(x, y, hot)
+          elseif d < 0.75 then g:set(x, y, mid) end
+        end
+      end
+    end
+    g:rect(32, 10, 32, 20, WHITE); g:rect(27, 15, 37, 15, WHITE)
+    g:set(10, 3, WHITE); g:set(56, 26, WHITE); g:set(52, 4, hot); g:set(8, 27, hot)
+  end,
+}
+
 for layer = 1, 12 do
   local v = LAYERS[layer]
-  local ink, dark, glow, tooth = hex(v[1]), hex(v[2]), hex(v[6]), hex(v[5])
-  local g = canvas(48, 32)
-  local eyes = (layer - 1) % 3 + 1
-  local eyeR = 7 - eyes
-  for e = 1, eyes do
-    local ex = math.floor(48 * e / (eyes + 1))
-    for y = 4, 16 do
-      for x = ex - eyeR - 1, ex + eyeR + 1 do
-        if ((x - ex) / (eyeR + 1)) ^ 2 + ((y - 10) / 5) ^ 2 <= 1 then g:set(x, y, dark) end
-      end
-    end
-    g:rect(ex - 1, 8, ex + 1, 11, glow)
-    g:set(ex, 9, hex("ffffff"))
-  end
-
-  local mouth = (layer - 1) % 4
-  if mouth == 0 then -- jagged
-    for x = 8, 39 do
-      local jag = (x % 6 < 3) and 0 or 2
-      g:rect(x, 21 + jag, x, 27 - jag, ink)
-    end
-    for x = 9, 38, 6 do g:rect(x, 21, x + 1, 23, tooth) end
-  elseif mouth == 1 then -- round maw
-    for y = 18, 30 do
-      for x = 12, 35 do
-        if ((x - 23.5) / 12) ^ 2 + ((y - 24) / 6) ^ 2 <= 1 then g:set(x, y, ink) end
-      end
-    end
-    g:rect(16, 21, 31, 21, tooth)
-  elseif mouth == 2 then -- mandibles
-    for i = 0, 7 do
-      g:rect(10 - i, 20 + i, 16 - i, 21 + i, tooth)
-      g:rect(31 + i, 20 + i, 37 + i, 21 + i, tooth)
-    end
-  else -- grille
-    g:rect(10, 21, 37, 27, ink)
-    for x = 12, 36, 4 do g:rect(x, 21, x, 27, tooth) end
-  end
-
-  if layer % 2 == 0 then -- horns on every second guardian
-    for i = 0, 3 do
-      g:rect(4 + i, 3 - i, 6 + i, 4 - i, tooth)
-      g:rect(41 - i, 3 - i, 43 - i, 4 - i, tooth)
-    end
-  end
-  outline(g, ink)
+  local p = {}
+  for i = 1, 6 do p[i] = hex(v[i]) end
+  local g = canvas(64, 32)
+  GUARDIANS[layer](g, p)
+  outline(g, BOSS_INK)
   save(g, "Layers/boss_face_" .. (layer - 1))
+  BOSS_FACES[layer] = g
+end
+
+-- optional: --script-param preview=<dir> also writes each guardian on its wall as seen in game,
+-- with a drill standing on top, for reviewing the designs outside Unity
+local previewDir = app.params["preview"]
+if previewDir then
+  local drill = Image { fromFile = dir .. "/Drill/drill_0_4.png" }
+  for layer = 1, 12 do
+    local v = LAYERS[layer]
+    local p = {}
+    for i = 1, 6 do p[i] = hex(v[i]) end
+    local g = canvas(112, 64)
+    local wallTop = 24
+    for y = 0, 63 do
+      for x = 0, 111 do
+        local n = (x * 73856093 ~ y * 19349663) % 97
+        if y >= wallTop and y < wallTop + 32 then
+          g:set(x, y, n % 5 == 0 and p[2] or p[1])
+        elseif y < wallTop and x >= 44 and x < 68 then
+          g:set(x, y, hex("1c1620"))
+        else
+          g:set(x, y, n % 14 == 0 and p[5] or n % 7 == 0 and p[2] or p[3])
+        end
+      end
+    end
+    -- the face is centred on the first wall row, as WorldView places it
+    g:blit(BOSS_FACES[layer], 56 - 32, wallTop + 8 - 16)
+    for y = 0, drill.height - 1 do
+      for x = 0, 7 do
+        local c = drill:getPixel(x, y)
+        if app.pixelColor.rgbaA(c) > 0 then g:set(52 + x, wallTop - drill.height + y, c) end
+      end
+    end
+    local img = Image(g.w, g.h, ColorMode.RGB)
+    for k, c in pairs(g.px) do img:drawPixel(k % g.w, k // g.w, c) end
+    img:saveAs(previewDir .. "/boss_preview_" .. (layer - 1) .. ".png")
+  end
 end
 
 -- effects: a soft flash disc, an expanding shock ring and drifting smoke

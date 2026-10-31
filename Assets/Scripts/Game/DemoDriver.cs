@@ -17,6 +17,7 @@ namespace DeepDrill.Game
         private const int SwarmSize = 200;
         private const int MergeShotTier = 6;
         private const float LayerSeconds = 2.5f;
+        private const float BossShotSeconds = 0.6f;
         private const int FullSwarm = 1000;
         private const float MeasureSeconds = 5f;
         private const int SlowFrames = 4;
@@ -128,6 +129,7 @@ namespace DeepDrill.Game
             yield return new WaitForSeconds(0.3f);
             yield return Shot("gallery");
             root.Hud.ShowHangarPage();
+            yield return ShootBoss(0);
 
             for (int s = 1; s < GameData.Layers.Count; s++)
             {
@@ -145,15 +147,9 @@ namespace DeepDrill.Game
                 }
                 yield return new WaitForSeconds(LayerSeconds);
                 yield return Shot($"layer_{s + 1:00}");
+                yield return ShootBoss(s);
             }
 
-            sim.State.bossesDefeated = 2;
-            sim.Teleport(GameData.Layers[2].RowEnd - 1, Balance.StartColumn);
-            root.SnapCamera();
-            float wait = Time.time + 8f;
-            while (!sim.BossActive && Time.time < wait) yield return null;
-            yield return new WaitForSeconds(1f);
-            yield return Shot("boss");
 
             VerifySaveRoundTrip();
 #if UNITY_EDITOR
@@ -175,7 +171,7 @@ namespace DeepDrill.Game
             var parts = new string[SlowFrames];
             float start = Time.realtimeSinceStartup;
             int frames = 0;
-            float worst = 0;
+            float worst = 0, worstLoop = 0;
             yield return null; // the first frame back still carries the screenshot before it
             root.ResetTimers();
             int gcBefore = System.GC.CollectionCount(0);
@@ -184,6 +180,7 @@ namespace DeepDrill.Game
                 frames++;
                 float ms = Time.unscaledDeltaTime * 1000f;
                 worst = Mathf.Max(worst, ms);
+                worstLoop = Mathf.Max(worstLoop, recorders[0].LastValue / 1e6f); // the game's own share of a frame
                 int slot = System.Array.IndexOf(slowest, Mathf.Min(slowest));
                 if (ms > slowest[slot])
                 {
@@ -196,12 +193,23 @@ namespace DeepDrill.Game
                 yield return null;
             }
             Debug.Log($"[demo] swarm units={root.Sim.Units.Count} owned={root.Sim.State.drills.Count} " +
-                $"depth={root.Sim.State.depth} fps={frames / MeasureSeconds:0} worstFrameMs={worst:0} " +
+                $"depth={root.Sim.State.depth} fps={frames / MeasureSeconds:0} worstFrameMs={worst:0} worstPlayerLoopMs={worstLoop:0.0} " +
                 $"worstTickMs={root.MaxTickMs:0.0} worstPaintMs={root.MaxDrawMs:0.0} gen0={System.GC.CollectionCount(0) - gcBefore}");
             foreach (string line in parts)
                 if (line != null) Debug.Log("[demo] slow frame " + line);
             foreach (var recorder in recorders) recorder.Dispose();
             allocated.Dispose();
+        }
+
+        // Stops just above a layer's guardian; only works going deeper, as the bodies above are gone.
+        private IEnumerator ShootBoss(int layer)
+        {
+            var sim = root.Sim;
+            sim.State.bossesDefeated = layer;
+            sim.Teleport(GameData.Layers[layer].RowEnd - 1, Balance.StartColumn);
+            root.SnapCamera();
+            yield return new WaitForSeconds(BossShotSeconds);
+            yield return Shot($"boss_{layer + 1:00}");
         }
 
         private IEnumerator Shot(string name)
