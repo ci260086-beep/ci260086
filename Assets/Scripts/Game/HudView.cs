@@ -127,6 +127,7 @@ namespace DeepDrill.Game
         private Image meterFill;
         private Image bossBar, bossFill, bossArmorFill;
         private Text bossLabel;
+        private Text bannerSubtitle;
         private Button rebirthButton;
         private Text rebirthLabel;
         private bool rebirthHinted;
@@ -263,7 +264,7 @@ namespace DeepDrill.Game
             bool fullScreen = index == PageTree || index == PageGallery || index == PageBase;
             sidePanel.SetActive(!fullScreen);
             FxLayer.gameObject.SetActive(!fullScreen); // digging carries on, but its numbers stay off these pages
-            foreach (var overlay in new Graphic[] { toastLabel, bannerTop, bannerBottom, bannerLabel }) overlay.gameObject.SetActive(!fullScreen);
+            foreach (var overlay in new Graphic[] { toastLabel, bannerTop, bannerBottom, bannerLabel, bannerSubtitle }) overlay.gameObject.SetActive(!fullScreen);
             panelTitle.text = pageTitles[index];
             footerLabel.text = "";
         }
@@ -368,11 +369,14 @@ namespace DeepDrill.Game
             bannerLabel = Floating("", 0, 74, Stage.DigWidth, 26, 18, TextAnchor.MiddleCenter);
             bannerLabel.color = FrenzyColor;
             bannerLabel.fontStyle = FontStyle.Bold;
+            bannerSubtitle = Floating("", 0, 100, Stage.DigWidth, 12, 8, TextAnchor.MiddleCenter);
+            bannerSubtitle.color = CoinColor;
         }
 
-        public void ShowBossBanner(string name)
+        public void ShowBossBanner(string name, string subtitle)
         {
             bannerLabel.text = name;
+            bannerSubtitle.text = subtitle;
             bannerTime = BannerSeconds;
         }
 
@@ -388,7 +392,12 @@ namespace DeepDrill.Game
             var c = bannerLabel.color;
             c.a = t;
             bannerLabel.color = c;
-            if (bannerTime <= 0) bannerLabel.text = "";
+            var sub = bannerSubtitle.color;
+            sub.a = t;
+            bannerSubtitle.color = sub;
+            if (bannerTime > 0) return;
+            bannerLabel.text = "";
+            bannerSubtitle.text = "";
         }
 
         private void BuildFrenzyMeter()

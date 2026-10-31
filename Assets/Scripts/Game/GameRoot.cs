@@ -16,9 +16,11 @@ namespace DeepDrill.Game
         private const int DepthMilestone = 50;
         private const int MaxBitsPerSwing = 4;
         private const int GemProbes = 1;
-        private const float SlowMotionSeconds = 0.5f;
-        private const float SlowMotionRate = 0.25f;
-        private const int LootFountain = 14;
+        private const float SlowMotionSeconds = 1f;
+        private const float SlowMotionRate = 0.2f;
+        private const int LootFountain = 24;
+        private const int LootOreEvery = 3;
+        private const float LootFlashSize = 6f;
         private const int BusySwarm = 50; // past this, only a third of the swings get full effects
         private const int QuietCritDrills = 20; // past this, drill crits would only be noise
         private const double HardLandingSpeed = 14;
@@ -218,7 +220,7 @@ namespace DeepDrill.Game
                     hud.ShowToast($"{sim.CurrentBoss.BossName}！{sim.BossDuration:0} 秒内打穿它", 3f);
                     world.Shake(0.3f, 3f);
                     sound.Play("boss", 0.8f, 0, true);
-                    hud.ShowBossBanner(sim.CurrentBoss.BossName);
+                    hud.ShowBossBanner(sim.CurrentBoss.BossName, $"第 {sim.CurrentBoss.Index + 1} 层守卫 · 招式：{sim.CurrentBossMove.Name}");
                     break;
 
                 case SimEventKind.BossFailed:
@@ -260,15 +262,18 @@ namespace DeepDrill.Game
                     break;
 
                 case SimEventKind.BossDefeated:
-                    hud.ShowToast("打穿了！可以地核重铸", 4f);
+                    hud.ShowToast($"打穿了！+{NumberFormat.Short(e.Amount)} 金币", 4f);
                     fx.Explosion(WorldView.CellCenter(e.Row, e.Col), Balance.BossBreachHalfWidth);
+                    fx.Flash(WorldView.CellCenter(e.Row, e.Col), LootFlashSize);
+                    fx.Sparks(WorldView.CellCenter(e.Row, e.Col), LootFountain);
                     fx.Debris(WorldView.CellCenter(e.Row, e.Col), DirtBits, 60);
                     world.Shake(0.4f, 8f);
                     sound.Play("blast", 0.9f, -0.2f, true);
                     slowMotion = SlowMotionSeconds;
                     Vector2 bossStage = CellStage(e.Row, e.Col);
                     for (int i = 0; i < LootFountain; i++)
-                        fx.FlyIcon(art.Get("icon_coin"), bossStage, hud.CoinTarget, () => hud.Land(0, 0));
+                        fx.FlyIcon(art.Get(i % LootOreEvery == 0 ? "icon_copper" : "icon_coin"), bossStage,
+                            i % LootOreEvery == 0 ? hud.OreTarget : hud.CoinTarget, () => hud.Land(0, 0));
                     break;
 
                 case SimEventKind.SkillBought:

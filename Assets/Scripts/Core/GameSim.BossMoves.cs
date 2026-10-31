@@ -26,6 +26,12 @@ namespace DeepDrill.Core
         /// <summary>Starts the guardian's wind-up now; for the demo driver's screenshot.</summary>
         public void HurryBossMove() => moveClock = 0;
 
+        /// <summary>Ends the fight at once; for the demo driver's screenshot.</summary>
+        public void DefeatBossNow()
+        {
+            if (BossActive) DefeatBoss();
+        }
+
         private void ResetBossMove()
         {
             moveClock = CurrentBossMove?.Every ?? 0;

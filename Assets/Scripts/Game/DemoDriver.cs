@@ -20,6 +20,7 @@ namespace DeepDrill.Game
         private const float BossShotSeconds = 0.6f;
         private const int BaseTabs = 7;
         private const int MoveShotLayer = 7;
+        private const float BossArrivalSeconds = 4f;
         private const int FullSwarm = 1000;
         private const float MeasureSeconds = 5f;
         private const int SlowFrames = 4;
@@ -228,6 +229,13 @@ namespace DeepDrill.Game
             yield return Shot("boss_windup");
             yield return new WaitForSeconds(1f);
             yield return Shot("boss_move");
+
+            float bossWait = Time.time + BossArrivalSeconds;
+            while (!root.Sim.BossActive && Time.time < bossWait) yield return null;
+            Debug.Log($"[demo] defeat active={root.Sim.BossActive} boss={root.Sim.State.bossesDefeated}");
+            root.Sim.DefeatBossNow();
+            yield return new WaitForSeconds(0.25f);
+            yield return Shot("boss_defeat");
         }
 
         private IEnumerator Shot(string name)
