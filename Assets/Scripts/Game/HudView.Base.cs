@@ -169,14 +169,16 @@ namespace DeepDrill.Game
         {
             NewBaseTab("流派", "sys_school");
             AddBaseRow(0, () => !sim.SchoolsUnlocked ? "第一次重铸后解锁，每局选一派，重铸后可以重选"
-                : sim.CurrentSchool != null ? $"本局流派：{sim.CurrentSchool.Name}，下次重铸后可以换" : "本局还没选流派");
+                : sim.CurrentSchool != null ? $"本局流派：{sim.CurrentSchool.Name}" + (sim.SecondSchool != null ? $" + {sim.SecondSchool.Name}" : "，已通关的流派可以当第二流派")
+                : "本局还没选流派");
             for (int i = 0; i < GameData.Schools.Count; i++)
             {
                 int index = i;
                 var school = GameData.Schools[i];
                 AddBaseRow(1 + i * 2, () => $"{school.Name}：{school.Desc}", () => sim.State.school == index ? "本局" : "选择",
                     () => sim.ChooseSchool(index), () => sim.CanChooseSchool(index));
-                AddBaseRow(2 + i * 2, () => $"  本派技能分支价格 -{school.BranchDiscount:0}%；{(sim.SchoolCleared(index) ? "已通关" : "通关奖励")}：{school.Reward.Desc}");
+                AddBaseRow(2 + i * 2, () => $"  本派技能分支价格 -{school.BranchDiscount:0}%；{(sim.SchoolCleared(index) ? "已通关" : "通关奖励")}：{school.Reward.Desc}",
+                    () => sim.State.secondSchool == index ? "搭配中" : "搭配", () => sim.ChooseSecond(index), () => sim.CanChooseSecond(index));
             }
         }
 
@@ -241,9 +243,9 @@ namespace DeepDrill.Game
             {
                 int index = i;
                 var def = GameData.Challenges[i];
-                AddBaseRow(1 + i * 2, () => $"{def.Name}：{def.Desc}，挖到 {GameData.FormatDepth(def.TargetRow)}",
-                    () => sim.ChallengeDone(index) ? "已完成" : "进入", () => sim.StartChallenge(index), () => sim.CanStartChallenge(index));
-                AddBaseRow(2 + i * 2, () => $"  奖励：{def.Reward.Desc}");
+                AddBaseRow(1 + i / 2 * 2, () => $"{def.Name}：{def.Desc}",
+                    () => sim.ChallengeDone(index) ? "已完成" : "进入", () => sim.StartChallenge(index), () => sim.CanStartChallenge(index), column: i % 2);
+                AddBaseRow(2 + i / 2 * 2, () => $"  挖到 {GameData.FormatDepth(def.TargetRow)}：{def.Reward.Desc}", column: i % 2);
             }
         }
 

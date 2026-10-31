@@ -111,6 +111,7 @@ namespace DeepDrill.Core
         public string Name;
         public string Branch;
         public double BranchDiscount;
+        public SchoolTrait Trait;
         public string Desc;
         public List<BonusDef> Bonuses = new List<BonusDef>();
         public BonusDef Reward;
@@ -148,7 +149,9 @@ namespace DeepDrill.Core
         public double Crystals;
     }
 
-    public enum ChallengeRule { no_skills, no_drills, no_frenzy, poor, weak }
+    public enum ChallengeRule { no_skills, no_drills, no_frenzy, poor, weak, no_click, no_merge, rush }
+
+    public enum SchoolTrait { pulse, no_merge, few_drills, ore_only }
 
     public sealed class ChallengeDef
     {
@@ -604,6 +607,7 @@ namespace DeepDrill.Core
                     Name = Str(o, "name"),
                     Branch = Str(o, "branch"),
                     BranchDiscount = Num(o, "branchDiscount"),
+                    Trait = (SchoolTrait)Enum.Parse(typeof(SchoolTrait), Str(o, "trait")),
                     Desc = Str(o, "desc"),
                     Reward = LoadBonus(o["reward"]),
                 };

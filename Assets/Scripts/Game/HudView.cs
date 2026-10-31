@@ -131,7 +131,7 @@ namespace DeepDrill.Game
         private CanvasScaler scaler;
         private RectTransform stageRoot;
         private GameObject sidePanel;
-        private Text coinsLabel, incomeLabel, oresLabel, depthLabel, comboLabel, versionLabel, drillsLabel;
+        private Text coinsLabel, incomeLabel, oresLabel, depthLabel, clockLabel, comboLabel, versionLabel, drillsLabel;
         private Text toastLabel, guideLabel, panelTitle, footerLabel, statsLabel, galleryInfo, galleryCount;
         private Image meterFill;
         private Image bossBar, bossFill, bossArmorFill;
@@ -342,6 +342,7 @@ namespace DeepDrill.Game
 
             depthLabel = Floating("", Stage.DigWidth - 124, 2, 120, 14, 9, TextAnchor.MiddleRight);
             depthLabel.fontStyle = FontStyle.Bold;
+            clockLabel = Floating("", Stage.DigWidth - 124, 15, 120, 10, 7, TextAnchor.MiddleRight);
 
             versionLabel = Floating("", 3, 171, 90, 8, 6, TextAnchor.MiddleLeft);
             versionLabel.color = SoftText;
@@ -804,6 +805,7 @@ namespace DeepDrill.Game
                 oresLabel.text = NumberFormat.Short(s.ores - oresInFlight);
                 drillsLabel.text = $"钻头 {NumberFormat.Short(s.drills.Count)}";
                 depthLabel.text = $"{GameData.Layers[GameData.LayerOfRow(s.depth)].Name} {GameData.FormatDepth(s.depth)}";
+                clockLabel.text = sim.ChallengeSecondsLeft >= 0 ? $"剩余 {(int)sim.ChallengeSecondsLeft / 60}:{(int)sim.ChallengeSecondsLeft % 60:00}" : "";
                 versionLabel.text = $"v{Application.version}  {fpsAverage:0} FPS";
                 UpdateCombo();
                 UpdateGuideCards();
@@ -963,7 +965,7 @@ namespace DeepDrill.Game
                     : NumberFormat.Short(sim.DrillPrice(f));
                 card.Price.color = can ? CoinColor : DimText;
             }
-            mergeAllButton.interactable = HasTwins();
+            mergeAllButton.interactable = !sim.MergeBlocked && HasTwins();
             RefreshCells();
         }
 

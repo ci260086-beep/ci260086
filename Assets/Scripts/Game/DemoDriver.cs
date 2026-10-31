@@ -1,3 +1,4 @@
+using System;
 ﻿using System.Collections;
 using System.IO;
 using DeepDrill.Core;
@@ -156,15 +157,29 @@ namespace DeepDrill.Game
             root.Hud.ShowGalleryPage();
             yield return new WaitForSeconds(0.3f);
             yield return Shot("gallery");
+            // a run with one school picked and one to pair it with, so both base tabs show live buttons
+            int deepest = sim.State.maxDepthEver;
+            sim.State.rebirths = Math.Max(1, sim.State.rebirths);
+            sim.State.maxDepthEver = GameData.Layers[Balance.ChallengeLayer].RowStart;
+            sim.State.schoolsCleared.Add(GameData.Schools.Count - 1);
+            sim.ChooseSchool(0);
             for (int tab = 0; tab < BaseTabs; tab++)
             {
                 root.Hud.ShowBasePage(tab);
                 yield return new WaitForSeconds(0.2f);
                 yield return Shot($"base_{tab}");
             }
+            sim.State.school = -1;
+            sim.State.schoolsCleared.Clear();
+            sim.State.maxDepthEver = deepest;
             root.Hud.ShowHangarPage();
             yield return new WaitForSeconds(0.2f);
             yield return Shot("stats_hangar");
+            sim.State.challenge = GameData.Challenges.FindIndex(c => c.Rule == ChallengeRule.rush);
+            sim.State.runSeconds = 95;
+            yield return new WaitForSeconds(0.3f);
+            yield return Shot("rush");
+            sim.State.challenge = -1;
             root.Hud.CycleBulk();
             yield return new WaitForSeconds(0.2f);
             yield return Shot("bulk");

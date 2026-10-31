@@ -31,6 +31,7 @@ namespace DeepDrill.Tests
             Assert.AreEqual(GameState.CurrentVersion, state.version);
             Assert.AreEqual(drills, state.drills.Count);
             Assert.AreEqual(coins, state.coins, 1e-6);
+            Assert.AreEqual(-1, state.secondSchool);
 
             var sim = new GameSim(state);
             for (int i = 0; i < 600; i++) sim.Tick(1.0 / 60);

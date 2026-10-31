@@ -386,6 +386,9 @@ namespace DeepDrill.Game
                     hud.ShowToast("救出一名探险员", 4f);
                     break;
 
+                case SimEventKind.ChallengeFailed:
+                    hud.ShowToast($"时间到：{GameData.Challenges[(int)e.Amount].Name}失败，可以再来", 5f);
+                    break;
                 case SimEventKind.ChallengeDone:
                     hud.ShowToast($"挑战完成：{GameData.Challenges[(int)e.Amount].Reward.Desc}", 5f);
                     break;

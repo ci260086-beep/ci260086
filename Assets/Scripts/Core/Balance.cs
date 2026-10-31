@@ -84,6 +84,9 @@ namespace DeepDrill.Core
 
         public const double EventCoinFloor = 5;
         public const int ChallengeLayer = 5;
+        public const double PulseSeconds = 10;
+        public const int PulseRadius = 1; // blasts floor at rock hp, so a wide one would cut through depth no matter the damage
+        public const int FewDrillsCap = 12;
 
         // layer mechanics, indexed from zero as in GameData.Layers
         public const int CrystalLayer = 2;

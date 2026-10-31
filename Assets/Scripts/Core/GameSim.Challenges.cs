@@ -1,3 +1,5 @@
+using System;
+
 namespace DeepDrill.Core
 {
     /// <summary>Challenge wells: a run under one harsh rule, with a depth to reach for a permanent reward.</summary>
@@ -16,6 +18,9 @@ namespace DeepDrill.Core
         private double ChallengeDamage => Under(ChallengeRule.weak) ? CurrentChallenge.Amount : 1;
 
         private double ChallengePay => Under(ChallengeRule.poor) ? CurrentChallenge.Amount : 1;
+
+        /// <summary>Seconds left on a timed well, or a negative number when there is no clock.</summary>
+        public double ChallengeSecondsLeft => Under(ChallengeRule.rush) ? Math.Max(0, CurrentChallenge.Amount - State.runSeconds) : -1;
 
         /// <summary>Gives up this run and starts the well from the top; nothing is paid for what is left behind.</summary>
         public bool StartChallenge(int index)
@@ -39,8 +44,15 @@ namespace DeepDrill.Core
         private void CheckChallenge()
         {
             var challenge = CurrentChallenge;
-            if (challenge == null || State.maxDepth < challenge.TargetRow) return;
+            if (challenge == null) return;
             int index = State.challenge;
+            if (State.maxDepth < challenge.TargetRow)
+            {
+                if (ChallengeSecondsLeft != 0) return;
+                AbandonChallenge();
+                Events.Add(new SimEvent { Kind = SimEventKind.ChallengeFailed, Amount = index });
+                return;
+            }
             State.challengesDone.Add(index);
             State.challenge = -1;
             ResetRun();

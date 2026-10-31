@@ -29,11 +29,14 @@
   {"name": "长夜座", "effect": "offline_hours", "perLevel": 2, "maxLevel": 5, "cost": 2, "desc": "离线上限 +2 小时/级"}
  ],
  "challenges": [
-  {"name": "徒手深井", "rule": "no_skills", "amount": 1, "targetRow": 250, "desc": "只能买根节点，不能买技能", "reward": {"effect": "dmg_pct", "amount": 100, "desc": "永久全部伤害 +100%"}},
+  {"name": "徒手深井", "rule": "no_skills", "amount": 1, "targetRow": 250, "desc": "只能买根节点技能", "reward": {"effect": "dmg_pct", "amount": 100, "desc": "永久全部伤害 +100%"}},
   {"name": "独钻深井", "rule": "no_drills", "amount": 1, "targetRow": 250, "desc": "不能买钻头", "reward": {"effect": "speed_pct", "amount": 30, "desc": "永久攻速 +30%"}},
   {"name": "冷静深井", "rule": "no_frenzy", "amount": 1, "targetRow": 430, "desc": "不能开狂热", "reward": {"effect": "frenzy_mult", "amount": 100, "desc": "永久狂热伤害 +100%"}},
   {"name": "贫矿深井", "rule": "poor", "amount": 0.1, "targetRow": 430, "desc": "收入只有十分之一", "reward": {"effect": "gold_pct", "amount": 100, "desc": "永久全部收入 +100%"}},
-  {"name": "重岩深井", "rule": "weak", "amount": 0.1, "targetRow": 630, "desc": "伤害只有十分之一", "reward": {"effect": "hard_pct", "amount": 200, "desc": "永久对硬岩伤害 +200%"}}
+  {"name": "重岩深井", "rule": "weak", "amount": 0.1, "targetRow": 630, "desc": "伤害只有十分之一", "reward": {"effect": "hard_pct", "amount": 200, "desc": "永久对硬岩伤害 +200%"}},
+  {"name": "无手深井", "rule": "no_click", "amount": 1, "targetRow": 430, "desc": "点击没有效果", "reward": {"effect": "click_pct", "amount": 300, "desc": "永久点击伤害 +300%"}},
+  {"name": "散钻深井", "rule": "no_merge", "amount": 1, "targetRow": 430, "desc": "不能合成钻头", "reward": {"effect": "merge_lucky", "amount": 10, "desc": "永久合成跳级 +10%"}},
+  {"name": "急行深井", "rule": "rush", "amount": 600, "targetRow": 630, "desc": "限时 10 分钟", "reward": {"effect": "frenzy_time", "amount": 5, "desc": "永久狂热时长 +5 秒"}}
  ],
  "research": {
   "rushSeconds": 3600,
@@ -66,17 +69,17 @@
   {"id": "press", "name": "碎片压机", "effect": "shard_pct", "perLevel": 3, "maxLevel": 20, "oreCost": 80, "oreGrowth": 1.35, "desc": "重铸碎片 +3%/级"}
  ],
  "schools": [
-  {"id": "blast", "name": "爆破派", "branch": "blast", "branchDiscount": 30, "desc": "爆炸伤害 +200%，炸药 +100%，爆炸半径 +1",
+  {"id": "blast", "name": "爆破派", "branch": "blast", "branchDiscount": 30, "trait": "pulse", "desc": "每 10 秒自动引爆，爆炸 +200%，炸药 +100%，半径 +1",
    "bonuses": [{"effect": "blast_dmg", "amount": 200}, {"effect": "tnt_rate", "amount": 100}, {"effect": "blast_radius", "amount": 1}],
    "reward": {"effect": "blast_dmg", "amount": 100, "desc": "永久爆炸伤害 +100%"}},
-  {"id": "swarm", "name": "机群派", "branch": "hangar", "branchDiscount": 30, "desc": "钻头价格 -20%，模拟上限 +60，每 10 台伤害 +5%",
-   "bonuses": [{"effect": "buy_discount", "amount": 20}, {"effect": "hangar_slots", "amount": 60}, {"effect": "swarm_pct", "amount": 5}],
+  {"id": "swarm", "name": "机群派", "branch": "hangar", "branchDiscount": 30, "trait": "no_merge", "desc": "不能合成；钻头半价，模拟上限 +60，每 10 台伤害 +5%",
+   "bonuses": [{"effect": "buy_discount", "amount": 50}, {"effect": "hangar_slots", "amount": 60}, {"effect": "swarm_pct", "amount": 5}],
    "reward": {"effect": "buy_discount", "amount": 5, "desc": "永久钻头价格 -5%"}},
-  {"id": "craft", "name": "精工派", "branch": "drill", "branchDiscount": 30, "desc": "全部伤害 +100%，暴击率 +10%，暴击伤害 +100%",
-   "bonuses": [{"effect": "dmg_pct", "amount": 100}, {"effect": "crit_chance", "amount": 10}, {"effect": "crit_mult", "amount": 100}],
+  {"id": "craft", "name": "精工派", "branch": "drill", "branchDiscount": 30, "trait": "few_drills", "desc": "最多 12 台钻头；伤害 +400%，暴击率 +10%，暴击伤害 +100%",
+   "bonuses": [{"effect": "dmg_pct", "amount": 400}, {"effect": "crit_chance", "amount": 10}, {"effect": "crit_mult", "amount": 100}],
    "reward": {"effect": "dmg_pct", "amount": 50, "desc": "永久全部伤害 +50%"}},
-  {"id": "rich", "name": "富矿派", "branch": "wealth", "branchDiscount": 30, "desc": "全部收入 +100%，矿物价值 +100%，宝箱 +100%",
-   "bonuses": [{"effect": "gold_pct", "amount": 100}, {"effect": "ore_pct", "amount": 100}, {"effect": "chest_pct", "amount": 100}],
+  {"id": "rich", "name": "富矿派", "branch": "wealth", "branchDiscount": 30, "trait": "ore_only", "desc": "普通岩石不给金币；矿物价值 ×5，宝箱 +100%",
+   "bonuses": [{"effect": "ore_pct", "amount": 400}, {"effect": "chest_pct", "amount": 100}],
    "reward": {"effect": "gold_pct", "amount": 50, "desc": "永久全部收入 +50%"}}
  ],
  "rebirthMilestones": [

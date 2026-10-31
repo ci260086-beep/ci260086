@@ -202,7 +202,7 @@ namespace DeepDrill.Core
 
             if (Mat.IsOre(mat)) CountOre(row, col, mat, byBlast, by);
             else if (mat == Mat.Chest) CountChest(row, col);
-            else
+            else if (!oreOnly)
             {
                 double value = Balance.OreValue(row, Balance.DirtValue) / PixelsPerTile * ComboMultiplier * IncomeMultiplier * MasteryMultiplier(row);
                 Earn(value);
@@ -333,6 +333,7 @@ namespace DeepDrill.Core
         /// <summary>Player tap at a world pixel. Before auto drilling only tapping a drill does anything.</summary>
         public bool ClickPixel(int x, int y)
         {
+            if (Under(ChallengeRule.no_click)) return false;
             if (AutoDrillUnlocked) ClickBoost = Math.Min(Balance.ClickBoostMax, ClickBoost + Balance.ClickBoostPerTap);
             var unit = UnitNear(x, y);
             if (unit != null)

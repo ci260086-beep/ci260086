@@ -303,7 +303,173 @@ namespace DeepDrill.Tests
             int code = DrillCode.Make(0, 0);
             double before = sim.DamageOf(code);
             sim.ChooseSchool(School("craft"));
-            Assert.AreEqual(before * 2, sim.DamageOf(code), 1e-9);
+            Assert.AreEqual(before * 5, sim.DamageOf(code), 1e-9);
+        }
+
+        [Test]
+        public void School_CraftCapsTheHangar()
+        {
+            var sim = Rebirthed(1);
+            sim.ChooseSchool(School("craft"));
+            sim.State.coins = 1e30;
+            Assert.AreEqual(Balance.FewDrillsCap - sim.State.drills.Count, sim.BuyDrills(0, 100));
+            Assert.AreEqual(Balance.FewDrillsCap, sim.State.drills.Count);
+            Assert.IsFalse(sim.CanBuyDrill(0));
+            Assert.AreEqual(0, sim.AffordableDrills(0, 10));
+        }
+
+        [Test]
+        public void School_CraftRefusesAFullHangar()
+        {
+            var sim = Rebirthed(1);
+            sim.State.coins = 1e30;
+            sim.BuyDrills(0, Balance.FewDrillsCap + 1);
+            Assert.IsFalse(sim.ChooseSchool(School("craft")));
+        }
+
+        [Test]
+        public void School_SwarmCannotMerge()
+        {
+            var sim = Rebirthed(1);
+            sim.ChooseSchool(School("swarm"));
+            sim.State.coins = 1e30;
+            sim.BuyDrills(0, 5);
+            int code = DrillCode.Make(0, 0);
+            Assert.IsFalse(sim.CanMerge(code));
+            Assert.IsFalse(sim.Merge(code));
+            Assert.AreEqual(0, sim.MergeEverything());
+            Assert.IsFalse(sim.MergeAll());
+        }
+
+        [Test]
+        public void School_BlastGoesOffOnItsOwn()
+        {
+            var sim = Rebirthed(1);
+            sim.ChooseSchool(School("blast"));
+            int blasts = 0;
+            for (int i = 0; i < (int)(Balance.PulseSeconds * 2.5 * 20); i++)
+            {
+                sim.Tick(0.05);
+                blasts += sim.Events.Count(e => e.Kind == SimEventKind.Explosion);
+                sim.Events.Clear();
+            }
+            Assert.GreaterOrEqual(blasts, 2);
+        }
+
+        [Test]
+        public void School_RichPaysNothingForPlainRock()
+        {
+            var plain = Rebirthed(1);
+            var rich = Rebirthed(1);
+            rich.ChooseSchool(School("rich"));
+            rich.State.seed = plain.State.seed;
+            plain.State.coins = rich.State.coins = 1e6;
+            plain.Buy(GameSim.RootSkill);
+            rich.Buy(GameSim.RootSkill);
+            plain.State.coins = rich.State.coins = 0;
+            for (int i = 0; i < 40; i++)
+            {
+                plain.Tick(0.05);
+                rich.Tick(0.05);
+            }
+            Assert.Greater(plain.State.coins, 0);
+            if (rich.State.ores == 0) Assert.AreEqual(0, rich.State.coins, 1e-12);
+        }
+
+        [Test]
+        public void SecondSchool_NeedsAClearedSchool()
+        {
+            var sim = Rebirthed(1);
+            sim.ChooseSchool(School("craft"));
+            Assert.IsFalse(sim.ChooseSecond(School("blast")));
+            sim.State.schoolsCleared.Add(School("blast"));
+            Assert.IsFalse(sim.ChooseSecond(School("craft")));
+            Assert.IsTrue(sim.ChooseSecond(School("blast")));
+            Assert.IsTrue(sim.HasTrait(SchoolTrait.pulse));
+            Assert.IsTrue(sim.HasTrait(SchoolTrait.few_drills));
+            Assert.IsFalse(sim.ChooseSecond(School("rich")));
+        }
+
+        [Test]
+        public void SecondSchool_AddsBonusesButNotItsDiscount()
+        {
+            var sim = Rebirthed(1);
+            var blast = GameData.Skills.First(s => s.Branch == "blast");
+            double full = sim.SkillCost(blast), before = sim.Effect(SkillEffect.blast_dmg);
+            sim.State.schoolsCleared.Add(School("blast"));
+            sim.ChooseSchool(School("rich"));
+            double cleared = sim.Effect(SkillEffect.blast_dmg);
+            sim.ChooseSecond(School("blast"));
+            Assert.AreEqual(cleared + 200, sim.Effect(SkillEffect.blast_dmg), 1e-9);
+            Assert.AreEqual(full, sim.SkillCost(blast), 1e-9);
+        }
+
+        [Test]
+        public void SecondSchool_RefusesTheClashingPair()
+        {
+            var sim = Rebirthed(1);
+            sim.State.schoolsCleared.Add(School("swarm"));
+            sim.ChooseSchool(School("craft"));
+            Assert.IsFalse(sim.ChooseSecond(School("swarm")));
+        }
+
+        [Test]
+        public void SecondSchool_EndsWithTheRun()
+        {
+            var sim = Rebirthed(1);
+            sim.State.schoolsCleared.Add(School("blast"));
+            sim.ChooseSchool(School("rich"));
+            sim.ChooseSecond(School("blast"));
+            sim.State.bossesDefeated = 1;
+            sim.State.maxDepth = 400;
+            sim.State.totalIncome = 1e6;
+            Assert.IsTrue(sim.Rebirth());
+            Assert.IsNull(sim.SecondSchool);
+        }
+
+        [Test]
+        public void Challenge_NoClickIgnoresTaps()
+        {
+            var sim = Rebirthed(1);
+            sim.State.challenge = Challenge(ChallengeRule.no_click);
+            Assert.IsFalse(sim.ClickPixel(PixelWorld.Width / 2, 80));
+            Assert.AreEqual(0, sim.ClickBoost, 1e-12);
+        }
+
+        [Test]
+        public void Challenge_NoMergeBlocksMerging()
+        {
+            var sim = Rebirthed(1);
+            sim.State.coins = 1e30;
+            sim.BuyDrills(0, 3);
+            sim.State.challenge = Challenge(ChallengeRule.no_merge);
+            Assert.IsTrue(sim.MergeBlocked);
+            Assert.AreEqual(0, sim.MergeEverything());
+        }
+
+        [Test]
+        public void Challenge_RushFailsWhenTimeRunsOut()
+        {
+            var sim = Rebirthed(1);
+            int index = Challenge(ChallengeRule.rush);
+            sim.State.challenge = index;
+            sim.State.runSeconds = GameData.Challenges[index].Amount + 1;
+            sim.Tick(1.1);
+            Assert.IsNull(sim.CurrentChallenge);
+            Assert.IsFalse(sim.ChallengeDone(index));
+            Assert.IsTrue(sim.Events.Any(e => e.Kind == SimEventKind.ChallengeFailed));
+        }
+
+        [Test]
+        public void Challenge_RushPaysWhenDepthComesFirst()
+        {
+            var sim = Rebirthed(1);
+            int index = Challenge(ChallengeRule.rush);
+            sim.State.challenge = index;
+            sim.State.maxDepth = GameData.Challenges[index].TargetRow;
+            sim.State.runSeconds = GameData.Challenges[index].Amount + 1;
+            sim.Tick(1.1);
+            Assert.IsTrue(sim.ChallengeDone(index));
         }
 
         [Test]

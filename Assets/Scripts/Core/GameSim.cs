@@ -18,6 +18,7 @@ namespace DeepDrill.Core
         BossFailed,
         BossArmorBroken,
         DrillsMergedAll,
+        ChallengeFailed,
         BossMoveWarned,
         BossMoveStruck,
         BossMoveEnded,
@@ -367,6 +368,7 @@ namespace DeepDrill.Core
             AdvanceIncomeWindow(dt);
             AdvanceCombo(dt);
             AdvanceFrenzy(dt);
+            AdvancePulse(dt);
             AdvanceLoose(dt);
             AdvanceLayerMechanics(dt);
             AdvancePhysics(dt);
@@ -388,7 +390,7 @@ namespace DeepDrill.Core
         public double DrillPrice(int family) =>
             Balance.DrillPrice(GameData.Families[family].BasePrice, State.BoughtOf(family), DiscountFraction, BuyTier);
 
-        public bool CanBuyDrill(int family) => FamilyUnlocked(family) && State.coins >= DrillPrice(family) && !Under(ChallengeRule.no_drills);
+        public bool CanBuyDrill(int family) => FamilyUnlocked(family) && State.coins >= DrillPrice(family) && !Under(ChallengeRule.no_drills) && DrillRoom > 0;
 
         public bool BuyDrill(int family)
         {
@@ -431,6 +433,7 @@ namespace DeepDrill.Core
         public int AffordableDrills(int family, int limit)
         {
             if (!FamilyUnlocked(family) || Under(ChallengeRule.no_drills)) return 0;
+            limit = Math.Min(limit, Math.Max(0, DrillRoom));
             double coins = State.coins;
             for (int i = 0; i < limit; i++)
             {
@@ -440,9 +443,11 @@ namespace DeepDrill.Core
             return limit;
         }
 
+        public bool MergeBlocked => Under(ChallengeRule.no_merge) || HasTrait(SchoolTrait.no_merge);
+
         public bool CanMerge(int code)
         {
-            if (DrillCode.Tier(code) + 1 >= GameData.Tiers) return false;
+            if (MergeBlocked || DrillCode.Tier(code) + 1 >= GameData.Tiers) return false;
             int found = 0;
             foreach (int c in State.drills)
                 if (c == code && ++found >= 2) return true;
@@ -477,6 +482,7 @@ namespace DeepDrill.Core
         /// </summary>
         public int MergeEverything()
         {
+            if (MergeBlocked) return 0;
             var counts = new SortedDictionary<int, int>();
             foreach (int code in State.drills)
                 counts[TierFirst(code)] = counts.TryGetValue(TierFirst(code), out int n) ? n + 1 : 1;
@@ -529,6 +535,7 @@ namespace DeepDrill.Core
 
         private bool MergePairs()
         {
+            if (MergeBlocked) return false;
             var counts = new Dictionary<int, int>();
             foreach (int code in State.drills)
                 counts[code] = counts.TryGetValue(code, out int n) ? n + 1 : 1;
@@ -662,7 +669,7 @@ namespace DeepDrill.Core
             State.dug.Clear();
             State.bossesDefeated = 0;
             State.seed = random.Next(1, int.MaxValue);
-            State.school = -1;
+            State.school = State.secondSchool = -1;
             State.drillX = Balance.StartColumn;
             State.drillY = -0.5 - DrillBody.HalfHeight;
 

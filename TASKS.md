@@ -60,7 +60,7 @@ Claude B 在自己的分支上提交并推送，由 Claude A 合并和验证。C
 | ⑥ 接入星球和星座图 | A | Claude A | `phase5-world` | 完成 |
 | 前期流程：5 金币自动挖掘、6 金币第一台钻头、点击加速、一键合成 | A | Claude A | `phase5-earlygame` | 完成 |
 | 美术 13 到 17：点击加速、一键合成、前期教程卡、环境粒子、星球规则图标 | B | Claude B | `art/boost-fx` 等 | 完成 |
-| ⑥ 后期内容：更多星球规则、更多挑战规则、流派搭配真正改变玩法 | A | | | 待做 |
+| ⑥ 后期内容：更多挑战规则、流派专属规则和搭配 | A | Claude A | `phase5-endgame` | 完成 |
 | 查偶发卡顿：一次自动试玩里 1000 台钻头掉到 16 FPS，`Update` 单帧约 400 毫秒，不在规则、事件和环境效果里；之后 3 轮未复现，`DemoDriver` 已记录分段 | A | Claude A | | 进行中 |
 | ⑦ 声音 | A | | | 待做 |
 | ⑧ 存档版本号 | A | Claude A | `phase5-save` | 完成 |
@@ -70,7 +70,7 @@ Claude B 在自己的分支上提交并推送，由 Claude A 合并和验证。C
 | 美术 10：新手提示箭头和说明卡插图 | B | Claude B | `art/guide-art` | 完成 |
 | 美术 10b：基础玩法说明卡：点击挖掘、合成、Boss、重铸 | B | Claude B | `art/guide-basics` | 完成 |
 | 美术 11：12 层视差背景 | B | Claude B | `art/parallax` | 完成 |
-| 美术 12：星球和星座图 | B | Claude B | `art/planets` | 待验证 |
+| 美术 12：星球和星座图 | B | Claude B | `art/planets` | 完成 |
 
 已完成：第四阶段的性能和手感（磁力钻吸取、技能树收尾、8 小时挂机）。
 
