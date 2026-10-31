@@ -176,12 +176,14 @@ local SKILL_EXTRAS = {
     for y = 12, 31 do
       if g:get(31, y) then g:set(31, y, glow); g:set(32, y, glow) end
     end
-    local sand = hex("fff0c0")
-    for i = 0, 5 do
-      local r = 4 + f * 3 + i % 3
-      for o = 0, 1 do
-        g:set(4 - r + i * 2 + o, 22 - i * 3 - f, sand)
-        g:set(59 + r - i * 2 - o, 22 - i * 3 - f, sand)
+    -- sand sprays up and out from both edges of the shell, further each frame
+    local sand, grit = hex("fff0c0"), hex("c8a060")
+    for i = 0, 4 do
+      local out = i * 2 + f * 2
+      local y = 22 - i * 2 - f + (i * i) // 3
+      for side = -1, 1, 2 do
+        local x = side < 0 and (11 - out) or (52 + out)
+        g:set(x, y, sand); g:set(x + 1, y, sand); g:set(x, y + 1, grit)
       end
     end
   end,
