@@ -990,7 +990,7 @@ namespace DeepDrill.Game
                 $"最大深度 {GameData.FormatDepth(s.maxDepthEver)}\n本局收入 {NumberFormat.Short(s.totalIncome)}\n" +
                 $"每秒伤害 {NumberFormat.Short(sim.TotalDps)}\n钻头 {NumberFormat.Short(s.drills.Count)}\n" +
                 $"最高连击 {s.bestCombo}\n累计合成 {s.mergesEver}\n打败 Boss {s.bossesEver}\n" +
-                $"星核碎片 {s.shards}\n重铸 {s.rebirths} 次  跃迁 {s.warps} 次\n" +
+                $"星核碎片 {s.shards}\n重铸 {s.rebirths} 次  跃迁 {s.warps} 次\n当前星球 {sim.Planet.Name}\n" +
                 $"成就 {s.achievements.Count}/{GameData.Achievements.Count}\n稀有 {rares}/{GameData.Rares.Count}";
         }
     }

@@ -13,6 +13,10 @@ namespace DeepDrill.Game
     public sealed partial class HudView
     {
         private const int BaseTabWidth = 38;
+        private const int PlanetIcon = 24;
+        private const int PlanetCellWidth = 62;
+        private const int PlanetStripLeft = 5;
+        private const int PlanetStripTop = 139;
         private const int BaseTabHeight = 18;
         private const int BaseTabIcon = 16;
         private const int BaseRowHeight = 13;
@@ -29,6 +33,7 @@ namespace DeepDrill.Game
         }
 
         private readonly List<GameObject> baseTabs = new List<GameObject>();
+        private readonly List<Image> planetMarks = new List<Image>();
         private readonly List<Image> baseTabButtons = new List<Image>();
         private readonly List<List<BaseRow>> baseRows = new List<List<BaseRow>>();
         private Transform basePage;
@@ -120,6 +125,7 @@ namespace DeepDrill.Game
 
         private void UpdateBase()
         {
+            UpdatePlanetStrip();
             if (warpArmed > 0) warpArmed -= TextSeconds;
             foreach (var row in baseRows[baseTab])
             {
@@ -240,7 +246,12 @@ namespace DeepDrill.Game
 
         private void BuildStarTab()
         {
-            NewBaseTab("星图", "sys_constellation");
+            var tab = NewBaseTab("星图", "sys_constellation");
+            var map = Ui.Panel(tab, "StarMap", 0, 0, Stage.Width, Stage.Height, Color.white);
+            map.sprite = art.Get("star_map");
+            map.raycastTarget = false;
+            tab.SetAsFirstSibling(); // the picture stays behind the tab buttons and the close button
+            BuildPlanetStrip(tab);
             AddBaseRow(0, () => $"当前行星：{sim.Planet.Name}。{sim.Planet.Desc}");
             AddBaseRow(1, () => sim.CanWarp ? $"跃迁得 {sim.StarPointsOnWarp} 星点，碎片和本星进度清零" : "挖到地心后可以跃迁",
                 () => warpArmed > 0 ? "再点确认" : "星系跃迁", OnWarpClicked, () => sim.CanWarp);
@@ -253,6 +264,28 @@ namespace DeepDrill.Game
                     () => sim.StarLevel(index) >= star.MaxLevel ? "满级" : $"{sim.StarCost(index)} 星点",
                     () => sim.BuyStar(index), () => sim.CanBuyStar(index));
             }
+        }
+
+        // Every planet in the order the warps visit them, with a light behind the current one.
+        private void BuildPlanetStrip(Transform tab)
+        {
+            for (int i = 0; i < GameData.Planets.Count; i++)
+            {
+                float x = PlanetStripLeft + i * PlanetCellWidth;
+                var mark = Ui.Panel(tab, "Mark", x, PlanetStripTop, PlanetCellWidth - 2, PlanetIcon + 2, new Color(1, 1, 1, 0));
+                mark.raycastTarget = false;
+                planetMarks.Add(mark);
+                var icon = Ui.Icon(tab, art.Get("planet_" + i), x + 1, PlanetStripTop + 1, PlanetIcon);
+                icon.raycastTarget = false;
+                var name = Ui.Label(tab, Font, GameData.Planets[i].Name, x + PlanetIcon + 2, PlanetStripTop, PlanetCellWidth - PlanetIcon - 4, PlanetIcon + 2, 6, TextAnchor.MiddleLeft);
+                name.raycastTarget = false;
+            }
+        }
+
+        private void UpdatePlanetStrip()
+        {
+            for (int i = 0; i < planetMarks.Count; i++)
+                planetMarks[i].color = i == sim.PlanetIndex ? new Color(CoinColor.r, CoinColor.g, CoinColor.b, 0.35f) : Color.clear;
         }
 
         // A warp wipes a whole planet, so it takes a second click, like a rebirth.

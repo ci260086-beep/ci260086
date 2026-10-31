@@ -54,10 +54,15 @@ namespace DeepDrill.Game
 
         public GameSim Sim => sim;
         public float MaxTickMs { get; set; }
+        public float MaxEventsMs { get; set; }
+        public float MaxAmbientMs { get; set; }
+        public int MaxEventCount { get; set; }
         public float MaxDrawMs => world.MaxDrawMs;
         public void ResetTimers()
         {
             MaxTickMs = 0;
+            MaxEventsMs = MaxAmbientMs = 0;
+            MaxEventCount = 0;
             world.MaxDrawMs = 0;
         }
         public SaveService Saves => saves;
@@ -176,11 +181,16 @@ namespace DeepDrill.Game
             if (Input.GetMouseButtonDown(0)) HandleClick(Input.mousePosition);
             HandleKeys();
 
+            timer.Restart();
+            MaxEventCount = Mathf.Max(MaxEventCount, sim.Events.Count);
             DrainEvents();
+            MaxEventsMs = Mathf.Max(MaxEventsMs, (float)timer.Elapsed.TotalMilliseconds);
+            timer.Restart();
 
             fx.Ambient(GameData.LayerOfRow(sim.State.depth), world.CameraPosition, Time.unscaledDeltaTime);
             for (int i = 0; i < GemProbes; i++)
                 if (world.TryFindGem(out Vector2 glint)) fx.Twinkle(glint);
+            MaxAmbientMs = Mathf.Max(MaxAmbientMs, (float)timer.Elapsed.TotalMilliseconds);
 
             autosave += Time.unscaledDeltaTime;
             if (autosave >= AutosaveSeconds)
@@ -380,6 +390,7 @@ namespace DeepDrill.Game
                     break;
 
                 case SimEventKind.Warped:
+                    hud.ShowPlanetCard((int)e.Amount);
                     hud.ShowToast($"星系跃迁：抵达{sim.Planet.Name}，获得 {e.Amount:0} 星点", 5f);
                     break;
 

@@ -10,6 +10,8 @@
 - **第四阶段计划：** https://claude.ai/artifact/CKUBNxSWKeDQZEUQSTgwkF
 - **第五阶段：** 上架往后推，先继续打磨，计划在 https://claude.ai/artifact/XVPYASpN6Ejmhx81Y9Sw1Y ，任务表在 `TASKS.md`。每项做完先截图给用户，确认后再合进 `master`。Claude A 需要的美术直接写到 `comms` 留言板交给 Claude B。
 - **第五阶段已做：** Boss 招式（`GameSim.BossMoves.cs`，数值在 `phase3.json` 的 bossMoves）、Boss 动画和招式特效（`WorldView`）、地面用 B 的岩块和装饰绘制（`PixelPainter.UseLayerArt`，这些图要 `isReadable`，由 `ArtImportRules` 设定）、新手说明卡和箭头（`HudView.Guide.cs`，看过的记在 `GameState.seenGuides`，打开时 `Time.timeScale` 为 0）、设置页（音量、新游戏）、批量购买（`BuyDrills`）、快捷键（`GameRoot.HandleKeys`）、统计页。新游戏（`GameRoot.StartNewGame`）把存档改名保留，再重建全部场景对象；自动试玩最后会走一遍，以 `[demo] new game started` 结束。没有真人操作过这些界面。
+- **存档：** 版本 7。第一次读旧版本时保留一份 `save.json.v<版本>`。`Assets/Tests/EditMode/Saves` 里是用户的两份真实版本 6 存档，`SaveCompatibilityTests` 每次都读，以后加存档字段要跑这个。
+- **地层画面：** `FxView.AmbientDensity` 是每层粒子密度，`WorldView.DrawHeadlamp` 是领头钻头的光，`HudView.ShowHint` 显示进入新层时的规则，`GameSim.HeatWeakens` 和 `Overheating` 驱动持续提示，`PixelPainter.GroundAt` 里的扭曲减轻纹理重复。星图页底部是星球条，跃迁后弹抵达卡（`ShowPlanetCard`）。
 - **分工：** 两个 Claude 同时开发时按 `TASKS.md` 执行，开工前先读。交流在 `comms` 分支的 `COMMS.md`。
 - **性能（已并入 `master`）：** 只开一个 Unity 时，200 台钻头 60 FPS，整帧最差 23 毫秒，其中游戏自身（PlayerLoop）9.3 毫秒；1000 台 60 FPS，整帧最差 26 毫秒，游戏自身 12.5 毫秒，逻辑 3.2 毫秒，绘制 0.5 毫秒。整帧还没到 20 毫秒，差值在 PlayerLoop 之外，判断是编辑器和垂直同步，没有打包版本可以证实。`DemoDriver.MeasureFrames` 会打出最慢几帧的分段。修过的根因：`DropAbove` 只看领头钻头，掉队钻头脚下的地形块每向下一行就同步重建，现在要等最后一台离开；地形块多预生成到 16 行；绘制时块内直接读数组，屏幕外的块每帧只绘一块。
 - **长时间运行：** `dotnet build tools\outside\Soak.csproj -c Release`，再运行 `tools\outside\out\soak\Soak.exe Assets\Resources\Data 8 7`。8 小时结果：不崩溃，内存 34 到 78 MB，没有持续增长，机器空闲时没有一步超过 100 毫秒。只测规则，不含 Unity 表现层。查清的两个问题：世界原来没有底，现在第 2552 行起是挖不动的基岩；后期大连锁一帧处理上百万像素，现在按 `Balance.MaxBlastPixelsPerTick` 分到多帧。同时开 Unity 跑时会出现 200 毫秒以上的假峰值，要在机器空闲时测。

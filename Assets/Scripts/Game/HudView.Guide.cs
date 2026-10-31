@@ -16,6 +16,8 @@ namespace DeepDrill.Game
         private const int CardHeight = 96;
         private const int CardPicture = 2; // the 48x32 art at twice its size
         private const int ArrowSize = 16;
+        private const int PlanetCardPicture = 64;
+        private const string PlanetCard = "planet";
         private const float ArrowBounce = 2f;
 
         private sealed class GuideCard
@@ -63,7 +65,7 @@ namespace DeepDrill.Game
 
             Card("tap", "点击挖掘", "点击钻头或它前面的岩石，就能挖掘赚金币。金币用来解锁自动钻探。", () => true);
             Card("merge", "合成钻头", "把机库里两台相同的钻头拖到一起，就能合成一台更高级的。按 M 键一次合成全部。", HasTwins);
-            Card("boss", "守层 Boss", "每层底部有 Boss 挡路，要在时限内打穿。它闪红时要放招，被缠住就连点钻头。打不过也没关系，升级后再来。", () => sim.BossActive);
+            Card("boss", "守层 Boss", "每层底部都有 Boss，要在时限内打穿。它闪红时要放招，被缠住就连点钻头。打不过也没关系，升级后再来。", () => sim.BossActive);
             Card("rebirth", "地核重铸", "重铸会失去金币、钻头和技能，换来星核碎片。碎片永久提高伤害，下一局会快很多。觉得慢了就重铸。", () => sim.CanRebirth);
             Card("event", "黄金事件", "地面偶尔出现发光的矿石，点一下有好处。别错过，它们很快会消失。", () => sim.ActiveEvent == SurfaceEvent.Golden);
             Card("unstable", "地核不稳", "红色的发光物是冒险：可能大赚，也可能短暂减益，点不点你决定。", () => sim.ActiveEvent == SurfaceEvent.Unstable);
@@ -97,10 +99,25 @@ namespace DeepDrill.Game
 
         private void OpenCard(GuideCard card)
         {
-            openCard = card.Id;
-            cardPicture.sprite = art.Get("guide_" + card.Id);
-            cardTitle.text = card.Title;
-            cardText.text = card.Text;
+            Ui.TopLeft(cardPicture.rectTransform, 3, 14, 48 * CardPicture, 32 * CardPicture);
+            ShowCardPage(card.Id, art.Get("guide_" + card.Id), card.Title, card.Text);
+        }
+
+        /// <summary>Welcomes the player to the planet a warp has just landed on.</summary>
+        public void ShowPlanetCard(int starPoints)
+        {
+            var planet = sim.Planet;
+            Ui.TopLeft(cardPicture.rectTransform, 19, 16, PlanetCardPicture, PlanetCardPicture);
+            ShowCardPage(PlanetCard, art.Get("planet_" + sim.PlanetIndex), "抵达" + planet.Name,
+                $"{planet.Desc}\n\n获得 {starPoints} 星点。\n到基地的星图升级星座。");
+        }
+
+        private void ShowCardPage(string id, Sprite picture, string title, string text)
+        {
+            openCard = id;
+            cardPicture.sprite = picture;
+            cardTitle.text = title;
+            cardText.text = text;
             cardRoot.transform.SetAsLastSibling();
             cardRoot.SetActive(true);
             Time.timeScale = 0;
@@ -109,7 +126,7 @@ namespace DeepDrill.Game
         public void CloseCard()
         {
             if (openCard == null) return;
-            if (!sim.State.seenGuides.Contains(openCard)) sim.State.seenGuides.Add(openCard);
+            if (openCard != PlanetCard && !sim.State.seenGuides.Contains(openCard)) sim.State.seenGuides.Add(openCard);
             openCard = null;
             cardRoot.SetActive(false);
             Time.timeScale = 1;

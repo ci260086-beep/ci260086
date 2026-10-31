@@ -19,6 +19,8 @@ namespace DeepDrill.Game
         private const float LayerSeconds = 2.5f;
         private const float BossShotSeconds = 0.6f;
         private const int BaseTabs = 7;
+        private const int StarTab = 6;
+        private const int LavaPlanet = 2;
         private const float OverheatWait = 8f;
         private const int MoveShotLayer = 7;
         private const float BossArrivalSeconds = 4f;
@@ -156,6 +158,19 @@ namespace DeepDrill.Game
             yield return new WaitForSeconds(0.2f);
             yield return Shot("settings");
             root.Hud.ShowHangarPage();
+            root.Hud.ShowHint(GameData.Layers[3].Mechanic, 2f);
+            yield return new WaitForSeconds(0.3f);
+            yield return Shot("hint");
+            root.Hud.ShowBasePage(StarTab);
+            yield return new WaitForSeconds(0.2f);
+            yield return Shot("planets");
+            root.Hud.ShowHangarPage();
+            sim.State.warps = LavaPlanet;
+            root.Hud.ShowPlanetCard(4);
+            yield return new WaitForSecondsRealtime(0.3f);
+            yield return Shot("planet_card");
+            root.Hud.CloseCard();
+            sim.State.warps = 0;
             root.Hud.ShowCard("boss");
             yield return new WaitForSecondsRealtime(0.3f);
             yield return Shot("card");
@@ -221,7 +236,8 @@ namespace DeepDrill.Game
             }
             Debug.Log($"[demo] swarm units={root.Sim.Units.Count} owned={root.Sim.State.drills.Count} " +
                 $"depth={root.Sim.State.depth} fps={frames / MeasureSeconds:0} worstFrameMs={worst:0} worstPlayerLoopMs={worstLoop:0.0} " +
-                $"worstTickMs={root.MaxTickMs:0.0} worstPaintMs={root.MaxDrawMs:0.0} gen0={System.GC.CollectionCount(0) - gcBefore}");
+                $"worstTickMs={root.MaxTickMs:0.0} worstEventsMs={root.MaxEventsMs:0.0} events={root.MaxEventCount} worstAmbientMs={root.MaxAmbientMs:0.0} " +
+                $"worstPaintMs={root.MaxDrawMs:0.0} gen0={System.GC.CollectionCount(0) - gcBefore}");
             foreach (string line in parts)
                 if (line != null) Debug.Log("[demo] slow frame " + line);
             foreach (var recorder in recorders) recorder.Dispose();

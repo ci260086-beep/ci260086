@@ -5,7 +5,8 @@ namespace DeepDrill.Core
     /// <summary>The second prestige: leave a finished planet for star points, a constellation and a new rule.</summary>
     public sealed partial class GameSim
     {
-        public PlanetDef Planet => GameData.Planets[State.warps % GameData.Planets.Count];
+        public int PlanetIndex => State.warps % GameData.Planets.Count;
+        public PlanetDef Planet => GameData.Planets[PlanetIndex];
 
         public bool CanWarp => State.maxDepthEver >= GameData.TotalRows && State.challenge < 0;
 
