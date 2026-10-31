@@ -805,7 +805,8 @@ namespace DeepDrill.Game
                 oresLabel.text = NumberFormat.Short(s.ores - oresInFlight);
                 drillsLabel.text = $"钻头 {NumberFormat.Short(s.drills.Count)}";
                 depthLabel.text = $"{GameData.Layers[GameData.LayerOfRow(s.depth)].Name} {GameData.FormatDepth(s.depth)}";
-                clockLabel.text = sim.ChallengeSecondsLeft >= 0 ? $"剩余 {(int)sim.ChallengeSecondsLeft / 60}:{(int)sim.ChallengeSecondsLeft % 60:00}" : "";
+                clockLabel.text = sim.ChallengeSecondsLeft >= 0 ? $"剩余 {(int)sim.ChallengeSecondsLeft / 60}:{(int)sim.ChallengeSecondsLeft % 60:00}"
+                    : sim.HasTide ? $"{(sim.TideHigh ? "涨潮" : "退潮")} {sim.TideSecondsLeft:0} 秒" : "";
                 versionLabel.text = $"v{Application.version}  {fpsAverage:0} FPS";
                 UpdateCombo();
                 UpdateGuideCards();

@@ -204,6 +204,12 @@ namespace DeepDrill.Game
             yield return new WaitForSecondsRealtime(0.3f);
             yield return Shot("planet_card");
             root.Hud.CloseCard();
+            sim.State.warps = GameData.Planets.FindIndex(p => p.Rule == PlanetRule.tide);
+            yield return new WaitForSeconds(0.3f);
+            yield return Shot("tide");
+            sim.State.warps = GameData.Planets.FindIndex(p => p.Rule == PlanetRule.storm);
+            yield return new WaitForSeconds((float)Balance.StormSeconds + 0.15f);
+            yield return Shot("storm");
             sim.State.warps = 0;
             root.Hud.ShowCard("boss");
             yield return new WaitForSecondsRealtime(0.3f);

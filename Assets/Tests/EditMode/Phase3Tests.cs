@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using DeepDrill.Core;
 using NUnit.Framework;
@@ -851,6 +852,48 @@ namespace DeepDrill.Tests
             Assert.AreEqual("月壤星", sim.Planet.Name);
             sim.GrantSkill(GameSim.RootSkill, 1);
             Assert.AreEqual(before * sim.Planet.Damage, sim.DamageOf(code), 1e-9);
+        }
+
+        private static GameSim OnPlanet(Func<PlanetDef, bool> match)
+        {
+            var sim = CoreTests.NewSim();
+            sim.State.warps = GameData.Planets.FindIndex(p => match(p));
+            return sim;
+        }
+
+        [Test]
+        public void Planet_StormStrikesOnABeat()
+        {
+            var sim = OnPlanet(p => p.Rule == PlanetRule.storm);
+            int blasts = 0;
+            for (int i = 0; i < (int)(Balance.StormSeconds * 2.5 * 20); i++)
+            {
+                sim.Tick(0.05);
+                blasts += sim.Events.Count(e => e.Kind == SimEventKind.Explosion);
+                sim.Events.Clear();
+            }
+            Assert.GreaterOrEqual(blasts, 2);
+        }
+
+        [Test]
+        public void Planet_FrostSlowsAndSharpens()
+        {
+            var earth = CoreTests.NewSim();
+            var frost = OnPlanet(p => p.Speed < 1);
+            Assert.AreEqual(earth.SpeedMultiplier * 0.5, frost.SpeedMultiplier, 1e-9);
+        }
+
+        [Test]
+        public void Planet_TideRisesAndFalls()
+        {
+            int code = DrillCode.Make(0, 0);
+            var earth = CoreTests.NewSim();
+            double flat = earth.DamageOf(code);
+            var tide = OnPlanet(p => p.Rule == PlanetRule.tide);
+            Assert.IsTrue(tide.TideHigh);
+            Assert.AreEqual(flat * Balance.TideHigh, tide.DamageOf(code), 1e-9);
+            for (int i = 0; i < (int)(Balance.TideSeconds * 20) + 2; i++) tide.Tick(0.05);
+            Assert.IsFalse(tide.TideHigh);
         }
 
         [Test]

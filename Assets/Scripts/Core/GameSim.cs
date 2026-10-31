@@ -285,6 +285,7 @@ namespace DeepDrill.Core
                     * (1 + metaDamage / 100)
                     * ChallengeDamage
                     * Planet.Damage
+                    * TideDamage
                     * frenzy;
             }
         }
@@ -303,6 +304,7 @@ namespace DeepDrill.Core
 
         public double SpeedMultiplier =>
             (1 + Effect(SkillEffect.speed_pct) / 100)
+            * Planet.Speed
             * SpeedBuffMult
             * MoveSpeed
             * (1 + ClickBoost)
@@ -333,8 +335,8 @@ namespace DeepDrill.Core
         private double TntChance => Balance.TntChance * (1 + Effect(SkillEffect.tnt_rate) / 100);
         private double ChestChance => Balance.ChestChance * (1 + Effect(SkillEffect.chest_pct) / 100);
         private int ChainLimit => Effect(SkillEffect.chain) > 0 ? Balance.LinkedChainLimit : Balance.BaseChainLimit;
-        private double CritChance => Balance.CritChance + (Effect(SkillEffect.crit_chance) + milestoneCrit) / 100;
-        private double CritMultiplier => Balance.CritMultiplier + Effect(SkillEffect.crit_mult) / 100;
+        private double CritChance => Balance.CritChance + (Effect(SkillEffect.crit_chance) + milestoneCrit + Planet.Crit) / 100;
+        private double CritMultiplier => Balance.CritMultiplier + Effect(SkillEffect.crit_mult) / 100 + Planet.CritMult;
 
         private double BlastDamage(int row) => Math.Max(
             Balance.BlockHp(row) * Balance.BlastFloorTiles,
@@ -369,6 +371,7 @@ namespace DeepDrill.Core
             AdvanceCombo(dt);
             AdvanceFrenzy(dt);
             AdvancePulse(dt);
+            AdvanceStorm(dt);
             AdvanceLoose(dt);
             AdvanceLayerMechanics(dt);
             AdvancePhysics(dt);

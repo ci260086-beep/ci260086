@@ -13,8 +13,8 @@ namespace DeepDrill.Game
     public sealed partial class HudView
     {
         private const int BaseTabWidth = 38;
-        private const int PlanetIcon = 24;
-        private const int PlanetCellWidth = 62;
+        private const int PlanetIcon = 22;
+        private const int PlanetCellWidth = 39;
         private const int PlanetRuleIcon = 16;
         private const int PlanetNode = 12;
         private const int PlanetStripLeft = 5;
@@ -277,16 +277,16 @@ namespace DeepDrill.Game
             for (int i = 0; i < GameData.Planets.Count; i++)
             {
                 float x = PlanetStripLeft + i * PlanetCellWidth;
-                var mark = Ui.Panel(tab, "Mark", x, PlanetStripTop, PlanetCellWidth - 2, PlanetIcon + 2, new Color(1, 1, 1, 0));
+                var mark = Ui.Panel(tab, "Mark", x, PlanetStripTop, PlanetCellWidth - 2, PlanetIcon + 13, new Color(1, 1, 1, 0));
                 mark.raycastTarget = false;
                 planetMarks.Add(mark);
                 var icon = Ui.Icon(tab, art.Get("planet_" + i), x + 1, PlanetStripTop + 1, PlanetIcon);
                 icon.raycastTarget = false;
-                var name = Ui.Label(tab, Font, GameData.Planets[i].Name, x + PlanetIcon + 2, PlanetStripTop, PlanetCellWidth - PlanetIcon - 4, 11, 6, TextAnchor.MiddleLeft);
+                var name = Ui.Label(tab, Font, GameData.Planets[i].Name, x, PlanetStripTop + PlanetIcon + 2, PlanetCellWidth - 2, 11, 6, TextAnchor.MiddleCenter);
                 name.raycastTarget = false;
                 if (i > 0)
                 {
-                    var rule = Ui.Icon(tab, art.Get("planet_rule_" + i), x + PlanetIcon + 2, PlanetStripTop + 10, PlanetRuleIcon);
+                    var rule = Ui.Icon(tab, art.Get("planet_rule_" + i), x + PlanetIcon, PlanetStripTop + 4, PlanetRuleIcon);
                     rule.raycastTarget = false;
                 }
                 var node = Ui.Icon(tab, art.Get("star_node_locked"), x, PlanetStripTop, PlanetNode);

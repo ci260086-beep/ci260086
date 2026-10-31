@@ -19,7 +19,9 @@ public static class Pace
         int seed = args.Length > 3 ? int.Parse(args[3]) : 7;
         GameData.Load(name => File.ReadAllText(Path.Combine(data, name + ".json")));
 
-        var sim = new GameSim(new GameState { seed = seed });
+        int planet = args.Length > 4 ? int.Parse(args[4]) : 0;
+
+        var sim = new GameSim(new GameState { seed = seed, warps = planet });
         var clock = Stopwatch.StartNew();
         double t = 0, decide = 0, tap = 0, runStart = 0, layerEnteredAt = 0;
         int runLayer = 0, frontier = 0, rebirths = 0;

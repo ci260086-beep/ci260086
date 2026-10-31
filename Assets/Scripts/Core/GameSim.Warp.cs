@@ -27,6 +27,25 @@ namespace DeepDrill.Core
             return true;
         }
 
+        // Lightning hits somewhere along the lead drill's row and breaks the player's rhythm.
+        private void AdvanceStorm(double dt)
+        {
+            if (Planet.Rule != PlanetRule.storm || (stormClock += dt) < Balance.StormSeconds) return;
+            stormClock = 0;
+            Combo = 0;
+            Explode(Lead.Body.FeetRow, random.Next(PixelWorld.Width / Tile), Balance.StormRadius);
+        }
+
+        private double stormClock;
+
+        public bool HasTide => Planet.Rule == PlanetRule.tide;
+
+        public bool TideHigh => simTime % (Balance.TideSeconds * 2) < Balance.TideSeconds;
+
+        public double TideSecondsLeft => Balance.TideSeconds - simTime % Balance.TideSeconds;
+
+        private double TideDamage => !HasTide ? 1 : TideHigh ? Balance.TideHigh : Balance.TideLow;
+
         public int StarLevel(int node) => node < State.constellation.Count ? State.constellation[node] : 0;
 
         public int StarCost(int node) => GameData.Constellation[node].Cost * (StarLevel(node) + 1);

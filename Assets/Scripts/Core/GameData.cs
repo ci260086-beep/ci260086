@@ -153,6 +153,8 @@ namespace DeepDrill.Core
 
     public enum SchoolTrait { pulse, no_merge, few_drills, ore_only }
 
+    public enum PlanetRule { none, storm, tide }
+
     public sealed class ChallengeDef
     {
         public string Name;
@@ -188,6 +190,10 @@ namespace DeepDrill.Core
         public double Shards;
         public double Gravity;
         public bool Heat;
+        public double Speed;
+        public double Crit;
+        public double CritMult;
+        public PlanetRule Rule;
     }
 
     public sealed class StarDef
@@ -509,6 +515,10 @@ namespace DeepDrill.Core
                     Shards = Num(o, "shards"),
                     Gravity = Num(o, "gravity"),
                     Heat = (bool)o["heat"],
+                    Speed = Num(o, "speed"),
+                    Crit = Num(o, "crit"),
+                    CritMult = Num(o, "critMult"),
+                    Rule = (PlanetRule)Enum.Parse(typeof(PlanetRule), Str(o, "rule")),
                 });
             }
 

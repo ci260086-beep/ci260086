@@ -14,11 +14,14 @@
   {"name": "心跳复苏", "kind": "heal", "every": 15, "windup": 1.5, "seconds": 0, "amount": 0.12, "desc": "它恢复了血量"}
  ],
  "planets": [
-  {"name": "地球", "desc": "没有特殊规则", "damage": 1, "income": 1, "shards": 1, "gravity": 1, "heat": false},
-  {"name": "月壤星", "desc": "低重力：钻头下落很慢，但伤害 ×2", "damage": 2, "income": 1, "shards": 1, "gravity": 0.35, "heat": false},
-  {"name": "熔岩星", "desc": "满地高温：非狂热时伤害只剩四分之一，收入 ×4", "damage": 1, "income": 4, "shards": 1, "gravity": 1, "heat": true},
-  {"name": "富矿星", "desc": "矿物翻倍，但岩层硬度也翻倍", "damage": 0.5, "income": 2, "shards": 1, "gravity": 1, "heat": false},
-  {"name": "碎晶星", "desc": "重铸碎片 ×2，收入减半", "damage": 1, "income": 0.5, "shards": 2, "gravity": 1, "heat": false}
+  {"name": "地球", "desc": "没有特殊规则", "damage": 1, "income": 1, "shards": 1, "gravity": 1, "heat": false, "speed": 1, "crit": 0, "critMult": 0, "rule": "none"},
+  {"name": "月壤星", "desc": "低重力：钻头下落很慢，但伤害 ×2", "damage": 2, "income": 1, "shards": 1, "gravity": 0.35, "heat": false, "speed": 1, "crit": 0, "critMult": 0, "rule": "none"},
+  {"name": "熔岩星", "desc": "满地高温：非狂热时伤害只剩四分之一，收入 ×4", "damage": 1, "income": 4, "shards": 1, "gravity": 1, "heat": true, "speed": 1, "crit": 0, "critMult": 0, "rule": "none"},
+  {"name": "富矿星", "desc": "矿物翻倍，但岩层硬度也翻倍", "damage": 0.5, "income": 2, "shards": 1, "gravity": 1, "heat": false, "speed": 1, "crit": 0, "critMult": 0, "rule": "none"},
+  {"name": "碎晶星", "desc": "重铸碎片 ×2，收入减半", "damage": 1, "income": 0.5, "shards": 2, "gravity": 1, "heat": false, "speed": 1, "crit": 0, "critMult": 0, "rule": "none"},
+  {"name": "雷暴星", "desc": "每 20 秒雷击炸开岩层，但连击清零", "damage": 1, "income": 1, "shards": 1, "gravity": 1, "heat": false, "speed": 1, "crit": 0, "critMult": 0, "rule": "storm"},
+  {"name": "永冻星", "desc": "攻速减半，但暴击率 +40%，暴击伤害 +300%", "damage": 1, "income": 1, "shards": 1, "gravity": 1, "heat": false, "speed": 0.5, "crit": 40, "critMult": 3, "rule": "none"},
+  {"name": "潮汐星", "desc": "每 30 秒涨落：涨潮伤害 ×3，退潮伤害 ×0.5", "damage": 1, "income": 1, "shards": 1, "gravity": 1, "heat": false, "speed": 1, "crit": 0, "critMult": 0, "rule": "tide"}
  ],
  "constellation": [
   {"name": "猎钻座", "effect": "dmg_pct", "perLevel": 100, "maxLevel": 10, "cost": 1, "desc": "全部伤害 +100%/级"},
