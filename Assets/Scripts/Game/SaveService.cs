@@ -23,6 +23,7 @@ namespace DeepDrill.Game
                 if (state == null) return NewGame();
                 if (state.version > GameState.CurrentVersion)
                     Debug.LogWarning($"Save version {state.version} is newer than this build.");
+                if (state.version != GameState.CurrentVersion) KeepCopy(state.version);
                 state.Upgrade();
                 return state;
             }
@@ -32,6 +33,13 @@ namespace DeepDrill.Game
                 File.Copy(path, path + ".bad", true);
                 return NewGame();
             }
+        }
+
+        // The first load after an update keeps the save as it was, in case the upgrade goes wrong.
+        private void KeepCopy(int version)
+        {
+            string copy = $"{path}.v{version}";
+            if (!File.Exists(copy)) File.Copy(path, copy);
         }
 
         /// <summary>Moves the save aside, so the next load starts a new game and the old one can be put back.</summary>

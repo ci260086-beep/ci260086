@@ -29,7 +29,7 @@ namespace DeepDrill.Core
     [Serializable]
     public sealed class GameState
     {
-        public const int CurrentVersion = 6;
+        public const int CurrentVersion = 7;
 
         public int version = CurrentVersion;
         public int seed = 1;
@@ -138,6 +138,18 @@ namespace DeepDrill.Core
             rares.Add(new RareCount { id = id, count = 1 });
         }
 
+        // Saves from before the explainer cards should not be walked through what they already know.
+        private void MarkOutgrownGuides()
+        {
+            seenGuides.Add("tap");
+            if (mergesEver > 0) seenGuides.Add("merge");
+            if (bossesEver > 0) seenGuides.Add("boss");
+            if (rebirths <= 0) return;
+            seenGuides.Add("rebirth");
+            seenGuides.Add("school");
+            seenGuides.Add("factory");
+        }
+
         /// <summary>Brings a loaded save up to the current version.</summary>
         public void Upgrade()
         {
@@ -150,6 +162,7 @@ namespace DeepDrill.Core
                 bossesDefeated = 0;
             }
             if (version < 6) familyBest = new List<int>(bought);
+            if (version < 7) MarkOutgrownGuides();
             version = CurrentVersion;
         }
 
