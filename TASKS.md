@@ -31,9 +31,9 @@ Claude B 在自己的分支上提交并推送，由 Claude A 合并和验证。C
 | 美术 2b：补结晶、自动化、地核不稳 3 张系统图标 | B | Claude B | `art/system-icons-2b` | 完成 |
 | 美术 3：46 个成就图标 | B | Claude B | `art/collection-icons` | 完成 |
 | 美术 4：技能效果图标 | B | Claude B | `art/skill-icons` | 完成 |
-| 美术 5：12 层专属装饰和岩块变体 | B | Claude B | `art/layer-decals` | 待验证 |
+| 美术 5：12 层专属装饰和岩块变体 | B | Claude B | `art/layer-decals` | 完成 |
 | 美术 6：36 件稀有物品 | B | Claude B | `art/collection-icons` | 完成 |
-| 美术 6b：稀有物品按稀有、史诗、传说加边框或光效 | B | Claude B | `art/rare-frames` | 待验证 |
+| 美术 6b：稀有物品按稀有、史诗、传说加边框或光效 | B | Claude B | `art/rare-frames` | 完成 |
 | 美术 7：钻头家族造型加强 | B | B |  | 待做 |
 
 合并 Claude B 的分支时，`TASKS.md` 里重复的条目合成一条。
@@ -56,6 +56,7 @@ Claude B 在自己的分支上提交并推送，由 Claude A 合并和验证。C
 | ③ 批量购买（×10、买到最多）、快捷键、统计页 | A | | | 待做 |
 | ④ 节奏重调：调匀第 7 到 9 层和第 11、12 层，让第一局时长更稳，每层都有新东西解锁 | A | | | 待做 |
 | ⑤ 地层画面：环境粒子、光照、看得见的机制提示 | A | | | 待做 |
+| ⑤ 接入 12 层装饰和岩块变体（美术 5） | A | | | 待做 |
 | ⑥ 后期内容：更多星球规则、更多挑战规则、流派搭配真正改变玩法 | A | | | 待做 |
 | ⑦ 声音 | A | | | 待做 |
 | ⑧ 存档版本号 | A | | | 待做 |
