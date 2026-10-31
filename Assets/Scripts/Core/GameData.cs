@@ -171,6 +171,9 @@ namespace DeepDrill.Core
         public double Windup;
         public double Seconds;
         public double Amount;
+
+        /// <summary>True when the effect shows on the guardian rather than on the drills.</summary>
+        public bool OnGuardian => Kind == BossMoveKind.armor || Kind == BossMoveKind.immune || Kind == BossMoveKind.heal;
     }
 
     public sealed class PlanetDef

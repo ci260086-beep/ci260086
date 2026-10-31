@@ -235,9 +235,11 @@ namespace DeepDrill.Game
                 case SimEventKind.BossMoveStruck:
                     hud.ShowToast(sim.CurrentBossMove.Desc, 2.5f);
                     world.Shake(0.3f, 4f);
+                    world.ShowBossMove((int)e.Amount);
                     break;
 
                 case SimEventKind.BossMoveEnded:
+                    if (GameData.BossMoves[(int)e.Amount].Seconds > 0) world.HideBossMove();
                     break;
 
                 case SimEventKind.BossArmorBroken:
@@ -262,6 +264,7 @@ namespace DeepDrill.Game
                     break;
 
                 case SimEventKind.BossDefeated:
+                    world.HideBossMove();
                     world.PlayBossDeath(GameData.LayerOfRow(e.Row - 1), e.Row);
                     hud.ShowToast($"打穿了！+{NumberFormat.Short(e.Amount)} 金币", 4f);
                     fx.Explosion(WorldView.CellCenter(e.Row, e.Col), Balance.BossBreachHalfWidth);

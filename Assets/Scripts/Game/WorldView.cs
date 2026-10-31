@@ -45,6 +45,11 @@ namespace DeepDrill.Game
         private static readonly Color BossWarnTint = new Color(1f, 0.25f, 0.2f);
         private const float BossWarnRate = 14f;
         private const int BossFrameWidth = 64;
+        private const int MoveFxWidth = 32;
+        private const int MoveFxPool = 30; // a swarm shows the effect on its first drills only
+        private const float MoveFxStep = 0.12f;
+        private const float MoveFxMinSeconds = 1f;
+        private const float MoveFxFootPivot = 11f / 32f; // the art stands a drill's feet on row 21 of 32
         private const int BossIdleFrames = 2, BossHitFrame = 2, BossHitFrames = 2, BossMoveFrame = 4, BossMoveFrames = 4;
         private const int BossDeathFrame = 8, BossDeathFrames = 4;
         private const float BossIdleStep = 0.5f, BossHitStep = 0.14f, BossMoveStep = 0.16f, BossDeathStep = 0.22f;
@@ -71,6 +76,10 @@ namespace DeepDrill.Game
         private GameSim sim;
         private Camera cam;
         private Sprite[][] bossFrames;
+        private Sprite[][] moveFrames;
+        private readonly List<SpriteRenderer> moveFx = new List<SpriteRenderer>();
+        private int moveFxLayer;
+        private float moveFxLeft;
         private Dictionary<int, Sprite[]> drillFrames;
         private SpriteRenderer bossFace;
         private float bossHitLeft;
@@ -102,6 +111,16 @@ namespace DeepDrill.Game
             bossFrames = new Sprite[layers][];
             for (int s = 0; s < layers; s++) bossFrames[s] = art.Strip($"boss_anim_{s}", BossFrameWidth);
             bossFace = MakeRenderer("bossFace", 4, transform);
+
+            moveFrames = new Sprite[layers][];
+            for (int s = 0; s < layers; s++)
+                moveFrames[s] = art.Strip($"boss_skill_{s}", MoveFxWidth, GameData.BossMoves[s].OnGuardian ? 0.5f : MoveFxFootPivot);
+            for (int i = 0; i < MoveFxPool; i++)
+            {
+                var fx = MakeRenderer("moveFx", 8, transform);
+                fx.enabled = false;
+                moveFx.Add(fx);
+            }
 
             parallaxSprites = new Sprite[layers][];
             for (int s = 0; s < layers; s++)
@@ -209,6 +228,7 @@ namespace DeepDrill.Game
 
             drillClock += dt * DrillFramesPerSecond * (sim.InFrenzy ? 2f : 1f);
             DrawDrills(target);
+            DrawMoveFx();
             DrawParallax(target);
             var timer = System.Diagnostics.Stopwatch.StartNew();
             DrawChunks(target);
@@ -382,6 +402,45 @@ namespace DeepDrill.Game
                 motesUsed++;
             }
             for (int i = motesUsed; i < motes.Count; i++) motes[i].enabled = false;
+        }
+
+        /// <summary>Shows a guardian's move on the drills or on the guardian; instant moves linger a moment.</summary>
+        public void ShowBossMove(int layer)
+        {
+            moveFxLayer = layer;
+            moveFxLeft = Mathf.Max((float)GameData.BossMoves[layer].Seconds, MoveFxMinSeconds);
+        }
+
+        public void HideBossMove() => moveFxLeft = 0;
+
+        private void DrawMoveFx()
+        {
+            moveFxLeft = Mathf.Max(0, moveFxLeft - Time.unscaledDeltaTime);
+            int used = 0;
+            if (moveFxLeft > 0)
+            {
+                var frames = moveFrames[moveFxLayer];
+                var frame = frames[(int)(Time.unscaledTime / MoveFxStep) % frames.Length];
+                if (GameData.BossMoves[moveFxLayer].OnGuardian)
+                {
+                    moveFx[0].sprite = frame;
+                    moveFx[0].transform.position = bossFace.transform.position;
+                    moveFx[0].enabled = true;
+                    used = 1;
+                }
+                else
+                {
+                    for (int i = 0; i < drillPool.Count && used < moveFx.Count; i++)
+                    {
+                        if (!drillPool[i].enabled) break;
+                        moveFx[used].sprite = frame;
+                        moveFx[used].transform.position = drillPool[i].transform.position;
+                        moveFx[used].enabled = true;
+                        used++;
+                    }
+                }
+            }
+            for (int i = used; i < moveFx.Count; i++) moveFx[i].enabled = false;
         }
 
         /// <summary>The guardian flinches for a moment when struck.</summary>
