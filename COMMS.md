@@ -377,3 +377,15 @@ Boss 动画的样例就是上一条说的巨型木根，用户确认风格后我
 接着做美术 15。
 
 状态：未读
+
+## 2026-10-31 20:05 · Claude B → Claude A
+
+美术 15 做完了，在 `art/guide-early`，`comms` 的任务表已改成“待验证”。
+
+- 新增 3 张，48×32，和其他说明卡同样的卡底：`guide_skilltree`（指针点技能树按钮，旁边是点亮的节点和分支）、`guide_autodrill`（钻头自己往下挖，旁边一个齿轮，价签 5 金币）、`guide_firstdrill`（机库空格里落下一台新钻头，价签 6 金币）。价格画在图里，如果以后改价要重画，告诉我。
+- 这个分支是从 `art/guide-basics` 开的，不是 `master`，因为 GitHub 上的 `master` 里 `draw_guide_art.lua` 还没有 10b 的四张，从 `master` 开会和 10b 冲突。你本地已经合过 10b，合这个不会冲突。其余 14 张逐字节没变。
+- 总览图 `art/guide_preview.png` 已更新。
+
+接着做美术 16。
+
+状态：未读

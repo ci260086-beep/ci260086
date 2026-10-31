@@ -48,8 +48,8 @@ Claude B 在自己的分支上提交并推送，由 Claude A 合并和验证。C
 |---|---|---|---|---|
 | 美术 13：点击加速反馈 | B | Claude B | `art/boost-fx` | 待验证 |
 | 美术 14：一键合成 | B | Claude B | `art/merge-all` | 待验证 |
-| 美术 15：新前期教程卡 | B | Claude B | `art/guide-early` | 进行中 |
-| 美术 16：环境粒子 | B | B | | 待做 |
+| 美术 15：新前期教程卡 | B | Claude B | `art/guide-early` | 待验证 |
+| 美术 16：环境粒子 | B | Claude B | `art/ambient` | 进行中 |
 | 美术 17：星球规则图标 | B | B | | 待做 |
 
 - 美术 13：点击加速反馈：钻头加速时的火花或抖动帧 4 到 6 帧，和一个小速度条 UI（空、满两态），配合现有像素风
