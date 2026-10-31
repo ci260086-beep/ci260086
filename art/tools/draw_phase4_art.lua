@@ -169,6 +169,153 @@ local SKILL_EXTRAS = {
       for _, p in ipairs({ { 8, 4 }, { 55, 6 }, { 20, 1 }, { 44, 2 } }) do g:set(p[1], p[2], hex("76a83a")) end
     end
   end,
+
+  -- 岩甲虫: the shell seam glows shut and sand sprays off the sides
+  [2] = function(g, f)
+    local glow = ({ hex("f0d890"), WHITE, hex("f0d890") })[f]
+    for y = 12, 31 do
+      if g:get(31, y) then g:set(31, y, glow); g:set(32, y, glow) end
+    end
+    local sand = hex("fff0c0")
+    for i = 0, 5 do
+      local r = 4 + f * 3 + i % 3
+      for o = 0, 1 do
+        g:set(4 - r + i * 2 + o, 22 - i * 3 - f, sand)
+        g:set(59 + r - i * 2 - o, 22 - i * 3 - f, sand)
+      end
+    end
+  end,
+
+  -- 水晶巨像: crystal shards circle the head, a step further round each frame
+  [3] = function(g, f)
+    local shard, light = hex("5ac8e0"), hex("c8fbff")
+    for i = 0, 5 do
+      local a = i * math.pi / 3 + f * 0.5
+      local x, y = 32 + math.cos(a) * 27, 15 + math.sin(a) * 13
+      g:set(x, y - 1, light); g:set(x, y, shard); g:set(x - 1, y, shard); g:set(x + 1, y, shard); g:set(x, y + 1, shard)
+    end
+  end,
+
+  -- 盲眼巨鱼: water jets climb up on either side and spill over in drops
+  [4] = function(g, f)
+    local water, foam = hex("3a8ad8"), hex("c8f0ff")
+    local height = ({ 6, 14, 10 })[f]
+    for side = -1, 1, 2 do
+      local x = side < 0 and 4 or W - 6
+      for s = 0, height do
+        local wob = math.floor(math.sin(s * 0.7 + f) + 0.5)
+        g:set(x + wob, H - 1 - s, water); g:set(x + wob + 1, H - 1 - s, water)
+      end
+      g:set(x, H - 2 - height, foam); g:set(x + 1, H - 2 - height, foam)
+      if f >= 2 then
+        for d = 1, 3 do g:set(x - side * d * 2, H - height + d * 2, foam) end
+      end
+    end
+  end,
+
+  -- 石像守卫: the brow rune flares and grey stone rays fan out from it
+  [5] = function(g, f)
+    local gold, stone = hex("ffe27a"), hex("b0a890")
+    local len = ({ 4, 9, 6 })[f]
+    for _, d in ipairs({ { -1, 0 }, { 1, 0 }, { -1, -0.4 }, { 1, -0.4 }, { -0.6, 1 }, { 0.6, 1 } }) do
+      for s = 3, len + 3 do g:set(32 + d[1] * s * 2, 4 + d[2] * s, s % 2 == 0 and stone or gold) end
+    end
+    g:set(31, 3, WHITE); g:set(32, 3, WHITE); g:set(31, 4, gold); g:set(32, 4, gold)
+  end,
+
+  -- 花岗岩魔像: chips of rock fly in from the edges and stick to the shoulders
+  [6] = function(g, f)
+    local chip, trail = hex("f4ecec"), hex("ff8a2a")
+    for i = 0, 7 do
+      local side = i % 2 == 0 and -1 or 1
+      local dist = 34 - f * 7 + (i % 3) * 2
+      local x, y = 32 + side * dist, 4 + i * 3
+      g:set(x, y, chip); g:set(x + 1, y, chip); g:set(x, y + 1, chip); g:set(x + 1, y + 1, chip)
+      g:set(x + side * 2, y, trail); g:set(x + side * 3, y + 1, trail)
+    end
+  end,
+
+  -- 莫霍守门人: pressure waves press downwards from the helmet in red bands
+  [7] = function(g, f)
+    local red, hot = hex("ff3a2a"), hex("ff9a7a")
+    for b = 0, 1 do
+      local y = 2 + f * 3 + b * 9
+      if y < H then
+        local half = 10 + f * 3 + b * 4
+        for x = 32 - half, 31 + half do
+          if (x + y) % 4 ~= 0 then g:set(x, y, b == 0 and hot or red) end
+        end
+        g:set(32 - half, y + 1, red); g:set(31 + half, y + 1, red)
+      end
+    end
+  end,
+
+  -- 熔岩巨蛇: globs of magma arc out of the open mouth
+  [8] = function(g, f)
+    local magma, hot = hex("f07a20"), hex("ffe27a")
+    for i, v in ipairs({ { -1.6, 1.1 }, { 1.6, 1.1 }, { -0.8, 1.6 }, { 0.8, 1.6 } }) do
+      local t = f * 2.2 + (i % 2) * 0.6
+      local x = 32 + v[1] * t * 3
+      local y = 20 - v[2] * t * 3 + t * t * 0.7
+      g:set(x, y, hot); g:set(x + 1, y, magma); g:set(x, y + 1, magma); g:set(x + 1, y + 1, magma)
+    end
+  end,
+
+  -- 相变之灵: the whole body thins to half seen and sparkles flicker round it
+  [9] = function(g, f)
+    if f == 2 then
+      for k, c in pairs(g.px) do
+        g.px[k] = pc.rgba(pc.rgbaR(c), pc.rgbaG(c), pc.rgbaB(c), math.min(pc.rgbaA(c), 120))
+      end
+    end
+    local spark = hex("e8ffff")
+    for i = 0, 5 do
+      local x, y = 12 + ((i * 17 + f * 9) % 40), 2 + ((i * 11 + f * 5) % 26)
+      g:set(x, y, spark); g:set(x - 1, y, hex("5ad8c8")); g:set(x + 1, y, hex("5ad8c8"))
+    end
+  end,
+
+  -- 地幔巨鲸: a red wave rolls along the bottom of the wall
+  [10] = function(g, f)
+    local red, crest = hex("c83a20"), hex("ff9a5a")
+    for x = 0, W - 1 do
+      local top = math.floor(H - 4 - 2.5 * math.sin(x / 5 + f * 1.4) + 0.5)
+      for y = top, H - 1 do g:set(x, y, red) end
+      g:set(x, top, crest)
+    end
+  end,
+
+  -- 磁暴旋涡: lightning jumps from the two poles into the eye
+  [11] = function(g, f)
+    local arc = WHITE
+    local bolt = { { 30, 0 }, { 34, 3 }, { 29, 6 }, { 33, 9 }, { 32, 13 } }
+    if f == 2 then
+      for i = 1, #bolt - 1 do
+        g:line(bolt[i][1], bolt[i][2], bolt[i + 1][1], bolt[i + 1][2], hex("8ae8ff"))
+        g:line(bolt[i][1] + 1, bolt[i][2], bolt[i + 1][1] + 1, bolt[i + 1][2], WHITE)
+      end
+    end
+    for side = -1, 1, 2 do
+      local x0 = side < 0 and 5 or W - 6
+      local x, y = x0, 15
+      for s = 1, 6 do
+        local nx = x0 + (32 - x0) * s / 6
+        local ny = 16 + ((s * 7 + f * 5 + (side + 1) * 3) % 9) - 4
+        g:line(x, y, nx, ny, s == 6 and WHITE or arc)
+        x, y = nx, ny
+      end
+    end
+  end,
+
+  -- 地核心脏: a heartbeat ring spreads outwards from the core
+  [12] = function(g, f)
+    local ring = ({ hex("fff0b0"), hex("ffc860"), hex("e8803a") })[f]
+    local rx, ry = 10 + f * 7, 6 + f * 3.5
+    for i = 0, 95 do
+      local a = i / 96 * 2 * math.pi
+      g:set(32 + math.cos(a) * rx, 15 + math.sin(a) * ry, ring)
+    end
+  end,
 }
 
 local function frames(face, layer)
