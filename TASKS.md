@@ -34,7 +34,7 @@ Claude B 在自己的分支上提交并推送，由 Claude A 合并和验证。C
 | 美术 5：12 层专属装饰和岩块变体 | B | Claude B | `art/layer-decals` | 完成 |
 | 美术 6：36 件稀有物品 | B | Claude B | `art/collection-icons` | 完成 |
 | 美术 6b：稀有物品按稀有、史诗、传说加边框或光效 | B | Claude B | `art/rare-frames` | 完成 |
-| 美术 7：钻头家族造型加强 | B | B |  | 待做 |
+| 美术 7：钻头家族造型加强 | B | Claude B | `art/drill-families` | 完成 |
 
 合并 Claude B 的分支时，`TASKS.md` 里重复的条目合成一条。
 
@@ -62,8 +62,9 @@ Claude B 在自己的分支上提交并推送，由 Claude A 合并和验证。C
 | ⑧ 存档版本号 | A | | | 待做 |
 | ⑧ 修好 Windows 打包、用打包版确认 20 毫秒 | A | | | 暂缓 |
 | 像素字体：换成开源中文像素字体，比如缝合像素体 | A | | | 待做 |
-| 美术 9：12 个 Boss 的招式特效 | B | Claude B | `art/boss-skill-fx` | 待验证 |
-| 美术 10：新手提示箭头和说明卡插图 | B | B | | 待做 |
+| 美术 9：12 个 Boss 的招式特效 | B | Claude B | `art/boss-skill-fx` | 完成 |
+| 美术 10：新手提示箭头和说明卡插图 | B | Claude B | `art/guide-art` | 完成 |
+| 美术 10b：基础玩法说明卡：点击挖掘、合成、Boss、重铸 | B | B | | 待做 |
 | 美术 11：12 层视差背景 | B | B | | 待做 |
 | 美术 12：星球和星座图 | B | B | | 待做 |
 
