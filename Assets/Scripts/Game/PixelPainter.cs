@@ -10,11 +10,16 @@ namespace DeepDrill.Game
     /// </summary>
     public static class PixelPainter
     {
-        private const int SpeckSize = 3;
+        private const int DecalsPerLayer = 4;
+        private const int RocksPerLayer = 3;
+        private const int DecalEveryTiles = 9;
+        private const int RockPatchTiles = 4;
 
         private static readonly Color32 Clear = new Color32(0, 0, 0, 0);
         private static Color32[][] ramps;
         private static Color32[] ores;
+        private static Color32[][][] decals;
+        private static Color32[][][] rocks;
 
         private static readonly Color32[] OreTones =
         {
@@ -27,6 +32,21 @@ namespace DeepDrill.Game
             new Color32(0x80, 0xb0, 0x50, 255), new Color32(0xc0, 0x50, 0xb0, 255), new Color32(0xe8, 0xc8, 0x70, 255),
             new Color32(0x60, 0xb0, 0xf0, 255), new Color32(0xff, 0xe2, 0x7a, 255), new Color32(0xc0, 0x5c, 0xff, 255),
         };
+
+        /// <summary>Reads the layer art once at start-up; the painter samples it for every ground pixel.</summary>
+        public static void UseLayerArt(ArtLibrary art)
+        {
+            int layers = GameData.Layers.Count;
+            decals = new Color32[layers][][];
+            rocks = new Color32[layers][][];
+            for (int l = 0; l < layers; l++)
+            {
+                decals[l] = new Color32[DecalsPerLayer][];
+                for (int i = 0; i < DecalsPerLayer; i++) decals[l][i] = art.Get($"decal_layer_{l}_{i}").texture.GetPixels32();
+                rocks[l] = new Color32[RocksPerLayer][];
+                for (int i = 0; i < RocksPerLayer; i++) rocks[l][i] = art.Get($"rock_layer_{l}_{i}").texture.GetPixels32();
+            }
+        }
 
         private static void Prepare()
         {
@@ -86,33 +106,24 @@ namespace DeepDrill.Game
                 var ore = ores[mat - Mat.OreBase];
                 return Mix(x / 2, y / 2) % 9 == 0 ? new Color32(255, 255, 255, 255) : ore;
             }
-            if (TryDecal(x, y, out Color32 decal)) return decal;
-
-            // specks come in small clumps: single-pixel noise reads as static rather than earth
-            int speck = (int)(Mix(x / SpeckSize, y / SpeckSize) % 14);
-            return speck == 0 ? ramp[4] : speck <= 2 ? ramp[2] : ramp[3];
+            return GroundAt(layer, x, y);
         }
 
-        // One tile in nine carries a small buried thing: pebbles, a bone or a root.
-        private static bool TryDecal(int x, int y, out Color32 color)
+        // Ground is drawn from the layer's rock textures, one texture to a patch of tiles so its
+        // seams stay out of sight, and one tile in nine carries a small buried thing.
+        private static Color32 GroundAt(int layer, int x, int y)
         {
-            color = default;
-            int tileX = x / PixelWorld.TileSize, tileY = y / PixelWorld.TileSize;
+            int size = PixelWorld.TileSize;
+            int tileX = x / size, tileY = y / size;
+            int lx = x - tileX * size, ly = size - 1 - (y - tileY * size);
             uint roll = Mix(tileX + 91, tileY + 37);
-            if (roll % 9 != 0) return false;
-            int lx = x - tileX * PixelWorld.TileSize, ly = y - tileY * PixelWorld.TileSize;
-            switch ((roll >> 8) % 3)
+            if (roll % DecalEveryTiles == 0)
             {
-                case 0:
-                    color = new Color32(0x6a, 0x6a, 0x78, 255);
-                    return (lx >= 4 && lx <= 6 && ly >= 9 && ly <= 10) || (lx >= 10 && lx <= 11 && ly >= 5 && ly <= 6);
-                case 1:
-                    color = new Color32(0xe0, 0xd8, 0xc8, 255);
-                    return (ly == 8 && lx >= 4 && lx <= 11) || ((lx == 3 || lx == 12) && ly >= 7 && ly <= 9);
-                default:
-                    color = new Color32(0x4a, 0x31, 0x22, 255);
-                    return ly == 4 + lx / 2 && lx >= 2 && lx <= 12;
+                var decal = decals[layer][(roll >> 8) % DecalsPerLayer][ly * size + lx];
+                if (decal.a > 0) return decal;
             }
+            uint patch = Mix(tileX / RockPatchTiles, tileY / RockPatchTiles);
+            return rocks[layer][patch % RocksPerLayer][ly * size + lx];
         }
 
         /// <summary>Repaints part of a chunk into its colour buffer.</summary>

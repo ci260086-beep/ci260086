@@ -102,6 +102,7 @@ namespace DeepDrill.Game
             sim = simulation;
             cam = camera;
             int layers = GameData.Layers.Count;
+            PixelPainter.UseLayerArt(art);
 
             drillFrames = new Dictionary<int, Sprite[]>();
             for (int f = 0; f < GameData.Families.Count; f++)

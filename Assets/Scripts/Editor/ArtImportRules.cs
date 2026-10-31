@@ -19,6 +19,7 @@ namespace DeepDrill.Editor
             importer.wrapMode = TextureWrapMode.Clamp;
             importer.alphaIsTransparency = true;
             importer.npotScale = TextureImporterNPOTScale.None;
+            importer.isReadable = assetPath.Contains("_layer_"); // the ground painter samples these pixel by pixel
         }
 
         // New art reaches the game by itself, including while the project is open in the Editor.
