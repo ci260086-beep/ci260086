@@ -8,6 +8,9 @@
 - **分支：** `master`（`de825d3`，第一版）；`v2`（`8f3b4c6`，第三阶段第 0 步）；`phase3-step2`（从 `v2` 分出，正在做第 2 步）；`terrain-pixel`（`e7d03fb`，已包含在 `v2` 里，检出在 `Builds/wtp`）；`wip-v2`（旧存档分支）。
 - **第三阶段进度：** 计划在 `tools/Design/phase3_plan.md`。用户决定在 `phase3-step2` 这一条分支上把第 1 到第 8 步全部做完，每步只跑编译和单元测试，最后统一做完整测试和节奏调参。第 0、2、1、3、4、5、6、7、8 步和完整测试、节奏调参都已提交：Unity 内 147 个测试全过，200 台钻头 60 FPS，最差一帧 24 毫秒。第 2 步：`milestones.json`、`GameSim.MilestonesOf/MasteryOf`、`HudView.Mastery.cs`（图鉴的“里程碑”“精通”标签页，未实机看过）。
 - **第四阶段计划：** https://claude.ai/artifact/CKUBNxSWKeDQZEUQSTgwkF
+- **美术和界面（`phase4-art-ui` 分支，从 `phase3-step2` 分出，等用户确认后再合并）：** 用户试玩后的反馈，已在实机截图里看过，没有真人操作过。按钮图标：`tab_tree`、`tab_trophy`、`tab_base`，鼠标移上去底部显示名字。`ui_frame` 是按钮列和机库共用的实心底板，`FxLayer` 只覆盖挖掘区并裁剪，相机按 `DigWidth` 限位。钻头 12 级配色在 `draw_world_art.lua` 的 `MATERIALS`，中间色同时存在于 `Palette.Tier`，改一边要改另一边；钢起边条，金起宝石，水晶起发光外框，星核有火花和环绕光点（`WorldView.GlowOf`、`motes`）。机库改成每行 5 格，每格 14 像素，按材质上色；合成弹出在 `HudView.Merge.cs`。技能树页面和 46 个成就的单独图标这次没动。
+- **Aseprite 脚本的坑：** `Aseprite.exe` 启动后立刻返回，在 PowerShell 里要用 `Start-Process -Wait`，否则会读到旧文件。重跑 `draw_game_art.lua` 会改动 `ore_coal`、`ore_silver` 及其 `_sand` 四张贴图，这是脚本和已提交图片的旧差异，不是想要的改动，提交前要还原。
+- **用户开着 Unity 时的验证办法：** 用 robocopy 把 `Assets`、`Packages`、`ProjectSettings`、`Library`、`tools` 复制到别的目录，在副本里运行它的 `tools\check.ps1`，再把新生成的 `.meta` 和 `ArtLibrary.asset` 同步回来。这样不影响用户的 Play。两个 Unity 同时开时最差一帧会偏高（这次 30 毫秒）。
 - **用户已定：** 横屏 320×180；逐像素地形；手动起步（解锁自动钻探前只能点击）；定价 6 元人民币；不做广告和付费加速。
 - **节奏目标：** 第一次重铸约 30 到 45 分钟；第 1 局到第 4 到 5 层；之后每层约 8 到 15 分钟；10 到 15 局到地心。
 - **代码结构：** 规则在 `Assets/Scripts/Core`（`GameSim.cs`、`GameSim.Pixels.cs`、`PixelWorld.cs`、`WorldGen.cs`、`DrillBody.cs`、`Balance.cs`、`GameData.cs`、`GameState.cs`），不能引用 UnityEngine。表现层在 `Assets/Scripts/Game`（`HudView*.cs` 是全部 UI）。测试在 `Assets/Tests/EditMode`（`CoreTests.cs`、`RuleTests.cs`、`PacingTests.cs`）。下面第 1 节的表写于第一版，以这里为准。

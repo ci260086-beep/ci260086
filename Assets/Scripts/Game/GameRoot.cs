@@ -265,6 +265,7 @@ namespace DeepDrill.Game
                 case SimEventKind.DrillMerged:
                     sound.Play("merge", 0.6f);
                     OnMerged();
+                    hud.ShowMerged((int)e.Amount);
                     hud.ShowToast($"合成了{HudView.KindName((int)e.Amount)}", 2f);
                     break;
 

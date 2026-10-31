@@ -1,0 +1,99 @@
+using DeepDrill.Core;
+using UnityEngine;
+using UnityEngine.UI;
+
+namespace DeepDrill.Game
+{
+    /// <summary>The new drill pops up large in its material's light, and its hangar cell jumps.</summary>
+    public sealed partial class HudView
+    {
+        private const int MergeIconScale = 4;
+        private const float MergeCardSeconds = 1.1f;
+        private const float MergeGrowSeconds = 0.18f;
+        private const float MergeFadeSeconds = 0.3f;
+        private const float MergeOvershoot = 1.35f;
+        private const float MergeBusySeconds = 0.5f;
+        private const int MergeGlowSize = 96;
+        private const float CellPopSeconds = 0.35f;
+        private const float CellPopScale = 0.5f;
+
+        private RectTransform mergeCard;
+        private Image mergeIcon, mergeGlow;
+        private float mergeTime;
+        private float cellPop;
+        private int mergedCode = -1;
+
+        private void BuildMergeCard()
+        {
+            var go = new GameObject("MergeCard", typeof(RectTransform));
+            go.transform.SetParent(stageRoot, false);
+            mergeCard = (RectTransform)go.transform;
+            Ui.TopLeft(mergeCard, Stage.DigWidth / 2f, Stage.Height / 2f, 0, 0);
+
+            mergeGlow = Layer(mergeCard, "node_glow", MergeGlowSize);
+            mergeGlow.material = GlowMaterial;
+            mergeIcon = Ui.Icon(mergeCard, art.Strip("drill_0_0", 8)[0], 0, 0, DrillIconWidth);
+            mergeIcon.raycastTarget = false;
+            Center(mergeIcon.rectTransform, Vector2.zero, DrillIconWidth * MergeIconScale, DrillIconHeight * MergeIconScale);
+            mergeCard.gameObject.SetActive(false);
+        }
+
+        /// <summary>Announces a merged drill; a burst of automatic merges keeps the one on show.</summary>
+        public void ShowMerged(int code)
+        {
+            mergedCode = code;
+            cellPop = 1f;
+            if (mergeTime > MergeCardSeconds - MergeBusySeconds) return;
+
+            mergeTime = MergeCardSeconds;
+            mergeIcon.sprite = FrameOf(code);
+            mergeGlow.color = Palette.Tier(DrillCode.Tier(code));
+            mergeCard.gameObject.SetActive(true);
+        }
+
+        private void UpdateMergeCard(float dt)
+        {
+            UpdateCellPop(dt);
+            if (mergeTime <= 0) return;
+            mergeTime -= dt;
+            if (mergeTime <= 0)
+            {
+                mergeCard.gameObject.SetActive(false);
+                return;
+            }
+
+            float shown = MergeCardSeconds - mergeTime;
+            float grow = Mathf.Clamp01(shown / MergeGrowSeconds);
+            float scale = shown < MergeGrowSeconds
+                ? grow * MergeOvershoot
+                : Mathf.Lerp(MergeOvershoot, 1f, Mathf.Clamp01((shown - MergeGrowSeconds) / MergeGrowSeconds));
+            mergeCard.localScale = new Vector3(scale, scale, 1);
+
+            float alpha = Mathf.Clamp01(mergeTime / MergeFadeSeconds);
+            mergeIcon.color = new Color(1, 1, 1, alpha);
+            var glow = mergeGlow.color;
+            glow.a = alpha;
+            mergeGlow.color = glow;
+        }
+
+        private void UpdateCellPop(float dt)
+        {
+            if (mergedCode < 0) return;
+            cellPop = Mathf.Max(0, cellPop - dt / CellPopSeconds);
+            float scale = 1f + cellPop * CellPopScale;
+            bool found = false;
+            foreach (var cell in hangarCells)
+            {
+                if (cell.Code != mergedCode || found)
+                {
+                    cell.transform.localScale = Vector3.one;
+                    continue;
+                }
+                found = true;
+                cell.transform.localScale = new Vector3(scale, scale, 1);
+                cell.transform.SetAsLastSibling();
+            }
+            if (cellPop <= 0) mergedCode = -1;
+        }
+    }
+}

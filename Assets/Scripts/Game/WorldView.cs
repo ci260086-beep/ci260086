@@ -13,6 +13,14 @@ namespace DeepDrill.Game
         private const int ChunkCols = 8;
         private const int ChunkRows = 5;
         private const float DrillFramesPerSecond = 14f;
+        private const int FirstGlowTier = 7;
+        private const float TierGlowAlpha = 0.28f;
+        private const float StarGlowAlpha = 0.42f;
+        private const int Motes = 24;
+        private const float MoteTurnRate = 5f;
+        private const float MoteSpacing = 2.1f;
+        private const float MoteRadius = 0.75f;
+        private static readonly Color PlainGlow = new Color(1f, 0.8f, 0.45f, 0.14f);
         private const float CameraFollowRate = 6f;
         private const float DrillPivotBelowCenter = 0.33f; // sprites turn about a point near the tip
         private const float DrillPivotY = 1f / 12f;
@@ -46,6 +54,9 @@ namespace DeepDrill.Game
         private readonly Dictionary<long, ChunkSlot> slotByChunk = new Dictionary<long, ChunkSlot>();
         private readonly List<SpriteRenderer> drillPool = new List<SpriteRenderer>();
         private readonly List<SpriteRenderer> glows = new List<SpriteRenderer>();
+        private readonly List<SpriteRenderer> motes = new List<SpriteRenderer>();
+        private readonly List<Vector3> stars = new List<Vector3>();
+        private readonly Color[] drillGlows = new Color[DrillPool];
 
         private GameSim sim;
         private Camera cam;
@@ -105,10 +116,18 @@ namespace DeepDrill.Game
             {
                 var glow = MakeRenderer("glow", 5, transform);
                 glow.sprite = art.Get("fx_circle");
-                glow.color = new Color(1f, 0.8f, 0.45f, 0.14f);
+                glow.color = PlainGlow;
                 glow.transform.localScale = new Vector3(2.4f, 2.4f, 1);
                 glow.enabled = false;
                 glows.Add(glow);
+            }
+            for (int i = 0; i < Motes; i++)
+            {
+                var mote = MakeRenderer("mote", 7, transform);
+                mote.sprite = art.Get("pixel");
+                mote.color = new Color(1f, 0.95f, 0.7f);
+                mote.enabled = false;
+                motes.Add(mote);
             }
             for (int i = 0; i < DrillPool; i++)
             {
@@ -294,6 +313,8 @@ namespace DeepDrill.Game
                 var frames = drillFrames[unit.Code];
                 sr.sprite = frames[((int)drillClock + i) % frames.Length]; // offset so they do not spin in step
                 sr.color = sim.InFrenzy ? FrenzyTint : Color.white;
+                int tier = DrillCode.Tier(unit.Code);
+                drillGlows[used - 1] = GlowOf(tier);
                 // heat haze: a whole-pixel sideways wobble while in frenzy
                 float haze = sim.InFrenzy ? Mathf.Round(Mathf.Sin(Time.unscaledTime * 30f + i) * 1.2f) / Stage.PixelsPerUnit : 0f;
                 bool squash = unit.LastSwing >= 0 && sim.Now - unit.LastSwing < SquashSeconds;
@@ -303,13 +324,39 @@ namespace DeepDrill.Game
                     Quaternion.Euler(0, 0, (float)unit.Body.Angle));
             }
             for (int i = used; i < drillPool.Count; i++) drillPool[i].enabled = false;
+            stars.Clear();
+            for (int i = 0; i < used; i++)
+                if (drillGlows[i].a >= StarGlowAlpha) stars.Add(drillPool[i].transform.position + new Vector3(0, 0.33f, 0));
 
             for (int i = 0; i < glows.Count; i++)
             {
                 bool on = i < used;
                 glows[i].enabled = on;
-                if (on) glows[i].transform.position = drillPool[i].transform.position + new Vector3(0, 0.33f, 0);
+                if (!on) continue;
+                glows[i].transform.position = drillPool[i].transform.position + new Vector3(0, 0.33f, 0);
+                glows[i].color = drillGlows[i];
             }
+
+            // star-core drills keep a few sparks circling them
+            int motesUsed = 0;
+            for (int i = 0; i < stars.Count && motesUsed < motes.Count; i++)
+            {
+                var mote = motes[motesUsed];
+                float angle = Time.unscaledTime * MoteTurnRate + motesUsed * MoteSpacing;
+                mote.enabled = true;
+                mote.transform.position = stars[i] + new Vector3(Mathf.Cos(angle), Mathf.Sin(angle), 0) * MoteRadius;
+                motesUsed++;
+            }
+            for (int i = motesUsed; i < motes.Count; i++) motes[i].enabled = false;
+        }
+
+        // Crystal and above throw light in their own colour; the star core burns brightest.
+        private static Color GlowOf(int tier)
+        {
+            if (tier < FirstGlowTier) return PlainGlow;
+            var c = Palette.Tier(tier);
+            c.a = tier == GameData.Tiers - 1 ? StarGlowAlpha : TierGlowAlpha;
+            return c;
         }
 
         // Puts the lead in the middle of the dig area and a third of the way down it, then keeps
@@ -322,7 +369,7 @@ namespace DeepDrill.Game
             float y = drillY - (Stage.Height / 2f - drillStageY) / Stage.PixelsPerUnit;
 
             float halfWidth = Stage.Width / 2f / Stage.PixelsPerUnit;
-            float digUnits = Stage.PanelX / Stage.PixelsPerUnit; // the rail floats, so ground shows behind it
+            float digUnits = Stage.DigWidth / Stage.PixelsPerUnit;
             x = Mathf.Clamp(x, -0.5f + halfWidth, Balance.Columns - 0.5f - digUnits + halfWidth);
             return new Vector2(Stage.SnapToPixel(x), Stage.SnapToPixel(y));
         }

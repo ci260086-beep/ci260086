@@ -599,6 +599,65 @@ icon("settings", function(g)
   end
 end)
 
+icon("tree", function(g)
+  local leaf, leafHi, leafLo = hex("4fae3e"), hex("9be05a"), hex("2c7034")
+  for y = 0, 10 do
+    for x = 1, 14 do
+      local dx, dy = x - 7.5, y - 5
+      if dx * dx / 44 + dy * dy / 28 <= 1 then
+        g:set(x, y, (dx + dy < -3) and leafHi or ((dx + dy > 3) and leafLo or leaf))
+      end
+    end
+  end
+  g:set(4, 7, leafHi) g:set(10, 3, leafHi) g:set(8, 6, leafLo)
+  g:rect(6, 9, 9, 14, D3)
+  g:rect(6, 9, 7, 14, D5)
+  g:rect(4, 14, 11, 14, D2)
+end)
+
+icon("trophy", function(g)
+  g:rect(4, 1, 11, 7, GOLD)
+  g:rect(4, 1, 5, 7, GOLD_HI)
+  g:rect(5, 8, 10, 8, GOLD)
+  g:rect(6, 9, 9, 9, GOLD)
+  g:rect(7, 10, 8, 11, O1)
+  g:rect(5, 12, 10, 12, GOLD)
+  g:rect(4, 13, 11, 14, O1)
+  g:rect(1, 2, 3, 2, GOLD) g:rect(1, 2, 1, 5, GOLD) g:rect(2, 6, 3, 6, GOLD)
+  g:rect(12, 2, 14, 2, GOLD) g:rect(14, 2, 14, 5, GOLD) g:rect(12, 6, 13, 6, GOLD)
+  g:rect(7, 3, 8, 5, GOLD_HI)
+end)
+
+icon("base", function(g)
+  local roof, roofHi = hex("b8402e"), hex("e8684a")
+  for y = 1, 7 do
+    g:rect(8 - y, y, 7 + y, y, (y < 3) and roofHi or roof)
+  end
+  g:rect(2, 8, 13, 14, S2)
+  g:rect(2, 8, 13, 8, S3)
+  g:rect(6, 10, 9, 14, D2)
+  g:rect(7, 11, 8, 14, K1)
+  g:rect(3, 10, 4, 11, GOLD_HI)
+  g:rect(11, 10, 12, 11, GOLD_HI)
+end)
+
+-- the one solid frame behind the button rail and the side panel, right of the dig area:
+-- iron edges with rivets, a sunken rail, and a dark plank back for the panel
+local RAIL_WIDTH, FRAME_WIDTH, FRAME_HEIGHT, RIVET_STEP = 20, 96, 180, 24
+local frame = canvas(FRAME_WIDTH, FRAME_HEIGHT)
+local plank, plankLine, trough = hex("1e1512"), hex("161010"), hex("120c0a")
+frame:rect(0, 0, FRAME_WIDTH - 1, FRAME_HEIGHT - 1, plank)
+for y = 0, FRAME_HEIGHT - 1, 12 do frame:rect(RAIL_WIDTH, y, FRAME_WIDTH - 1, y, plankLine) end
+frame:rect(0, 0, RAIL_WIDTH - 1, FRAME_HEIGHT - 1, trough)
+frame:rect(0, 0, FRAME_WIDTH - 1, 0, S3)
+frame:rect(0, FRAME_HEIGHT - 1, FRAME_WIDTH - 1, FRAME_HEIGHT - 1, K2)
+frame:rect(FRAME_WIDTH - 1, 0, FRAME_WIDTH - 1, FRAME_HEIGHT - 1, K2)
+frame:rect(0, 0, 0, FRAME_HEIGHT - 1, S3)
+frame:rect(RAIL_WIDTH - 1, 0, RAIL_WIDTH - 1, FRAME_HEIGHT - 1, S1)
+frame:rect(RAIL_WIDTH, 0, RAIL_WIDTH, FRAME_HEIGHT - 1, K2)
+for y = 12, FRAME_HEIGHT - 12, RIVET_STEP do frame:set(RAIL_WIDTH - 1, y, S3) end
+save(frame, "Items/ui_frame")
+
 local white = canvas(1, 1)
 white:set(0, 0, hex("ffffff"))
 save(white, "Items/pixel")

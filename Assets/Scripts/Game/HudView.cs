@@ -14,8 +14,11 @@ namespace DeepDrill.Game
     public sealed partial class HudView : MonoBehaviour
     {
         private const int FamilyCardHeight = 15;
-        private const int HangarCellSize = 11;
-        private const int HangarColumns = 6;
+        private const int HangarCellSize = 14;
+        private const int HangarColumns = 5;
+        private const int DrillIconWidth = 8;
+        private const int DrillIconHeight = 12;
+        private const float CellBackShare = 0.35f;
         private const int HangarVisibleCells = 180;
         private const int PanelTitleHeight = 15;
         private const int FooterHeight = 21;
@@ -90,6 +93,7 @@ namespace DeepDrill.Game
         {
             public HudView Hud;
             public Image Icon;
+            public Image Back;
             public int Code = -1;
 
             public void OnBeginDrag(PointerEventData e) => Hud.BeginCellDrag(this, e);
@@ -187,6 +191,7 @@ namespace DeepDrill.Game
             BuildFrenzyOverlay();
             BuildDigOverlay();
             BuildFrenzyMeter();
+            BuildFrame();
             BuildSidePanel();
             BuildRail();
             BuildTreePage();
@@ -196,13 +201,16 @@ namespace DeepDrill.Game
             var fxGo = new GameObject("Fx", typeof(RectTransform));
             fxGo.transform.SetParent(stageRoot, false);
             FxLayer = (RectTransform)fxGo.transform;
-            Ui.TopLeft(FxLayer, 0, 0, Stage.Width, Stage.Height);
+            Ui.TopLeft(FxLayer, 0, 0, Stage.DigWidth, Stage.Height);
+            fxGo.AddComponent<RectMask2D>(); // effects belong to the dig area and never spill onto the frame
 
             dragGhost = Ui.Icon(stageRoot, art.Strip("drill_0_0", 8)[0], 0, 0, HangarCellSize);
+            Ui.TopLeft(dragGhost.rectTransform, 0, 0, DrillIconWidth, DrillIconHeight);
             dragGhost.gameObject.SetActive(false);
 
             BuildBossBanner();
             BuildSurfaceEvent();
+            BuildMergeCard();
 
             toastLabel = Floating("", 0, 140, Stage.DigWidth, 18, 13, TextAnchor.MiddleCenter);
             toastLabel.color = CoinColor;
@@ -391,12 +399,20 @@ namespace DeepDrill.Game
             frenzyButton.onClick.AddListener(() => sim.StartFrenzy());
         }
 
-        // Hangar, tree, gallery on top; stats and settings at the bottom.
+        // One solid piece of UI for the rail and the panel; the dig area stops at its edge.
+        private void BuildFrame()
+        {
+            var frame = Ui.Panel(stageRoot, "Frame", Stage.DigWidth, 0, Stage.Width - Stage.DigWidth, Stage.Height, Color.white);
+            frame.sprite = art.Get("ui_frame");
+        }
+
+        // Hangar, tree, gallery on top; stats, settings and base at the bottom.
         private void BuildRail()
         {
             var rail = Ui.Panel(stageRoot, "Rail", Stage.DigWidth, 0, Stage.RailWidth, Stage.Height, Color.clear);
             rail.raycastTarget = false;
-            string[] icons = { "tab_drill", "tab_frenzy", "badge", "tab_stats", "tab_settings", "icon_copper" };
+            string[] icons = { "tab_drill", "tab_tree", "tab_trophy", "tab_stats", "tab_settings", "tab_base" };
+            string[] names = { "钻头机库", "技能树", "成就和收藏", "统计和重铸", "设置", "基地" };
             for (int i = 0; i < icons.Length; i++)
             {
                 int index = i;
@@ -406,13 +422,14 @@ namespace DeepDrill.Game
                 var button = Ui.Button(rail.transform, Font, "", 1, y, RailButton, RailButton, 7, RailColor, out _);
                 Ui.Icon(button.transform, art.Get(icons[i]), 1, 1, 16);
                 button.onClick.AddListener(() => ShowPage(index));
+                button.gameObject.AddComponent<HoverRelay>().Entered = () => footerLabel.text = names[index];
                 railButtons.Add(button.GetComponent<Image>());
             }
         }
 
         private void BuildSidePanel()
         {
-            var panel = Ui.Panel(stageRoot, "Panel", Stage.PanelX, 0, Stage.PanelWidth, Stage.Height, PanelColor);
+            var panel = Ui.Panel(stageRoot, "Panel", Stage.PanelX, 0, Stage.PanelWidth, Stage.Height, Color.clear);
             sidePanel = panel.gameObject;
             panelTitle = Ui.Label(panel.transform, Font, "", 0, 2, Stage.PanelWidth, 12, 8, TextAnchor.MiddleCenter);
             panelTitle.fontStyle = FontStyle.Bold;
@@ -509,10 +526,12 @@ namespace DeepDrill.Game
             {
                 var bg = Ui.Panel(content, "cell", (i % HangarColumns) * HangarCellSize, (i / HangarColumns) * HangarCellSize,
                     HangarCellSize - 1, HangarCellSize - 1, RailColor);
-                var icon = Ui.Icon(bg.transform, art.Strip("drill_0_0", 8)[0], 1, 0, HangarCellSize - 2);
+                var icon = Ui.Icon(bg.transform, art.Strip("drill_0_0", 8)[0], 0, 0, HangarCellSize);
+                Ui.TopLeft(icon.rectTransform, (HangarCellSize - 1 - DrillIconWidth) / 2, 0, DrillIconWidth, DrillIconHeight);
                 var cell = bg.gameObject.AddComponent<HangarCell>();
                 cell.Hud = this;
                 cell.Icon = icon;
+                cell.Back = bg;
                 int index = i;
                 bg.gameObject.AddComponent<HoverRelay>().Entered = () =>
                 {
@@ -680,6 +699,7 @@ namespace DeepDrill.Game
             UpdateDarkness();
             UpdateFrenzyOverlay();
             UpdateBanner(dt);
+            UpdateMergeCard(dt);
             if (currentPage == PageTree) AnimateTree(dt);
             UpdateBoss();
             UpdateRebirth(dt);
@@ -825,7 +845,11 @@ namespace DeepDrill.Game
                 bool used = i < sortedDrills.Count;
                 cell.gameObject.SetActive(used);
                 cell.Code = used ? sortedDrills[i] : -1;
-                if (used) cell.Icon.sprite = FrameOf(sortedDrills[i]);
+                if (used)
+                {
+                    cell.Icon.sprite = FrameOf(sortedDrills[i]);
+                    cell.Back.color = Color.Lerp(RailColor, Palette.Tier(DrillCode.Tier(sortedDrills[i])), CellBackShare);
+                }
             }
         }
 

@@ -14,6 +14,7 @@ namespace DeepDrill.Game
     {
         private const float StartPlaySeconds = 5f;
         private const int SwarmSize = 200;
+        private const int MergeShotTier = 6;
         private const float LayerSeconds = 2.5f;
 
         private GameRoot root;
@@ -66,6 +67,13 @@ namespace DeepDrill.Game
             sim.StartFrenzy();
             yield return new WaitForSeconds(1f);
             yield return Shot("frenzy");
+
+            // one drill of every material, so the hangar shows the whole ladder
+            for (int t = 1; t < GameData.Tiers; t++) sim.State.drills.Add(DrillCode.Make(t % GameData.Families.Count, t));
+            sim.SyncDrills();
+            root.Hud.ShowMerged(DrillCode.Make(0, MergeShotTier));
+            yield return new WaitForSeconds(0.4f);
+            yield return Shot("merge");
 
             sim.State.coins = 1e30;
             sim.Buy("root");

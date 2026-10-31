@@ -273,27 +273,35 @@ for y = 0, 15 do
 end
 save(hide, "Layers/boss_hide")
 
--- drills, 8x12, 4 frames. Material sets the colours; the family sets the silhouette.
+-- drills, 8x12, 4 frames. Material sets the colours; the family sets the silhouette. Each tier
+-- has its own hue and brightness, and the same mid colours live in Palette.Tier.
+-- hi, mid, lo, outline, strip, gem
 local MATERIALS = {
-  { "c49a6c", "8c5f3f", "5a3a24" }, -- 木
-  { "c0c0cc", "8a8a96", "5a5a64" }, -- 石
-  { "f6b98a", "e08a4a", "a85a2a" }, -- 铜
-  { "d0d4e0", "8a90a0", "5a6070" }, -- 铁
-  { "a8bcd4", "6a84a4", "465a78" }, -- 钢
-  { "f4f8ff", "c4cede", "8894ac" }, -- 银
-  { "ffe27a", "f2b92e", "b0781a" }, -- 金
-  { "d0f8ff", "90e0f0", "50a8d0" }, -- 水晶
-  { "f0fcff", "b0ecf8", "70c8e8" }, -- 钻石
-  { "b0ffd8", "60e0b0", "20a080" }, -- 秘银
-  { "6a5a8a", "3a2e58", "1e1830" }, -- 黑曜
-  { "fff0a0", "f89a28", "d0401a" }, -- 星核
+  { "c8935a", "8f5a30", "5c3518", "2e1a0c" },                     -- 木
+  { "8e8c88", "646260", "42413f", "201f1e" },                     -- 石，暗灰
+  { "ffb070", "dc7030", "9c4018", "4a1c08" },                     -- 铜
+  { "8fa6c4", "5c7696", "3a4e6c", "1a2436" },                     -- 铁，蓝灰
+  { "d4ecff", "86b8ea", "3e70b4", "142a54", "f4fbff" },           -- 钢，亮银带蓝光，边条
+  { "ffffff", "e4e9f2", "a4aec4", "4c546a", "b4c4e8" },           -- 银，亮白
+  { "fff090", "ffc420", "c07a08", "5a3000", "fff8c8", "e8304a" }, -- 金，宝石
+  { "fbd0ff", "d484ff", "8444d4", "f0a8ff", "ffffff", "ffffff" }, -- 水晶，紫，发光
+  { "e8ffff", "70f0ff", "1ea4e4", "a8f8ff", "ffffff", "ff70c8" }, -- 钻石，青
+  { "ccffdc", "50f0a0", "10a070", "90ffc8", "f0fff4", "ffe27a" }, -- 秘银，绿
+  { "7a4ab0", "2e2248", "140f22", "c060ff", "e0a0ff", "ff4060" }, -- 黑曜，近黑带紫光
+  { "fff8c0", "ffa020", "e03010", "ffe070", "ffffff", "ffffff" }, -- 星核，炽热
 }
+local BLUE_GLASS = "4fb8e8"
+local STRIP_FROM, TWIN_STRIP_FROM, STAR_TIER = 5, 9, 12
+local STRIP_ROW = { std = 4, swift = 3, heavy = 4, blast = 4, magnet = 4 }
+-- spots just outside the body where a star core throws sparks, one set per frame
+local SPARKS = { { { 0, 0 }, { 7, 9 } }, { { 7, 0 }, { 1, 10 } }, { { 0, 6 }, { 6, 11 } }, { { 7, 5 }, { 1, 0 } } }
+
 local FAMILIES = { "std", "swift", "heavy", "blast", "magnet" }
 
-local function drillFrame(family, m, f)
+local function drillFrame(family, m, f, tier)
   local hi, mid, lo = hex(m[1]), hex(m[2]), hex(m[3])
   local g = canvas(8, 12)
-  local glass = hex("4fb8e8")
+  local glass = hex(m[6] or BLUE_GLASS)
   if family == "swift" then
     -- slim with a long point
     g:rect(2, 1, 5, 4, mid) g:rect(2, 1, 5, 1, hi) g:rect(5, 2, 5, 4, lo)
@@ -315,7 +323,7 @@ local function drillFrame(family, m, f)
   elseif family == "blast" then
     -- round body with a hot nose
     g:rect(1, 1, 6, 5, mid) g:rect(2, 0, 5, 0, hi) g:rect(6, 2, 6, 5, lo)
-    g:rect(3, 2, 4, 3, hex("e84a2e"))
+    g:rect(3, 2, 4, 3, hex(m[6] or "e84a2e"))
     for y = 6, 10 do
       local half = (10 - y) // 2
       g:rect(3 - half, y, 4 + half, y, ((y + f) % 2 == 0) and hex("ffb040") or lo)
@@ -339,14 +347,25 @@ local function drillFrame(family, m, f)
       end
     end
   end
-  outline(g, hex(m[3]))
+
+  if tier >= STRIP_FROM then
+    local strip = hex(m[5])
+    for x = 0, 7 do
+      if g:get(x, STRIP_ROW[family]) then g:set(x, STRIP_ROW[family], strip) end
+      if tier >= TWIN_STRIP_FROM and g:get(x, 1) then g:set(x, 1, strip) end
+    end
+  end
+  outline(g, hex(m[4]))
+  if tier == STAR_TIER then
+    for _, spot in ipairs(SPARKS[f + 1]) do g:set(spot[1], spot[2], hex("ffffff")) end
+  end
   return g
 end
 
 for fi, family in ipairs(FAMILIES) do
   for ti, m in ipairs(MATERIALS) do
     local sheet = canvas(32, 12)
-    for f = 0, 3 do sheet:blit(drillFrame(family, m, f), f * 8, 0) end
+    for f = 0, 3 do sheet:blit(drillFrame(family, m, f, ti), f * 8, 0) end
     save(sheet, "Drill/drill_" .. (fi - 1) .. "_" .. (ti - 1))
   end
 end
