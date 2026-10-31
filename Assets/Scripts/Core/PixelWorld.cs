@@ -237,7 +237,7 @@ namespace DeepDrill.Core
 
         public void Clear(int x, int y)
         {
-            if (y < 0 || x < 0 || x >= Width) return;
+            if (y < 0 || x < 0 || x >= Width || Get(x, y) == Mat.Wall) return;
             Put(x, y, Mat.Air, 0);
             ChunkAt(x / PixelChunk.Size, y / PixelChunk.Size).Dug = true;
             WakeSandAround(x, y);
