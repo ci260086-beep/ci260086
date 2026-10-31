@@ -223,6 +223,57 @@ local SYSTEMS = {
       "...S..",
     }, { y = GOLD_HI, Y = GOLD, w = WHITE, S = S3 })
   end },
+
+  -- 地心结晶: a glowing core crystal growing out of dark rock
+  { "crystal", function(g)
+    local lo, mid, hi = hex("c86a20"), hex("ffb040"), hex("fff0b0")
+    g:ellipse(7.5, 13, 7, 2.5, K2)
+    g:rect(2, 12, 13, 14, K2); g:rect(2, 12, 13, 12, S1)
+    g:pattern(2, 0, {
+      "......hW....",
+      ".....hhmm...",
+      ".....hhmm...",
+      "..h..hhmm...",
+      ".hhm.hhmm.m.",
+      ".hhm.hhmm.mm",
+      ".hhm.hhmm.mm",
+      ".hhm.hhmm.mm",
+      ".hhm.hhml.ml",
+      ".hhl.hhll.ll",
+      ".hll.hlll.ll",
+      ".lll.llll.ll",
+    }, { h = hi, m = mid, l = lo, W = WHITE })
+    g:set(1, 2, GOLD_HI); g:set(14, 3, GOLD_HI); g:set(13, 1, WHITE)
+  end },
+
+  -- 自动化: a gear turning with a green play arrow in its hub
+  { "automation", function(g)
+    for y = 0, 15 do
+      for x = 0, 15 do
+        local dx, dy = x - 7.5, y - 7.5
+        local d = math.sqrt(dx * dx + dy * dy)
+        local tooth = math.cos(math.atan(dy, dx) * 8) > 0.2
+        if d <= 5.6 or (d <= 7.2 and tooth) then g:set(x, y, (dx + dy < -2) and S3 or S2) end
+      end
+    end
+    g:ellipse(7.5, 7.5, 3.6, 3.6, K2)
+    g:pattern(6, 5, { "g...", "gg..", "ggg.", "gg..", "g..." }, { g = G4 })
+    g:set(6, 5, hex("d8f4a0"))
+  end },
+
+  -- 地核不稳: a cracked red core shaking, white-hot light leaking through
+  { "unstable", function(g)
+    local lo, mid, hi = hex("8a1a10"), hex("e0401e"), hex("ff9a5a")
+    for y = 0, 15 do
+      for x = 0, 15 do
+        local nx, ny = (x - 7.5) / 5.5, (y - 8) / 5.5
+        if nx * nx + ny * ny <= 1 then g:set(x, y, nx + ny < -0.6 and hi or (nx + ny > 0.6 and lo or mid)) end
+      end
+    end
+    g:line(7, 3, 6, 6, GOLD_HI); g:line(6, 6, 9, 8, GOLD_HI); g:line(9, 8, 7, 11, GOLD_HI); g:line(7, 11, 8, 13, GOLD_HI)
+    g:line(9, 8, 12, 7, GOLD_HI); g:set(8, 8, WHITE); g:set(6, 6, WHITE)
+    g:rect(0, 6, 0, 9, hi); g:rect(15, 7, 15, 10, hi); g:set(1, 12, hi); g:set(14, 4, hi)
+  end },
 }
 
 local systemIcons = {}
