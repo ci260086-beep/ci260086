@@ -5,14 +5,14 @@
 每次提交都要同步更新这一节并推送到 `origin`。旧项目（`C:\GAME\DARKLATOR` 等）一律不碰，只动 `C:\GAME\DeepDril`。
 
 - **仓库：** https://github.com/ci260086-beep/ci260086 ，主分支是 `master`。不要 force push。合并进 `master` 前先等用户确认。
-- **分支：** `master`（已快进合并第三阶段和美术界面改动，是当前主线）；`v2`（`8f3b4c6`，第三阶段第 0 步）；`phase3-step2`（第三阶段全部内容，已并入 `master`）；`phase4-art-ui`（美术和界面，已并入 `master`）；`terrain-pixel`（`e7d03fb`，已包含在 `v2` 里，检出在 `Builds/wtp`）；`wip-v2`（旧存档分支）。
+- **分支：** `master`（已快进合并第三阶段和美术界面改动，是当前主线）；`v2`（`8f3b4c6`，第三阶段第 0 步）；`phase3-step2`（第三阶段全部内容，已并入 `master`）；`phase4-art-ui`、`phase4-perf`、`verify-boss`、`verify-art`（都已并入 `master`）；`terrain-pixel`（`e7d03fb`，已包含在 `v2` 里，检出在 `Builds/wtp`）；`wip-v2`（旧存档分支）。
 - **第三阶段进度：** 计划在 `tools/Design/phase3_plan.md`。用户决定在 `phase3-step2` 这一条分支上把第 1 到第 8 步全部做完，每步只跑编译和单元测试，最后统一做完整测试和节奏调参。第 0、2、1、3、4、5、6、7、8 步和完整测试、节奏调参都已提交：Unity 内 147 个测试全过，200 台钻头 60 FPS，最差一帧 24 毫秒。第 2 步：`milestones.json`、`GameSim.MilestonesOf/MasteryOf`、`HudView.Mastery.cs`（图鉴的“里程碑”“精通”标签页，未实机看过）。
 - **第四阶段计划：** https://claude.ai/artifact/CKUBNxSWKeDQZEUQSTgwkF
 - **分工：** 两个 Claude 同时开发时按 `TASKS.md` 执行，开工前先读。交流在 `comms` 分支的 `COMMS.md`。
-- **性能（`phase4-perf` 分支）：** 只开一个 Unity 时，200 台钻头 60 FPS，整帧最差 23 毫秒，其中游戏自身（PlayerLoop）9.3 毫秒；1000 台 60 FPS，整帧最差 26 毫秒，游戏自身 12.5 毫秒，逻辑 3.2 毫秒，绘制 0.5 毫秒。整帧还没到 20 毫秒，差值在 PlayerLoop 之外，判断是编辑器和垂直同步，没有打包版本可以证实。`DemoDriver.MeasureFrames` 会打出最慢几帧的分段。修过的根因：`DropAbove` 只看领头钻头，掉队钻头脚下的地形块每向下一行就同步重建，现在要等最后一台离开；地形块多预生成到 16 行；绘制时块内直接读数组，屏幕外的块每帧只绘一块。
+- **性能（已并入 `master`）：** 只开一个 Unity 时，200 台钻头 60 FPS，整帧最差 23 毫秒，其中游戏自身（PlayerLoop）9.3 毫秒；1000 台 60 FPS，整帧最差 26 毫秒，游戏自身 12.5 毫秒，逻辑 3.2 毫秒，绘制 0.5 毫秒。整帧还没到 20 毫秒，差值在 PlayerLoop 之外，判断是编辑器和垂直同步，没有打包版本可以证实。`DemoDriver.MeasureFrames` 会打出最慢几帧的分段。修过的根因：`DropAbove` 只看领头钻头，掉队钻头脚下的地形块每向下一行就同步重建，现在要等最后一台离开；地形块多预生成到 16 行；绘制时块内直接读数组，屏幕外的块每帧只绘一块。
 - **长时间运行：** `dotnet build tools\outside\Soak.csproj -c Release`，再运行 `tools\outside\out\soak\Soak.exe Assets\Resources\Data 8 7`。8 小时结果：不崩溃，内存 25 到 61 MB，第 8 小时 45.5 MB，没有持续增长。只测规则，不含 Unity 表现层。最差一步 221 毫秒（步长 0.1 秒），没有查出在哪一步。这个机器人能把深度推到 2775 行，超过地心的 2550 行，没有查是否合理。
 - **本轮新增：** 磁力钻每秒吸取 3 格内最近的 32 个矿物像素（`GameSim.PullOre`）；技能树可解锁连线用虚线（`tree_dash`），购买时节点先填满再爆开；合成弹窗在挖掘区右下角，放在 `FxLayer` 里。
-- **当前主线：** `master` 和 `v2` 指向同一提交，内容到 `6d800f2` 之后的 `TASKS.md` 这一次提交。合并后 Unity 内 147 个测试全过；200 台钻头 60 FPS，最差一帧 26 毫秒，其中逻辑 1.6 毫秒、绘制 8.1 毫秒，峰值不在这两处，这次用户的编辑器开着但没有 Play。目标是 20 毫秒以内，还没达到。
+- **当前主线：** `master`。第三阶段、美术界面、12 个 Boss、性能和 Claude B 的图标都已并入。图标文件都在，但成就、技能和系统图标还没接进游戏，这是下一步（`phase4-icons`）。
 - **美术和界面（`phase4-art-ui` 分支，已经用户确认并入 `master`）：** 用户试玩后的反馈，已在实机截图里看过，没有真人操作过。按钮图标：`tab_tree`、`tab_trophy`、`tab_base`，鼠标移上去底部显示名字。`ui_frame` 是按钮列和机库共用的实心底板，`FxLayer` 只覆盖挖掘区并裁剪，相机按 `DigWidth` 限位。钻头 12 级配色在 `draw_world_art.lua` 的 `MATERIALS`，中间色同时存在于 `Palette.Tier`，改一边要改另一边；钢起边条，金起宝石，水晶起发光外框，星核有火花和环绕光点（`WorldView.GlowOf`、`motes`）。机库改成每行 5 格，每格 14 像素，按材质上色；合成弹出在 `HudView.Merge.cs`。技能树页面和 46 个成就的单独图标这次没动。
 - **Aseprite 脚本的坑：** `Aseprite.exe` 启动后立刻返回，在 PowerShell 里要用 `Start-Process -Wait`，否则会读到旧文件。重跑 `draw_game_art.lua` 会改动 `ore_coal`、`ore_silver` 及其 `_sand` 四张贴图，这是脚本和已提交图片的旧差异，不是想要的改动，提交前要还原。
 - **用户开着 Unity 时的验证办法：** 用 robocopy 把 `Assets`、`Packages`、`ProjectSettings`、`Library`、`tools` 复制到别的目录，在副本里运行它的 `tools\check.ps1`，再把新生成的 `.meta` 和 `ArtLibrary.asset` 同步回来。这样不影响用户的 Play。两个 Unity 同时开时最差一帧会偏高（这次 30 毫秒）。

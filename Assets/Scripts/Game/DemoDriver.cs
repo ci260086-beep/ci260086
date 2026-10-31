@@ -208,6 +208,7 @@ namespace DeepDrill.Game
             sim.State.bossesDefeated = layer;
             sim.Teleport(GameData.Layers[layer].RowEnd - 1, Balance.StartColumn);
             root.SnapCamera();
+            root.Hud.ShowMerged(DrillCode.Make(0, MergeShotTier)); // the pop-up must stay clear of the guardian
             yield return new WaitForSeconds(BossShotSeconds);
             yield return Shot($"boss_{layer + 1:00}");
         }

@@ -1,4 +1,4 @@
--- Draws the 12 layers, 24 ore overlays, 60 drill kinds and 36 rare items into Assets/Art.
+-- Draws the 12 layers, 24 ore overlays and 60 drill kinds into Assets/Art.
 -- Run: Aseprite.exe -b --script-param dir=<Assets/Art> --script draw_world_art.lua
 local dir = app.params["dir"]
 assert(dir, "pass --script-param dir=<Assets/Art>")
@@ -370,41 +370,7 @@ for fi, family in ipairs(FAMILIES) do
   end
 end
 
--- rare items: three per layer in the layer's colours (crystal, fossil, relic)
-for layer = 1, 12 do
-  local v = LAYERS[layer]
-  local hi, mid, lo = hex(v[6]), hex(v[5]), hex(v[3])
-  for j = 1, 3 do
-    local g = canvas(16, 16)
-    if j == 1 then
-      for y = 1, 14 do
-        local half = 6 - math.abs(y - 7.5) * 0.85
-        for x = 2, 13 do
-          local n = x - 7.5
-          if math.abs(n) <= half then g:set(x, y, n < -1 and hi or (n < 2 and mid or lo)) end
-        end
-      end
-    elseif j == 2 then
-      for y = 2, 13 do
-        for x = 2, 13 do
-          local d = math.sqrt((x - 7.5) ^ 2 + (y - 7.5) ^ 2)
-          if d <= 5.8 then
-            local ring = math.floor(d * 1.2 + math.atan(y - 7.5, x - 7.5) * 0.9) % 3
-            g:set(x, y, ring == 0 and hi or (ring == 1 and mid or lo))
-          end
-        end
-      end
-    else
-      g:rect(3, 2, 12, 13, mid)
-      g:rect(3, 2, 12, 3, hi)
-      g:rect(11, 4, 12, 13, lo)
-      g:rect(6, 6, 9, 9, hex("ffe27a"))
-      g:rect(7, 7, 8, 8, hex("e84a2e"))
-    end
-    outline(g, INK)
-    save(g, "Items/rare_" .. layer .. "_" .. j)
-  end
-end
+-- rare items are drawn one by one in draw_icons.lua
 
 -- 12 guardians, 64x32 over the two-row boss wall. Each has its own silhouette; the body uses the
 -- layer's ramp (the wall itself is ramp 1-2, so bodies sit at 3-6) plus a few accents of its own.
