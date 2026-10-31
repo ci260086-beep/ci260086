@@ -44,6 +44,10 @@ namespace DeepDrill.Game
         private static readonly Color BoundTint = new Color(0.55f, 0.45f, 0.35f);
         private static readonly Color BossWarnTint = new Color(1f, 0.25f, 0.2f);
         private const float BossWarnRate = 14f;
+        private const int BossFrameWidth = 64;
+        private const int BossIdleFrames = 2, BossHitFrame = 2, BossHitFrames = 2, BossMoveFrame = 4, BossMoveFrames = 4;
+        private const int BossDeathFrame = 8, BossDeathFrames = 4;
+        private const float BossIdleStep = 0.5f, BossHitStep = 0.14f, BossMoveStep = 0.16f, BossDeathStep = 0.22f;
         private static readonly float[] ParallaxRates = { 0.2f, 0.45f, 0.7f };
         private static readonly string[] ParallaxNames = { "far", "mid", "near" };
         private static readonly Color SkyColor = new Color32(0x8f, 0xc9, 0xe6, 0xff);
@@ -66,9 +70,13 @@ namespace DeepDrill.Game
 
         private GameSim sim;
         private Camera cam;
-        private Sprite[] bossFaces;
+        private Sprite[][] bossFrames;
         private Dictionary<int, Sprite[]> drillFrames;
         private SpriteRenderer bossFace;
+        private float bossHitLeft;
+        private float bossDeathLeft;
+        private int deadBoss;
+        private Vector3 deadBossAt;
         private SpriteRenderer sky;
         private SpriteRenderer[] parallax;
         private Sprite[][] parallaxSprites;
@@ -91,8 +99,8 @@ namespace DeepDrill.Game
                 for (int t = 0; t < GameData.Tiers; t++)
                     drillFrames[DrillCode.Make(f, t)] = art.Strip($"drill_{f}_{t}", 8, DrillPivotY);
 
-            bossFaces = new Sprite[layers];
-            for (int s = 0; s < layers; s++) bossFaces[s] = art.Get($"boss_face_{s}");
+            bossFrames = new Sprite[layers][];
+            for (int s = 0; s < layers; s++) bossFrames[s] = art.Strip($"boss_anim_{s}", BossFrameWidth);
             bossFace = MakeRenderer("bossFace", 4, transform);
 
             parallaxSprites = new Sprite[layers][];
@@ -209,10 +217,23 @@ namespace DeepDrill.Game
             sky.transform.position = new Vector3(target.x, 15f - 0.5f, 0);
 
             var boss = sim.CurrentBoss;
+            bossHitLeft = Mathf.Max(0, bossHitLeft - Time.unscaledDeltaTime);
+            if (bossDeathLeft > 0)
+            {
+                // the beaten guardian plays out where it stood, before the next one takes the sprite
+                bossDeathLeft -= Time.unscaledDeltaTime;
+                int frame = Mathf.Min(BossDeathFrames - 1, (int)((BossDeathFrames * BossDeathStep - bossDeathLeft) / BossDeathStep));
+                bossFace.enabled = true;
+                bossFace.color = Color.white;
+                bossFace.sprite = bossFrames[deadBoss][BossDeathFrame + frame];
+                bossFace.transform.position = deadBossAt;
+                return;
+            }
+
             bossFace.enabled = boss != null;
             if (boss != null)
             {
-                bossFace.sprite = bossFaces[boss.Index];
+                bossFace.sprite = bossFrames[boss.Index][BossFrame()];
                 // the guardian flashes as it winds up, the player's cue that a move is coming
                 float flash = sim.BossMoveWindingUp ? 0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * BossWarnRate) : 0f;
                 bossFace.color = Color.Lerp(Color.white, BossWarnTint, flash);
@@ -361,6 +382,27 @@ namespace DeepDrill.Game
                 motesUsed++;
             }
             for (int i = motesUsed; i < motes.Count; i++) motes[i].enabled = false;
+        }
+
+        /// <summary>The guardian flinches for a moment when struck.</summary>
+        public void NoteBossHit() => bossHitLeft = BossHitStep * BossHitFrames;
+
+        /// <summary>Plays a beaten guardian's death where it stood.</summary>
+        public void PlayBossDeath(int layer, int row)
+        {
+            deadBoss = layer;
+            deadBossAt = new Vector3(bossFace.transform.position.x, -(row + 0.5f), 0);
+            bossDeathLeft = BossDeathFrames * BossDeathStep;
+        }
+
+        // Idle, flinch and move frames, in the order the boss_anim sheets lay them out.
+        private int BossFrame()
+        {
+            float t = Time.unscaledTime;
+            if (sim.BossMoveWindingUp || sim.BossMoveRunning)
+                return BossMoveFrame + Mathf.Min(BossMoveFrames - 1, (int)(t / BossMoveStep) % BossMoveFrames);
+            if (bossHitLeft > 0) return BossHitFrame + (bossHitLeft > BossHitStep ? 0 : 1);
+            return (int)(t / BossIdleStep) % BossIdleFrames;
         }
 
         // Crystal and above throw light in their own colour; the star core burns brightest.

@@ -26,9 +26,9 @@ Claude B 在自己的分支上提交并推送，由 Claude A 合并和验证。C
 | 任务 | 负责 | 认领人 | 分支 | 状态 |
 |---|---|---|---|---|
 | 12 个 Boss 的独立造型 | B | Claude B | `art/boss-designs` | 完成 |
-| 美术 1：Boss 的 4 组动画 | B | B |  | 待做 |
+| 美术 1：Boss 的 4 组动画 | B | Claude B | `art/boss-anim` | 完成 |
 | 美术 2：第三阶段系统图标 | B | Claude B | `art/system-icons` | 完成 |
-| 美术 2b：补结晶、自动化、地核不稳 3 张系统图标 | B | Claude B | `art/system-icons-2b` | 待验证 |
+| 美术 2b：补结晶、自动化、地核不稳 3 张系统图标 | B | Claude B | `art/system-icons-2b` | 完成 |
 | 美术 3：46 个成就图标 | B | Claude B | `art/collection-icons` | 完成 |
 | 美术 4：技能效果图标 | B | Claude B | `art/skill-icons` | 完成 |
 | 美术 5：12 层专属装饰和岩块变体 | B | B |  | 待做 |
@@ -49,7 +49,8 @@ Claude B 在自己的分支上提交并推送，由 Claude A 合并和验证。C
 | ① 接入成就、技能、系统图标 | A | Claude A | `phase4-icons` | 完成 |
 | ① 查两个疑点：挂机时 221 毫秒的一步、挖过地心第 2550 行 | A | Claude A | `phase4-icons` | 完成 |
 | ② 12 个 Boss 各有独特招式，加登场横幅、击杀慢动作、战利品喷泉 | A | Claude A | `phase5-boss` | 完成 |
-| ② 接入 Boss 动画和招式特效 | A | | | 待做 |
+| ② 接入 Boss 动画 | A | Claude A | `verify-art2` | 完成 |
+| ② 接入招式特效（等美术 9） | A | | | 待做 |
 | ③ 新手引导 | A | | | 待做 |
 | ③ 设置菜单：音量、震屏、粒子、新游戏 | A | | | 待做 |
 | ③ 批量购买（×10、买到最多）、快捷键、统计页 | A | | | 待做 |

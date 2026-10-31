@@ -262,6 +262,7 @@ namespace DeepDrill.Game
                     break;
 
                 case SimEventKind.BossDefeated:
+                    world.PlayBossDeath(GameData.LayerOfRow(e.Row - 1), e.Row);
                     hud.ShowToast($"打穿了！+{NumberFormat.Short(e.Amount)} 金币", 4f);
                     fx.Explosion(WorldView.CellCenter(e.Row, e.Col), Balance.BossBreachHalfWidth);
                     fx.Flash(WorldView.CellCenter(e.Row, e.Col), LootFlashSize);
@@ -357,6 +358,7 @@ namespace DeepDrill.Game
             world.NoteHit(e.Row, e.Col);
             if (e.FromClick) fx.Flash(WorldView.CellCenter(e.Row, e.Col), 1.2f); // the rock blinks white
             bool boss = e.Block == BlockType.BossRoot;
+            if (boss) world.NoteBossHit();
             if (e.FromClick)
             {
                 string text = NumberFormat.Short(e.Amount) + (e.Crit ? "!" : "");
