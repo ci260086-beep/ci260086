@@ -809,41 +809,7 @@ for y = 0, 89 do
 end
 save(vignette, "Items/fx_vignette")
 
--- parallax backdrops, 64x64 and seamless: far rock, a mid feature for the layer, near hanging things
-local function backdrop(dark, mid, kind, hanging)
-  local g = canvas(64, 64)
-  if kind == "far" then
-    g:rect(0, 0, 63, 63, dark)
-    for _ = 1, 26 do
-      local cx, cy, r = rnd(64), rnd(64), 2 + rnd(5)
-      for y = -r, r do
-        for x = -r, r do
-          if x * x + y * y <= r * r then g:set((cx + x) % 64, (cy + y) % 64, mid) end
-        end
-      end
-    end
-    return g
-  end
-  for n = 0, 3 do
-    local cx, tall = 8 + n * 16 + rnd(5), 14 + rnd(hanging and 12 or 26)
-    for y = 0, tall do
-      local half = math.max(0, math.floor((tall - y) * (kind == "column" and 0.12 or 0.28)) + (kind == "column" and 2 or 0))
-      for x = cx - half, cx + half do
-        local row = hanging and y or (63 - y)
-        g:set(x % 64, row, (x + y) % 5 == 0 and mid or dark)
-      end
-    end
-  end
-  return g
-end
-
-local MID_KINDS = { "spike", "spike", "spike", "spike", "column", "spike", "spike", "column", "spike", "spike", "spike", "column" }
-for i, v in ipairs(LAYERS) do
-  local dark, shade = hex(v[1]), hex(v[2])
-  save(backdrop(hex(v[1]), hex(v[2]), "far", false), "Layers/parallax_" .. (i - 1) .. "_far")
-  save(backdrop(dark, shade, MID_KINDS[i], false), "Layers/parallax_" .. (i - 1) .. "_mid")
-  save(backdrop(dark, shade, "spike", true), "Layers/parallax_" .. (i - 1) .. "_near")
-end
+-- parallax backdrops are drawn in draw_parallax.lua
 
 -- small decals that break up plain ground: pebbles, a bone, a root, a crack of quartz
 local DECAL = { "6a6a78", "e0d8c8", "6b4630", "c8d0e0" }
