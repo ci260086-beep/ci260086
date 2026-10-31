@@ -14,12 +14,27 @@ namespace DeepDrill.Game
         private const int RocksPerLayer = 3;
         private const int DecalEveryTiles = 9;
         private const int RockPatchTiles = 4;
+        private const int WobbleStretch = 3;
+        private const int WobbleOffset = 41;
+        private const int WobbleReach = 3;
+        private const int WobbleSteps = 128;
 
         private static readonly Color32 Clear = new Color32(0, 0, 0, 0);
         private static Color32[][] ramps;
         private static Color32[] ores;
         private static Color32[][][] decals;
         private static Color32[][][] rocks;
+        private static readonly int[] wobble = BuildWobble();
+
+        private static int[] BuildWobble()
+        {
+            var table = new int[WobbleSteps];
+            for (int i = 0; i < WobbleSteps; i++)
+                table[i] = Mathf.RoundToInt(Mathf.Sin(i * Mathf.PI * 2 / WobbleSteps) * WobbleReach);
+            return table;
+        }
+
+        private static int Wobble(int step) => wobble[step & (WobbleSteps - 1)];
 
         private static readonly Color32[] OreTones =
         {
@@ -122,8 +137,12 @@ namespace DeepDrill.Game
                 var decal = decals[layer][(roll >> 8) % DecalsPerLayer][ly * size + lx];
                 if (decal.a > 0) return decal;
             }
+            // a slow wobble and a shift per patch keep the seamless textures from lining up in rows
             uint patch = Mix(tileX / RockPatchTiles, tileY / RockPatchTiles);
-            return rocks[layer][patch % RocksPerLayer][ly * size + lx];
+            int sx = x + (int)(patch >> 4) + Wobble(y / WobbleStretch);
+            int sy = y + (int)(patch >> 12) + Wobble(x / WobbleStretch + WobbleOffset);
+            int rx = (sx & (size - 1)), ry = size - 1 - (sy & (size - 1));
+            return rocks[layer][patch % RocksPerLayer][ry * size + rx];
         }
 
         /// <summary>Repaints part of a chunk into its colour buffer.</summary>

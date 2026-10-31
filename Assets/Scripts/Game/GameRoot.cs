@@ -13,6 +13,7 @@ namespace DeepDrill.Game
         private const float AutosaveSeconds = 30f;
         private const int HitstopFrames = 2;
         private const int PageKeys = 6;
+        private const float LayerHintSeconds = 5f;
         private const float HitstopCooldown = 0.5f;
         private const int DepthMilestone = 50;
         private const int MaxBitsPerSwing = 4;
@@ -303,7 +304,8 @@ namespace DeepDrill.Game
                     break;
 
                 case SimEventKind.LayerEntered:
-                    hud.ShowToast($"进入{GameData.Layers[(int)e.Amount].Name}", 3.5f);
+                    hud.ShowToast($"进入{GameData.Layers[(int)e.Amount].Name}", LayerHintSeconds);
+                    hud.ShowHint(GameData.Layers[(int)e.Amount].Mechanic, LayerHintSeconds);
                     break;
 
                 case SimEventKind.BossDefeated:

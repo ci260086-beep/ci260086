@@ -57,6 +57,8 @@ namespace DeepDrill.Game
             string buffs = "";
             if (sim.DamageBuffLeft > 0) buffs += $"伤害 ×{sim.DamageBuffMult:0.#} {sim.DamageBuffLeft:0}秒  ";
             if (sim.SpeedBuffLeft > 0) buffs += $"攻速 ×{sim.SpeedBuffMult:0.#} {sim.SpeedBuffLeft:0}秒";
+            if (sim.Overheating) buffs += "过热：攻速减半，开狂热散热  ";
+            if (sim.HeatWeakens) buffs += "高温：伤害只剩四分之一，开狂热";
             buffLabel.text = buffs;
         }
 

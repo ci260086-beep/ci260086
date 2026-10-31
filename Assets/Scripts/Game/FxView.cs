@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using DeepDrill.Core;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -161,7 +162,7 @@ namespace DeepDrill.Game
         /// <summary>Environment motes for the layer on screen: dust, sand, embers, drips or glints.</summary>
         public void Ambient(int layer, Vector2 camera, float dt)
         {
-            ambientClock += dt * AmbientPerSecond * GameSettings.ParticleScale;
+            ambientClock += dt * AmbientPerSecond * AmbientDensity[layer] * GameSettings.ParticleScale;
             while (ambientClock >= 1)
             {
                 ambientClock -= 1;
@@ -179,8 +180,15 @@ namespace DeepDrill.Game
                 bit.Bounced = true;
                 bit.Streak = false;
                 bit.Drift = true;
+                if (Glints(layer) && UnityEngine.Random.value < GlintShare) Twinkle(at);
             }
         }
+
+        private static bool Glints(int layer) => layer == Balance.CrystalLayer || layer == Balance.GraniteLayer || layer == Balance.CoreLayer;
+
+        // How thick the air is in each layer, from topsoil to the core.
+        private static readonly float[] AmbientDensity = { 0.5f, 1.2f, 0.8f, 1.2f, 0.7f, 0.5f, 1.3f, 1.3f, 0.8f, 1.5f, 1.2f, 1.5f };
+        private const float GlintShare = 0.25f;
 
         private static Vector2 AmbientVelocity(int layer)
         {

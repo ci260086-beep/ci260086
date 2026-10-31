@@ -319,6 +319,9 @@ namespace DeepDrill.Core
             }
         }
 
+        /// <summary>True where only frenzy still does full damage.</summary>
+        public bool HeatWeakens => !InFrenzy && (Planet.Heat || GameData.LayerOfRow(State.depth) == Balance.CoreLayer);
+
         public int BlastRadius => Balance.BaseBlastRadius + (int)Effect(SkillEffect.blast_radius);
 
         private double TntChance => Balance.TntChance * (1 + Effect(SkillEffect.tnt_rate) / 100);

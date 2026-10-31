@@ -132,6 +132,8 @@ namespace DeepDrill.Game
         private Image meterFill;
         private Image bossBar, bossFill, bossArmorFill;
         private Text bossLabel;
+        private Text hintLabel;
+        private float hintTime;
         private Text newGameLabel;
         private Text bulkLabel;
         private float newGameArmed;
@@ -230,6 +232,7 @@ namespace DeepDrill.Game
 
             toastLabel = Floating("", 0, 140, Stage.DigWidth, 18, 13, TextAnchor.MiddleCenter);
             toastLabel.color = CoinColor;
+            hintLabel = Floating("", 4, 158, Stage.DigWidth - 8, 10, 7, TextAnchor.MiddleCenter);
             BuildOfflinePanel();
             guideLabel = Floating("", 0, 24, Stage.DigWidth, 18, 13, TextAnchor.MiddleCenter);
             guideLabel.fontStyle = FontStyle.Bold;
@@ -257,6 +260,23 @@ namespace DeepDrill.Game
 
         public void ClearInFlight() => coinsInFlight = oresInFlight = 0;
 
+        /// <summary>A smaller line under the toast, for how the layer just entered works.</summary>
+        public void ShowHint(string text, float seconds)
+        {
+            hintLabel.text = text;
+            hintTime = seconds;
+        }
+
+        private void UpdateHint(float dt)
+        {
+            if (hintTime <= 0) return;
+            hintTime -= dt;
+            var c = hintLabel.color;
+            c.a = Mathf.Clamp01(hintTime / ToastFadeSeconds);
+            hintLabel.color = c;
+            if (hintTime <= 0) hintLabel.text = "";
+        }
+
         /// <summary>Big outlined message at the bottom of the dig area; fades out by itself.</summary>
         public void ShowToast(string text, float seconds)
         {
@@ -275,7 +295,7 @@ namespace DeepDrill.Game
             bool fullScreen = index == PageTree || index == PageGallery || index == PageBase;
             sidePanel.SetActive(!fullScreen);
             FxLayer.gameObject.SetActive(!fullScreen); // digging carries on, but its numbers stay off these pages
-            foreach (var overlay in new Graphic[] { toastLabel, bannerTop, bannerBottom, bannerLabel, bannerSubtitle }) overlay.gameObject.SetActive(!fullScreen);
+            foreach (var overlay in new Graphic[] { toastLabel, hintLabel, bannerTop, bannerBottom, bannerLabel, bannerSubtitle }) overlay.gameObject.SetActive(!fullScreen);
             panelTitle.text = pageTitles[index];
             footerLabel.text = "";
         }
@@ -769,6 +789,7 @@ namespace DeepDrill.Game
             UpdateCoinPulse();
             UpdateMeter();
             UpdateToast(dt);
+            UpdateHint(dt);
             UpdateGuide();
             UpdateGuideArrow();
             UpdateDarkness();

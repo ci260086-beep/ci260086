@@ -19,6 +19,7 @@ namespace DeepDrill.Game
         private const float LayerSeconds = 2.5f;
         private const float BossShotSeconds = 0.6f;
         private const int BaseTabs = 7;
+        private const float OverheatWait = 8f;
         private const int MoveShotLayer = 7;
         private const float BossArrivalSeconds = 4f;
         private const int FullSwarm = 1000;
@@ -175,7 +176,7 @@ namespace DeepDrill.Game
                     yield return new WaitForSeconds(0.5f);
                     yield return Shot("sand");
                 }
-                yield return new WaitForSeconds(LayerSeconds);
+                yield return new WaitForSeconds(s == 6 ? LayerSeconds + OverheatWait : LayerSeconds);
                 yield return Shot($"layer_{s + 1:00}");
                 yield return ShootBoss(s);
             }

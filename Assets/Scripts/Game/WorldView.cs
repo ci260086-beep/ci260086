@@ -42,6 +42,12 @@ namespace DeepDrill.Game
 
         private static readonly Color FrenzyTint = new Color(1f, 0.55f, 0.5f);
         private static readonly Color BoundTint = new Color(0.55f, 0.45f, 0.35f);
+        private static readonly Color OverheatTint = new Color(1f, 0.4f, 0.3f);
+        private static readonly Color HeadlampWarm = new Color(1f, 0.85f, 0.6f);
+        private static readonly Color HeadlampHot = new Color(1f, 0.45f, 0.3f);
+        private const float HeadlampSize = 9f;
+        private const float HeadlampTop = 0.04f;
+        private const float HeadlampDeep = 0.22f;
         private static readonly Color BossWarnTint = new Color(1f, 0.25f, 0.2f);
         private const float BossWarnRate = 14f;
         private const int BossFrameWidth = 64;
@@ -82,6 +88,7 @@ namespace DeepDrill.Game
         private float moveFxLeft;
         private Dictionary<int, Sprite[]> drillFrames;
         private SpriteRenderer bossFace;
+        private SpriteRenderer headlamp;
         private float bossHitLeft;
         private float bossDeathLeft;
         private int deadBoss;
@@ -155,6 +162,10 @@ namespace DeepDrill.Game
                 glow.enabled = false;
                 glows.Add(glow);
             }
+            headlamp = MakeRenderer("headlamp", 5, transform);
+            headlamp.sprite = art.Get("fx_circle");
+            headlamp.transform.localScale = new Vector3(HeadlampSize, HeadlampSize, 1);
+
             for (int i = 0; i < Motes; i++)
             {
                 var mote = MakeRenderer("mote", 7, transform);
@@ -230,6 +241,7 @@ namespace DeepDrill.Game
             drillClock += dt * DrillFramesPerSecond * (sim.InFrenzy ? 2f : 1f);
             DrawDrills(target);
             DrawMoveFx();
+            DrawHeadlamp(leadX, leadY);
             DrawParallax(target);
             var timer = System.Diagnostics.Stopwatch.StartNew();
             DrawChunks(target);
@@ -367,7 +379,7 @@ namespace DeepDrill.Game
                 sr.enabled = true;
                 var frames = drillFrames[unit.Code];
                 sr.sprite = frames[((int)drillClock + i) % frames.Length]; // offset so they do not spin in step
-                sr.color = sim.DrillsBound ? BoundTint : (sim.InFrenzy ? FrenzyTint : Color.white);
+                sr.color = sim.DrillsBound ? BoundTint : (sim.InFrenzy ? FrenzyTint : (sim.Overheating ? OverheatTint : Color.white));
                 int tier = DrillCode.Tier(unit.Code);
                 drillGlows[used - 1] = GlowOf(tier);
                 // heat haze: a whole-pixel sideways wobble while in frenzy
@@ -463,6 +475,16 @@ namespace DeepDrill.Game
                 return BossMoveFrame + Mathf.Min(BossMoveFrames - 1, (int)(t / BossMoveStep) % BossMoveFrames);
             if (bossHitLeft > 0) return BossHitFrame + (bossHitLeft > BossHitStep ? 0 : 1);
             return (int)(t / BossIdleStep) % BossIdleFrames;
+        }
+
+        // The deeper the dark, the more the lead drill's own lamp matters.
+        private void DrawHeadlamp(float x, float y)
+        {
+            int layer = GameData.LayerOfRow(sim.State.depth);
+            var c = sim.Overheating ? HeadlampHot : HeadlampWarm;
+            c.a = Mathf.Lerp(HeadlampTop, HeadlampDeep, layer / (GameData.Layers.Count - 1f));
+            headlamp.color = c;
+            headlamp.transform.position = new Vector3(Stage.SnapToPixel(x), Stage.SnapToPixel(y), 0);
         }
 
         // Crystal and above throw light in their own colour; the star core burns brightest.
