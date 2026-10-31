@@ -121,6 +121,67 @@ namespace DeepDrill.Tests
         }
 
         [Test]
+        public void Magnet_PullsOreWithinReachOnly()
+        {
+            var sim = CoreTests.NewSim();
+            sim.State.drills.Clear();
+            sim.State.drills.Add(DrillCode.Make(MagnetFamily, 0));
+            sim.SyncDrills();
+            sim.Teleport(30, 20);
+
+            int x = (int)System.Math.Floor((sim.Lead.Body.X + 0.5) * PixelWorld.TileSize);
+            int y = (int)System.Math.Floor((sim.Lead.Body.Y + 0.5) * PixelWorld.TileSize);
+            int reach = Balance.MagnetReachTiles * PixelWorld.TileSize;
+            ClearOre(sim, x, y, reach * 2);
+            PutOre(sim, x + reach - 10, y);
+            PutOre(sim, x + reach + 12, y);
+
+            for (int i = 0; i < 20; i++) sim.Tick(0.05);
+
+            Assert.IsFalse(Mat.IsOre(sim.World.Get(x + reach - 10, y)), "ore in reach is drawn in");
+            Assert.IsTrue(Mat.IsOre(sim.World.Get(x + reach + 12, y)), "ore out of reach stays");
+        }
+
+        // natural ore nearer the drill would use up the pull before it reached the test's own
+        private static void ClearOre(GameSim sim, int cx, int cy, int radius)
+        {
+            for (int y = cy - radius; y <= cy + radius; y++)
+                for (int x = cx - radius; x <= cx + radius; x++)
+                    if (Mat.IsOre(sim.World.Get(x, y)))
+                        sim.World.ChunkAt(x / PixelChunk.Size, y / PixelChunk.Size).Mats[y % PixelChunk.Size * PixelChunk.Size + x % PixelChunk.Size] = Mat.Dirt;
+        }
+
+        private const int MagnetFamily = 4;
+
+        private static void PutOre(GameSim sim, int x, int y)
+        {
+            var chunk = sim.World.ChunkAt(x / PixelChunk.Size, y / PixelChunk.Size);
+            chunk.Mats[y % PixelChunk.Size * PixelChunk.Size + x % PixelChunk.Size] = Mat.OreBase;
+        }
+
+        [Test]
+        public void Chunks_StayWhileADrillStillStandsOnThem()
+        {
+            var sim = CoreTests.NewSim();
+            for (int i = 0; i < 20; i++) sim.State.drills.Add(DrillCode.Make(0, 0));
+            sim.SyncDrills();
+            var straggler = sim.Units[sim.Units.Count - 1];
+            sim.Teleport(120, 20);
+            straggler.Body.Place(5, 2);
+            int topChunks = 0;
+            for (int i = 0; i < 40; i++)
+            {
+                straggler.Body.Place(5, 2);
+                sim.Tick(1.0 / 60);
+            }
+            sim.Teleport(200, 20);
+            sim.Tick(1.0 / 60);
+            foreach (var pair in sim.World.Chunks)
+                if (pair.Key / 4096 == 0) topChunks++;
+            Assert.Greater(topChunks, 0, "the ground under a drill left behind must not be dropped");
+        }
+
+        [Test]
         public void Rebirth_RestartsTheRunClock()
         {
             var sim = CoreTests.NewSim();

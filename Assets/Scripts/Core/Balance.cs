@@ -70,6 +70,10 @@ namespace DeepDrill.Core
         public const int RareMaxDupes = 10;
         public const double RareDupeBonus = 0.5;
 
+        public const int MagnetReachTiles = 3;
+        public const int MagnetPullPixels = 32;
+        public const double MagnetPullSeconds = 1;
+
         public const double EventCoinFloor = 5;
         public const int ChallengeLayer = 5;
 

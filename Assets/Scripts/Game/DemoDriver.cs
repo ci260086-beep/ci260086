@@ -113,7 +113,7 @@ namespace DeepDrill.Game
             yield return new WaitForSeconds(0.2f);
             yield return Shot("tree_hover");
             root.Hud.BurstSkill("strata_01");
-            yield return new WaitForSeconds(0.1f);
+            yield return new WaitForSeconds(0.3f);
             yield return Shot("tree_burst");
             root.Hud.FocusBranch("hangar");
             yield return new WaitForSeconds(1f);

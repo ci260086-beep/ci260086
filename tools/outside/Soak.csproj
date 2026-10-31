@@ -1,0 +1,19 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Leaves the rules running for hours and prints what stays in memory. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net$(BundledNETCoreAppTargetFrameworkVersion)</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <NoWarn>CS0649;CS0414</NoWarn>
+    <OutputPath>out\soak</OutputPath>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <RollForward>Major</RollForward>
+    <Project>$(MSBuildThisFileDirectory)..\..</Project>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="$(Project)\Assets\Scripts\Core\*.cs" />
+    <Compile Include="Soak.cs" />
+  </ItemGroup>
+</Project>

@@ -97,6 +97,11 @@ namespace DeepDrill.Core
 
         public IEnumerable<KeyValuePair<long, PixelChunk>> Chunks => chunks;
 
+        public int LoadedChunks => chunks.Count;
+        public int ArchivedChunks => dugArchive.Count;
+        public int KnownTiles => tiles.Count;
+        public int SpentCharges => spentCharges.Count;
+
         public static long ChunkKey(int cx, int cy) => cy * 4096L + cx;
 
         private static int FloorDiv(int v, int d) => v >= 0 ? v / d : -((-v + d - 1) / d);

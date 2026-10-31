@@ -59,6 +59,7 @@ namespace DeepDrill.Core
         public int Code;
         public double HitClock;
         public double LastSwing = -1;
+        public double LastPull = double.MinValue;
         public bool PrefersLeft;
 
         /// <summary>Stacked with nowhere to go: this drill hammers the one below instead.</summary>

@@ -495,6 +495,28 @@ namespace DeepDrill.Core
                 Events.Add(new SimEvent { Kind = SimEventKind.DrillBoosted, Row = unit.Body.BodyRow, Col = unit.Body.Column });
 
             DigFor(digger, radius, damage, false, crit, unit);
+            if (unit.Family == MagnetFamily) PullOre(unit);
+        }
+
+        // A magnet drill draws in the ore around it, nearest first, a handful at a time.
+        private void PullOre(DrillUnit unit)
+        {
+            if (simTime - unit.LastPull < Balance.MagnetPullSeconds) return;
+            unit.LastPull = simTime;
+            int cx = ToPixel(unit.Body.X), cy = ToPixel(unit.Body.Y), pulled = 0;
+            byte last = Mat.Dirt;
+            foreach (var (dx, dy) in ShapeFor(Balance.MagnetReachTiles * Tile))
+            {
+                int x = cx + dx, y = cy + dy;
+                if (y < 0 || x < 0 || x >= PixelWorld.Width) continue;
+                byte mat = world.Get(x, y);
+                if (!Mat.IsOre(mat)) continue;
+                last = mat;
+                RemovePixel(x, y, mat, false, unit);
+                if (++pulled >= Balance.MagnetPullPixels) break;
+            }
+            if (pulled > 0)
+                Events.Add(new SimEvent { Kind = SimEventKind.PixelsDug, Row = cy, Col = cx, Amount = pulled, Ore = last });
         }
 
         // Digs at the nose. If the nose finds nothing, or the body is wedged against rock it is trying

@@ -20,6 +20,8 @@ namespace DeepDrill.Game
         private const float BreathRate = 2.5f;
         private const float FlowSeconds = 1.4f;
         private const float PulseSeconds = 0.45f;
+        private const float ChargeSeconds = 0.25f;
+        private const float DashScale = 6.25f; // one art pixel to one stage pixel on the tiled dash
         private const int LevelDots = 5;
         private const int Stars = 18;
         private const int BurstBits = 24;
@@ -76,10 +78,11 @@ namespace DeepDrill.Game
             public SkillDef Skill;
             public BranchStyle Style;
             public RectTransform Root;
-            public Image Glow, Frame, Fill, Icon;
+            public Image Glow, Frame, Fill, Charge, Icon;
             public Image[] Dots;
             public float Pop;
             public float Flash;
+            public float Charging;
             public bool Hovered;
             public bool Breathing;
         }
@@ -139,6 +142,7 @@ namespace DeepDrill.Game
         private readonly List<TreeBit> treeBits = new List<TreeBit>();
         private readonly List<Image> starDots = new List<Image>();
         private RectTransform treeContent;
+        private Sprite dashSprite;
         private RectTransform tooltip;
         private Image tooltipFrame, tooltipIcon;
         private Text tooltipName, tooltipDesc, tooltipEffect, tooltipPrice;
@@ -171,6 +175,7 @@ namespace DeepDrill.Game
             treeContent.sizeDelta = Vector2.zero;
             treeContent.localScale = Vector3.one * treeZoom;
 
+            dashSprite = art.Get("tree_dash");
             var rings = Ui.Panel(treeContent, "Rings", 0, 0, 1, 1, Color.white);
             rings.sprite = art.Get("tree_rings");
             rings.raycastTarget = false;
@@ -247,6 +252,7 @@ namespace DeepDrill.Game
             link.Glow = Bar(a, b, 4f);
             link.Glow.material = GlowMaterial;
             link.Line = Bar(a, b, 1f);
+            link.Line.pixelsPerUnitMultiplier = DashScale;
             link.Flow = Ui.Panel(treeContent, "Flow", 0, 0, 2, 2, style.Bright);
             link.Flow.raycastTarget = false;
             Center(link.Flow.rectTransform, a, 2, 2);
@@ -297,6 +303,12 @@ namespace DeepDrill.Game
             node.Glow = Layer(hit.transform, "node_glow", size * 3f);
             node.Glow.material = GlowMaterial;
             node.Fill = Layer(hit.transform, $"node_fill_{size}", size);
+            node.Charge = Layer(hit.transform, $"node_fill_{size}", size);
+            node.Charge.type = Image.Type.Filled;
+            node.Charge.fillMethod = Image.FillMethod.Radial360;
+            node.Charge.fillOrigin = (int)Image.Origin360.Top;
+            node.Charge.color = style.Mid;
+            node.Charge.gameObject.SetActive(false);
             node.Frame = Layer(hit.transform, $"node_frame_{size}", size);
             string icon = root ? "tab_drill" : "ticon_" + skill.Branch;
             node.Icon = Layer(hit.transform, icon, root ? 16 : 5);
@@ -334,7 +346,7 @@ namespace DeepDrill.Game
             return node;
         }
 
-        // A bought node flashes and bursts, and light runs down the lines to what it opens.
+        // A bought node fills up, then flashes and bursts, and light runs down the lines to what it opens.
         /// <summary>Plays the purchase effect on a skill; for the demo driver's screenshot.</summary>
         public void BurstSkill(string id)
         {
@@ -344,6 +356,14 @@ namespace DeepDrill.Game
 
         private void LightNode(TreeNode node)
         {
+            node.Charging = 1f;
+            node.Charge.fillAmount = 0f;
+            node.Charge.gameObject.SetActive(true);
+        }
+
+        private void ReleaseNode(TreeNode node)
+        {
+            node.Charge.gameObject.SetActive(false);
             node.Pop = 1f;
             node.Flash = 1f;
             int given = 0;
@@ -487,6 +507,13 @@ namespace DeepDrill.Game
                 if (node.Breathing)
                     node.Frame.color = Color.Lerp(node.Style.Dark, node.Style.Mid, breath);
 
+                if (node.Charging > 0)
+                {
+                    node.Charging = Mathf.Max(0, node.Charging - dt / ChargeSeconds);
+                    node.Charge.fillAmount = 1f - node.Charging;
+                    if (node.Charging <= 0) ReleaseNode(node);
+                }
+
                 node.Pop = Mathf.Max(0, node.Pop - dt * 4f);
                 node.Flash = Mathf.Max(0, node.Flash - dt * 6f);
                 float scale = (node.Hovered ? HoverScale : 1f) + node.Pop * 0.4f;
@@ -552,7 +579,9 @@ namespace DeepDrill.Game
                 link.Lit = lit;
                 var size = link.Line.rectTransform.sizeDelta;
                 link.Line.rectTransform.sizeDelta = new Vector2(size.x, lit ? 2f : 1f);
-                link.Line.color = lit ? link.Style.Mid : (open ? link.Style.Dark : LineLocked);
+                link.Line.sprite = open ? dashSprite : null;
+                link.Line.type = open ? Image.Type.Tiled : Image.Type.Simple;
+                link.Line.color = lit || open ? link.Style.Mid : LineLocked;
                 var glow = link.Style.Bright;
                 glow.a = lit ? 0.3f : 0f;
                 link.Glow.color = glow;

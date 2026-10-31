@@ -28,7 +28,7 @@ namespace DeepDrill.Game
         private void BuildMergeCard()
         {
             var go = new GameObject("MergeCard", typeof(RectTransform));
-            go.transform.SetParent(stageRoot, false);
+            go.transform.SetParent(FxLayer, false); // with the dig area's effects, so full-screen pages hide it
             mergeCard = (RectTransform)go.transform;
             Ui.TopLeft(mergeCard, Stage.DigWidth - MergeCardRight, Stage.Height - MergeCardBottom, 0, 0);
 

@@ -950,6 +950,11 @@ for name, rows in pairs(TREE_ICONS) do
   save(g, "Items/ticon_" .. name)
 end
 
+-- a dash for the lines to skills that can be bought next; the game repeats it along the line
+local dash = canvas(6, 1)
+dash:rect(0, 0, 3, 0, hex("ffffff"))
+save(dash, "Items/tree_dash")
+
 -- the page behind the tree: a dithered radial gradient, centre 24183A to edge 0E0A1A
 local function lerpHex(t)
   local function mix(a, b) return string.format("%02x", math.floor(a + (b - a) * t + 0.5)) end
