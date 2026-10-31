@@ -27,7 +27,7 @@ Claude B 在自己的分支上提交并推送，由 Claude A 合并和验证。C
 |---|---|---|---|---|
 | 12 个 Boss 的独立造型 | B | Claude B | `art/boss-designs` | 待验证 |
 | 第三阶段各系统的图标 | B | Claude B | `art/system-icons` | 待验证 |
-| 150 个技能的图标（按效果类型） | B | Claude B | `art/skill-icons` | 进行中 |
+| 150 个技能的图标（按效果类型） | B | Claude B | `art/skill-icons` | 待验证 |
 | 46 个成就和 36 件稀有物品的图标及剪影 | B | | | 待办 |
 | 最慢一帧降到 20 毫秒以下 | A | | | 待办 |
 | 新手引导 | A | | | 待办 |
