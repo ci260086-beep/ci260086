@@ -292,7 +292,7 @@ local MATERIALS = {
 }
 local BLUE_GLASS = "4fb8e8"
 local STRIP_FROM, TWIN_STRIP_FROM, STAR_TIER = 5, 9, 12
-local STRIP_ROW = { std = 4, swift = 3, heavy = 4, blast = 4, magnet = 4 }
+local STRIP_ROW = { std = 4, swift = 3, heavy = 4, blast = 5, magnet = 3 }
 -- spots just outside the body where a star core throws sparks, one set per frame
 local SPARKS = { { { 0, 0 }, { 7, 9 } }, { { 7, 0 }, { 1, 10 } }, { { 0, 6 }, { 6, 11 } }, { { 7, 5 }, { 1, 0 } } }
 
@@ -303,37 +303,49 @@ local function drillFrame(family, m, f, tier)
   local g = canvas(8, 12)
   local glass = hex(m[6] or BLUE_GLASS)
   if family == "swift" then
-    -- slim with a long point
-    g:rect(2, 1, 5, 4, mid) g:rect(2, 1, 5, 1, hi) g:rect(5, 2, 5, 4, lo)
-    for y = 5, 11 do
-      local half = (y < 8) and 1 or 0
-      g:rect(3 - half, y, 4 + half, y, ((y + f) % 2 == 0) and hi or lo)
+    -- slim body with swept tail fins and a long needle
+    g:rect(2, 0, 5, 4, mid) g:rect(2, 0, 5, 0, hi) g:rect(5, 1, 5, 4, lo)
+    g:set(1, 2, lo) g:set(0, 3, lo) g:set(1, 3, mid) g:set(6, 2, lo) g:set(7, 3, lo) g:set(6, 3, mid)
+    for y = 5, 10 do
+      local half = (y < 7) and 1 or 0
+      local x0 = (y >= 9) and 3 or 3 - half
+      g:rect(x0, y, 4 + half, y, ((y + f) % 2 == 0) and hi or lo)
     end
+    g:set(3, 10, nil)
     g:set(3, 2, glass)
   elseif family == "heavy" then
-    -- wide and blunt
-    g:rect(0, 1, 7, 5, mid) g:rect(0, 1, 7, 1, hi) g:rect(7, 2, 7, 5, lo)
-    for y = 6, 10 do
-      local half = 3 - (y - 6) // 2
-      for x = 3 - half, 4 + half do
+    -- a square armoured shell with rivets over a broad stepped bit
+    g:rect(0, 0, 7, 5, mid) g:rect(0, 0, 7, 0, hi) g:rect(0, 1, 0, 5, hi) g:rect(7, 1, 7, 5, lo)
+    g:set(1, 1, lo) g:set(6, 1, lo) g:set(1, 5, lo) g:set(6, 5, lo)
+    local widths = { 3, 3, 2, 2, 1 }
+    for i, half in ipairs(widths) do
+      local y = 5 + i
+      for x = 4 - half, 3 + half do
         g:set(x, y, ((x + y + f) % 3 == 0) and lo or hi)
       end
     end
     g:rect(3, 2, 4, 3, glass)
   elseif family == "blast" then
-    -- round body with a hot nose
-    g:rect(1, 1, 6, 5, mid) g:rect(2, 0, 5, 0, hi) g:rect(6, 2, 6, 5, lo)
-    g:rect(3, 2, 4, 3, hex(m[6] or "e84a2e"))
-    for y = 6, 10 do
+    -- a round bomb body, a fuse that sparks on top, and a short hot nose
+    for y = 1, 6 do
+      local half = ({ 1, 2, 3, 3, 3, 2 })[y]
+      g:rect(4 - half, y, 3 + half, y, mid)
+    end
+    g:rect(2, 1, 3, 2, hi) g:set(1, 3, hi) g:rect(6, 3, 6, 5, lo) g:set(5, 6, lo)
+    g:set(4, 0, lo) g:set(5, 0, (f % 2 == 0) and hex("ffe27a") or hex("ff7a2a"))
+    g:rect(3, 3, 4, 4, hex(m[6] or "e84a2e"))
+    for y = 7, 10 do
       local half = (10 - y) // 2
       g:rect(3 - half, y, 4 + half, y, ((y + f) % 2 == 0) and hex("ffb040") or lo)
     end
   elseif family == "magnet" then
-    -- two prongs either side of the bit
-    g:rect(1, 1, 6, 4, mid) g:rect(1, 1, 6, 1, hi)
-    g:rect(0, 3, 0, 7, hex("e84a2e")) g:rect(7, 3, 7, 7, hex("4a7ae8"))
-    for y = 5, 10 do
-      local half = (10 - y) // 3
+    -- a horseshoe: an arched body with red and blue prongs running down either side of the bit
+    g:rect(1, 1, 6, 3, mid) g:rect(2, 0, 5, 0, hi) g:rect(1, 1, 6, 1, hi)
+    g:rect(0, 2, 1, 8, hex("e84a2e")) g:rect(6, 2, 7, 8, hex("4a7ae8"))
+    g:rect(0, 8, 1, 8, hex("e8e8f0")) g:rect(6, 8, 7, 8, hex("e8e8f0"))
+    g:set(0, 3, hex("ff9a7a")) g:set(7, 3, hex("8ac0ff"))
+    for y = 4, 10 do
+      local half = (y < 8) and 1 or 0
       g:rect(3 - half, y, 4 + half, y, ((y + f) % 2 == 0) and hi or lo)
     end
     g:set(3, 2, glass)
