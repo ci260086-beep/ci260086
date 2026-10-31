@@ -26,6 +26,9 @@ namespace DeepDrill.Game
         private const float DrillPivotY = 1f / 12f;
         private const int DrillPool = 400;
         private const int RepaintsPerFrame = 4;
+        private const int AssignsPerFrame = 1; // chunks just off screen are painted one at a time, ahead of need
+        private const int VisibleCols = 7;
+        private const int VisibleRows = 4;
         private const int GlowCount = 60;
         private const float ParallaxTileUnits = 4f; // 64 pixels
         private const float MaxShakePixels = 6f;
@@ -222,6 +225,7 @@ namespace DeepDrill.Game
             foreach (var slot in slots) slot.Renderer.enabled = false;
             int used = 0;
             repaintBudget = RepaintsPerFrame;
+            int assigns = AssignsPerFrame;
             for (int cy = Mathf.Max(0, firstRow); cy < firstRow + ChunkRows; cy++)
             {
                 for (int cx = Mathf.Max(0, firstCol); cx < firstCol + ChunkCols; cx++)
@@ -230,6 +234,9 @@ namespace DeepDrill.Game
                     long key = PixelWorld.ChunkKey(cx, cy);
                     if (!slotByChunk.TryGetValue(key, out var slot) || slot.Key != key)
                     {
+                        bool onScreen = cy < firstRow + VisibleRows && cx < firstCol + VisibleCols;
+                        if (!onScreen && assigns <= 0) continue;
+                        assigns--;
                         slot = FreeSlot(firstCol, firstRow);
                         if (slot == null) continue;
                         Assign(slot, key, cx, cy);

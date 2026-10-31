@@ -121,23 +121,35 @@ namespace DeepDrill.Game
         {
             Prepare();
             int size = PixelChunk.Size;
+            int last = size - 1;
+            var mats = chunk.Mats;
+            int layer = 0, tileRow = -1, tileCol = -1;
             for (int ly = minY; ly <= maxY; ly++)
             {
                 int y = cy * size + ly;
                 for (int lx = minX; lx <= maxX; lx++)
                 {
                     int x = cx * size + lx;
-                    byte mat = chunk.Mats[ly * size + lx];
-                    int to = (size - 1 - ly) * size + lx;
+                    int at = ly * size + lx;
+                    byte mat = mats[at];
+                    int to = (last - ly) * size + lx;
                     if (mat == Mat.Air)
                     {
                         buffer[to] = Clear;
                         continue;
                     }
-                    int layer = WorldGen.LayerAt(seed, y / PixelWorld.TileSize, x / PixelWorld.TileSize);
-                    bool up = !world.Solid(x, y - 1) && y > 0;
-                    bool down = !world.Solid(x, y + 1);
-                    bool side = !world.Solid(x - 1, y) || !world.Solid(x + 1, y);
+                    int row = y / PixelWorld.TileSize, col = x / PixelWorld.TileSize;
+                    if (row != tileRow || col != tileCol)
+                    {
+                        tileRow = row;
+                        tileCol = col;
+                        layer = WorldGen.LayerAt(seed, row, col);
+                    }
+                    // neighbours inside the chunk are read directly; only its rim asks the world
+                    bool up = ly > 0 ? mats[at - size] == Mat.Air : y > 0 && !world.Solid(x, y - 1);
+                    bool down = ly < last ? mats[at + size] == Mat.Air : !world.Solid(x, y + 1);
+                    bool side = (lx > 0 ? mats[at - 1] == Mat.Air : !world.Solid(x - 1, y))
+                        || (lx < last ? mats[at + 1] == Mat.Air : !world.Solid(x + 1, y));
                     if (up) buffer[to] = ramps[layer][5];
                     else if (down || side) buffer[to] = ramps[layer][0];
                     else buffer[to] = ColorOf(mat, layer, x, y);

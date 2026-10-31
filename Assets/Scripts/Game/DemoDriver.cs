@@ -1,6 +1,7 @@
 ﻿using System.Collections;
 using System.IO;
 using DeepDrill.Core;
+using Unity.Profiling;
 using UnityEngine;
 
 namespace DeepDrill.Game
@@ -16,6 +17,18 @@ namespace DeepDrill.Game
         private const int SwarmSize = 200;
         private const int MergeShotTier = 6;
         private const float LayerSeconds = 2.5f;
+        private const int FullSwarm = 1000;
+        private const float MeasureSeconds = 5f;
+        private const int SlowFrames = 4;
+        private const long PartWorthNaming = 1_000_000; // one millisecond
+
+        private static readonly string[] FrameParts =
+        {
+            "PlayerLoop", "EditorLoop", "GC.Collect", "Update.ScriptRunBehaviourUpdate", "PreLateUpdate.ScriptRunBehaviourLateUpdate",
+            "PostLateUpdate.PlayerUpdateCanvases", "Canvas.SendWillRenderCanvases", "Canvas.BuildBatch",
+            "PostLateUpdate.PlayerSendFrameComplete", "Camera.Render", "UGUI.Rendering.RenderOverlays", "Gfx.WaitForPresentOnGfxThread",
+            "WaitForTargetFPS", "Physics2D.Simulate", "Texture2D.Apply",
+        };
 
         private GameRoot root;
         private string folder;
@@ -74,6 +87,12 @@ namespace DeepDrill.Game
             root.Hud.ShowMerged(DrillCode.Make(0, MergeShotTier));
             yield return new WaitForSeconds(0.4f);
             yield return Shot("merge");
+
+            while (sim.State.drills.Count < FullSwarm) sim.State.drills.Add(DrillCode.Make(0, 0));
+            sim.SyncDrills();
+            yield return new WaitForSeconds(3f);
+            yield return MeasureFrames();
+            yield return Shot("swarm_full");
 
             sim.State.coins = 1e30;
             sim.Buy("root");
@@ -144,22 +163,45 @@ namespace DeepDrill.Game
 #endif
         }
 
+        // Runs the frame clock for a few seconds and logs the slowest frames, part by part.
         private IEnumerator MeasureFrames()
         {
+            var recorders = new ProfilerRecorder[FrameParts.Length];
+            for (int i = 0; i < recorders.Length; i++)
+                recorders[i] = ProfilerRecorder.StartNew(ProfilerCategory.Internal, FrameParts[i]);
+            var allocated = ProfilerRecorder.StartNew(ProfilerCategory.Memory, "GC Allocated In Frame");
+
+            var slowest = new float[SlowFrames];
+            var parts = new string[SlowFrames];
             float start = Time.realtimeSinceStartup;
             int frames = 0;
             float worst = 0;
+            yield return null; // the first frame back still carries the screenshot before it
             root.ResetTimers();
             int gcBefore = System.GC.CollectionCount(0);
-            while (Time.realtimeSinceStartup - start < 3f)
+            while (Time.realtimeSinceStartup - start < MeasureSeconds)
             {
                 frames++;
-                worst = Mathf.Max(worst, Time.unscaledDeltaTime);
+                float ms = Time.unscaledDeltaTime * 1000f;
+                worst = Mathf.Max(worst, ms);
+                int slot = System.Array.IndexOf(slowest, Mathf.Min(slowest));
+                if (ms > slowest[slot])
+                {
+                    slowest[slot] = ms;
+                    var text = new System.Text.StringBuilder($"{ms:0.0}ms alloc={allocated.LastValue / 1024}KB");
+                    for (int i = 0; i < recorders.Length; i++)
+                        if (recorders[i].LastValue >= PartWorthNaming) text.Append($" {FrameParts[i]}={recorders[i].LastValue / 1e6:0.0}");
+                    parts[slot] = text.ToString();
+                }
                 yield return null;
             }
             Debug.Log($"[demo] swarm units={root.Sim.Units.Count} owned={root.Sim.State.drills.Count} " +
-                $"depth={root.Sim.State.depth} fps={frames / 3f:0} worstFrameMs={worst * 1000:0} " +
+                $"depth={root.Sim.State.depth} fps={frames / MeasureSeconds:0} worstFrameMs={worst:0} " +
                 $"worstTickMs={root.MaxTickMs:0.0} worstPaintMs={root.MaxDrawMs:0.0} gen0={System.GC.CollectionCount(0) - gcBefore}");
+            foreach (string line in parts)
+                if (line != null) Debug.Log("[demo] slow frame " + line);
+            foreach (var recorder in recorders) recorder.Dispose();
+            allocated.Dispose();
         }
 
         private IEnumerator Shot(string name)

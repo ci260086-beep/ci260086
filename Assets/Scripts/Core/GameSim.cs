@@ -101,6 +101,7 @@ namespace DeepDrill.Core
         private const int SwiftFamily = 1;
         private const int HeavyFamily = 2;
         private const int BlastFamily = 3;
+        private const int RareRanks = 3;
         private const int MagnetFamily = 4;
 
         public readonly GameState State;
@@ -127,6 +128,10 @@ namespace DeepDrill.Core
         private double housekeepingClock;
         private double swarmMultiplier = 1;
         private double drillBonus = 1;
+        private readonly Dictionary<string, int> achievementTally = new Dictionary<string, int>();
+        private readonly double[] rareWeight = new double[RareRanks];
+        private int achievementsTallied = -1;
+        private int raresTallied = -1;
         private int blastsThisChain;
         private bool insideBlast;
         private double simTime;
@@ -214,27 +219,41 @@ namespace DeepDrill.Core
         /// <summary>The first level of the root skill: until then drills only move when tapped.</summary>
         public bool AutoDrillUnlocked => State.LevelOf(RootSkill) >= 1;
 
+        // These two sit under the income of every dug pixel, so the walks over the lists are cached.
         private int AchievementCount(string prefix)
         {
-            int n = 0;
-            foreach (string id in State.achievements)
-                if (id.StartsWith(prefix, StringComparison.Ordinal)) n++;
-            return n;
+            if (achievementsTallied != State.achievements.Count)
+            {
+                achievementsTallied = State.achievements.Count;
+                achievementTally.Clear();
+                foreach (string id in State.achievements)
+                {
+                    int cut = id.IndexOf('_');
+                    if (cut < 0) continue;
+                    string group = id.Substring(0, cut + 1);
+                    achievementTally.TryGetValue(group, out int n);
+                    achievementTally[group] = n + 1;
+                }
+            }
+            return achievementTally.TryGetValue(prefix, out int count) ? count : 0;
         }
 
         // Each rare's bonus grows 50% per duplicate, up to ten duplicates.
         private double RareBonus(int rank, double perRare)
         {
-            double sum = 0;
-            foreach (var rare in GameData.Rares)
+            if (raresTallied != State.RareVersion)
             {
-                if (rare.Rank != rank) continue;
-                int count = State.RareCountOf(rare.Id);
-                if (count <= 0) continue;
-                int dupes = Math.Min(count - 1, Balance.RareMaxDupes);
-                sum += perRare * (1 + Balance.RareDupeBonus * dupes);
+                raresTallied = State.RareVersion;
+                Array.Clear(rareWeight, 0, rareWeight.Length);
+                foreach (var rare in GameData.Rares)
+                {
+                    int count = State.RareCountOf(rare.Id);
+                    if (count <= 0) continue;
+                    int dupes = Math.Min(count - 1, Balance.RareMaxDupes);
+                    rareWeight[rare.Rank] += 1 + Balance.RareDupeBonus * dupes;
+                }
             }
-            return sum;
+            return perRare * rareWeight[rank];
         }
 
         private double GlobalDamageMultiplier

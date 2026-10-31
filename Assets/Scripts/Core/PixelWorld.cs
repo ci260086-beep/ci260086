@@ -76,6 +76,8 @@ namespace DeepDrill.Core
         private readonly object tileLock = new object();
         private long lastKey = long.MinValue;
         private PixelChunk lastChunk;
+        private long previousKey = long.MinValue; // clearing a pixel also wakes the chunk above, so two keep the loop fast
+        private PixelChunk previousChunk;
         private readonly Dictionary<long, Block> tiles = new Dictionary<long, Block>();
         private readonly HashSet<long> spentCharges = new HashSet<long>();
         private readonly List<long> scratch = new List<long>();
@@ -102,6 +104,7 @@ namespace DeepDrill.Core
         {
             long key = ChunkKey(cx, cy);
             if (key == lastKey) return lastChunk; // pixel loops stay in one chunk for long stretches
+            if (key == previousKey) return Remember(key, previousChunk);
             if (!chunks.TryGetValue(key, out var chunk))
             {
                 if (!ready.TryRemove(key, out chunk)) chunk = Generate(cx, cy);
@@ -109,6 +112,13 @@ namespace DeepDrill.Core
                 chunks[key] = chunk;
                 if (dugArchive.TryGetValue(key, out byte[] holes)) ApplyHoles(chunk, holes);
             }
+            return Remember(key, chunk);
+        }
+
+        private PixelChunk Remember(long key, PixelChunk chunk)
+        {
+            previousKey = lastKey;
+            previousChunk = lastChunk;
             lastKey = key;
             lastChunk = chunk;
             return chunk;
@@ -264,7 +274,7 @@ namespace DeepDrill.Core
             scratch.Clear();
             foreach (var pair in chunks)
                 if (pair.Key / 4096 < limit) scratch.Add(pair.Key);
-            lastKey = long.MinValue;
+            lastKey = previousKey = long.MinValue;
             foreach (long key in scratch)
             {
                 if (chunks[key].Dug) dugArchive[key] = EncodeHoles(chunks[key]);

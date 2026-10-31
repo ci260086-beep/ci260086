@@ -122,8 +122,12 @@ namespace DeepDrill.Core
             return 0;
         }
 
+        /// <summary>Moves on whenever a rare is added, for anything that caches what they add up to.</summary>
+        public int RareVersion { get; private set; }
+
         public void AddRare(string id)
         {
+            RareVersion++;
             foreach (var r in rares)
             {
                 if (r.id != id) continue;

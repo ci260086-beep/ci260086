@@ -103,6 +103,7 @@ namespace DeepDrill.Tests
             sim.Teleport(300, 20);
             for (int i = 0; i < 40; i++) sim.Tick(1.0 / 60); // let them settle first
 
+            long allocatedBefore = System.GC.GetAllocatedBytesForCurrentThread();
             var clock = System.Diagnostics.Stopwatch.StartNew();
             double worst = 0;
             const int Frames = 300;
@@ -114,7 +115,8 @@ namespace DeepDrill.Tests
                 worst = System.Math.Max(worst, clock.Elapsed.TotalMilliseconds - before);
             }
             double average = clock.Elapsed.TotalMilliseconds / Frames;
-            System.Console.WriteLine($"perf200 avg={average:0.00}ms worst={worst:0.00}ms units={sim.Units.Count}");
+            double kilobytes = (System.GC.GetAllocatedBytesForCurrentThread() - allocatedBefore) / 1024.0 / Frames;
+            System.Console.WriteLine($"perf200 avg={average:0.00}ms worst={worst:0.00}ms units={sim.Units.Count} alloc={kilobytes:0.0}KB");
             Assert.Less(average, 8, "rules must leave most of a 60 FPS frame for drawing");
         }
 
