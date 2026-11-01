@@ -96,7 +96,8 @@ namespace DeepDrill.Game
                 if (CommandLine.Value("--shots") == null) return;
                 Debug.Log("[demo] new game started");
 #if UNITY_EDITOR
-                UnityEditor.EditorApplication.Exit(0);
+                if (CommandLine.FromEditorMenu) UnityEditor.EditorApplication.ExitPlaymode();
+                else UnityEditor.EditorApplication.Exit(0);
 #endif
             }
         }
@@ -550,12 +551,19 @@ namespace DeepDrill.Game
 
     public static class CommandLine
     {
+        /// <summary>Set when the editor's capture menu started this Play, rather than the command line.</summary>
+        public static bool FromEditorMenu => Environment.GetEnvironmentVariable(EnvName("--shots")) != null;
+
         public static string Value(string flag)
         {
             string[] args = Environment.GetCommandLineArgs();
             for (int i = 0; i + 1 < args.Length; i++)
                 if (args[i] == flag) return args[i + 1];
-            return null;
+            // the editor menu cannot add arguments to a running editor, so it passes them this way
+            return Environment.GetEnvironmentVariable(EnvName(flag));
         }
+
+        // "--shots" -> "DEEPDRILL_SHOTS"
+        public static string EnvName(string flag) => "DEEPDRILL_" + flag.TrimStart('-').ToUpperInvariant();
     }
 }
