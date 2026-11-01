@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 namespace DeepDrill.Game
 {
@@ -8,6 +8,7 @@ namespace DeepDrill.Game
         private const string ShakeKey = "shake";
         private const string ParticleKey = "particles";
         private const string SoundKey = "sound";
+        private const string MusicKey = "music";
 
         public static readonly string[] ParticleNames = { "低", "中", "高" };
         public static readonly string[] ShakeNames = { "关", "弱", "中", "强" };
@@ -34,7 +35,14 @@ namespace DeepDrill.Game
             set => PlayerPrefs.SetInt(SoundKey, value);
         }
 
+        public static int MusicLevel
+        {
+            get => PlayerPrefs.GetInt(MusicKey, 3);
+            set => PlayerPrefs.SetInt(MusicKey, value);
+        }
+
         public static float SoundScale => SoundScales[SoundLevel];
+        public static float MusicScale => SoundScales[MusicLevel];
         public static float ShakeScale => ShakeScales[ShakeLevel];
         public static float ParticleScale => ParticleScales[ParticleLevel];
     }

@@ -44,6 +44,7 @@ namespace DeepDrill.Game
         private WorldView world;
         private FxView fx;
         private SoundBank sound;
+        private MusicPlayer music;
         private HudView hud;
         private ArtLibrary art;
         private float autosave;
@@ -135,6 +136,8 @@ namespace DeepDrill.Game
 
             sound = gameObject.AddComponent<SoundBank>();
             sound.Init();
+            music = gameObject.AddComponent<MusicPlayer>();
+            music.Init();
 
             hud.SaveRequested += SaveNow;
             hud.NewGameRequested += StartNewGame;
@@ -153,6 +156,7 @@ namespace DeepDrill.Game
             camera.clearFlags = CameraClearFlags.SolidColor;
             camera.backgroundColor = new Color32(0x8f, 0xc9, 0xe6, 0xff);
             camera.targetTexture = target;
+            go.AddComponent<AudioListener>(); // without one nothing in the game is heard
             return camera;
         }
 
@@ -185,6 +189,7 @@ namespace DeepDrill.Game
             timer.Restart();
             MaxEventCount = Mathf.Max(MaxEventCount, sim.Events.Count);
             DrainEvents();
+            music.SetMood(GameData.LayerOfRow(sim.State.depth), sim.BossActive);
             MaxEventsMs = Mathf.Max(MaxEventsMs, (float)timer.Elapsed.TotalMilliseconds);
             timer.Restart();
 

@@ -563,10 +563,18 @@ namespace DeepDrill.Game
                 soundLabel.text = "音量：" + GameSettings.SoundNames[GameSettings.SoundLevel];
             });
 
-            var fresh = Ui.Button(settings.transform, Font, "新游戏", 4, PanelTitleHeight + 66, Stage.PanelWidth - 8, 14, 7, CardBright, out newGameLabel);
+            var music = Ui.Button(settings.transform, Font, "", 4, PanelTitleHeight + 66, Stage.PanelWidth - 8, 14, 7, CardBright, out Text musicLabel);
+            musicLabel.text = "音乐：" + GameSettings.SoundNames[GameSettings.MusicLevel];
+            music.onClick.AddListener(() =>
+            {
+                GameSettings.MusicLevel = (GameSettings.MusicLevel + 1) % GameSettings.SoundNames.Length;
+                musicLabel.text = "音乐：" + GameSettings.SoundNames[GameSettings.MusicLevel];
+            });
+
+            var fresh = Ui.Button(settings.transform, Font, "新游戏", 4, PanelTitleHeight + 82, Stage.PanelWidth - 8, 14, 7, CardBright, out newGameLabel);
             fresh.onClick.AddListener(OnNewGameClicked);
 
-            var keys = Ui.Label(settings.transform, Font, "快捷键\n1-6 切换页面  Esc 返回\n空格 狂热  C 一键合成\nB 批量购买", 4, PanelTitleHeight + 84, Stage.PanelWidth - 8, 40, 6, TextAnchor.UpperLeft);
+            var keys = Ui.Label(settings.transform, Font, "快捷键\n1-6 切换页面  Esc 返回\n空格 狂热  C 一键合成\nB 批量购买", 4, PanelTitleHeight + 100, Stage.PanelWidth - 8, 40, 6, TextAnchor.UpperLeft);
             keys.color = SoftText;
             keys.horizontalOverflow = HorizontalWrapMode.Wrap;
         }
