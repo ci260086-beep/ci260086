@@ -98,6 +98,7 @@ tools\outside\out\pace\Pace.exe Assets\Resources\Data 8 1500 种子
 - ④ 节奏重调：用户 2026-11-01 说先不用重调。
 - ⑦ 声音（`phase5-sound`，已并入 `master`）：用户选了**轻快**风格。`MusicSynth` 用代码合成 8 小节循环（脉冲波主旋律、三角波低音、琶音、噪声鼓），每层一首，Boss 战一首更快的；越深调越低、越偏小调，但速度不降。`MusicPlayer` 在后台线程渲染、按深度和 Boss 状态交叉淡入；设置页加了“音乐”音量（默认 75%）。之前舞台摄像机没有 `AudioListener`，游戏里其实一直没有声音，这次补上了。`SaveService.Save` 的 `File.Replace` 被占用时重试 5 次（每次 40 毫秒），存档内容和格式不变。
 - 字体：用户要求所有文字框里的长文字自动换行，不能超出框。做美术 21（像素字体）时逐页检查。
+- 第六阶段美术 18（`art/PALETTE.md`、`art/tools/palette.lua`）和 19（钻头 8 帧，`draw_world_art.lua`）已并入 `master`。新美术一律用 `palette.lua`。旧美术的 5 种描边色差别很小，没有重画。
 - ⑧ Windows 打包：暂缓。这是用户的决定。
 
 ### 已知问题
