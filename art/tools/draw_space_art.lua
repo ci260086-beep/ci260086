@@ -156,25 +156,26 @@ local PLANETS = {
   end,
   -- 雷暴星: violet-black storm bands wrapped round the globe, lit by forks of lightning
   function(g)
-    local cloud = ramp({ "120c1e", "22163a", "3a2660", "5e3e8e", "9a7ac8" })
+    local cloud = ramp({ "120c1e", "261840", "44306e", "6e4ca0", "b496e0" })
     local bolt, glow = hex("fff6a8"), hex("c8a8ff")
     sphere(g, function(lon, lat, light, x, y)
       local u, v = (lon + math.pi) / (2 * math.pi) * 10, (lat + 1.6) * 4
       -- bands sheared by latitude so the storm looks like it is turning
       local band = fbm(u + lat * 2.5, v * 1.6, 91, 10)
-      local swirl = math.sin(v * 2.2 + band * 5) * 0.12
-      return shade(cloud, math.max(0, math.min(1, light * 0.85 + swirl + (band - 0.5) * 0.35)), x, y)
+      local swirl = math.sin(v * 2.4 + band * 6) * 0.22
+      return shade(cloud, math.max(0, math.min(1, light * 0.8 + swirl + (band - 0.5) * 0.5)), x, y)
     end)
     -- two forked bolts on the lit side, each a jagged walk with a glow halo
     for _, b in ipairs({ { 15, 9, 1, 14, 91 }, { 27, 20, -1, 12, 92 } }) do
       local x, y = b[1], b[2]
       for i = 0, b[4] do
         local nx = x + (hash(i, 0, b[5]) < 0.5 and -1 or 1) * (i % 2) + b[3] * (i % 3 == 0 and 1 or 0)
-        for _, d in ipairs({ { -1, 0 }, { 1, 0 }, { 0, -1 } }) do
+        for _, d in ipairs({ { -1, 0 }, { 2, 0 }, { 0, -1 }, { 1, -1 } }) do
           local hx, hy = math.floor(nx + d[1]), math.floor(y + d[2])
           if g:get(hx, hy) and g:get(hx, hy) ~= bolt then g:set(hx, hy, glow) end
         end
         g:set(nx, y, bolt)
+        g:set(nx + 1, y, bolt) -- two pixels wide so it reads at 48x48
         if i == 6 then -- a short fork
           for j = 1, 3 do g:set(nx + j * b[3] * -1, y + j, bolt) end
         end
@@ -190,7 +191,7 @@ local PLANETS = {
       local u, v = (lon + math.pi) / (2 * math.pi) * 9, (lat + 1.6) * 3
       local n = fbm(u, v, 101, 9)
       local m = fbm(u * 1.7 + 5, v * 1.7, 103, 15)
-      if math.abs(n - 0.5) < 0.022 or math.abs(m - 0.52) < 0.014 then
+      if math.abs(n - 0.5) < 0.02 or (math.abs(m - 0.52) < 0.012 and light > 0.3) then
         return light > 0.55 and hex("2e6a96") or crack
       end
       local polar = math.abs(lat) > 1.05 and 0.3 or 0
