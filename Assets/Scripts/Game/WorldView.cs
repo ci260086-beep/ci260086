@@ -16,13 +16,13 @@ namespace DeepDrill.Game
         private const float LeadLightRadius = 64f; // stage pixels
         private const float DrillLightRadius = 16f;
         private const int FirstGlowTier = 7;
-        private const float TierGlowAlpha = 0.4f;
-        private const float StarGlowAlpha = 0.55f;
+        private const float TierGlowAlpha = 0.3f;
+        private const float StarGlowAlpha = 0.45f;
         private const int Motes = 24;
         private const float MoteTurnRate = 5f;
         private const float MoteSpacing = 2.1f;
         private const float MoteRadius = 0.75f;
-        private static readonly Color PlainGlow = new Color(1f, 0.8f, 0.45f, 0.2f);
+        private static readonly Color PlainGlow = new Color(1f, 0.8f, 0.45f, 0.14f);
         private const float CameraFollowRate = 6f;
         private const float DrillPivotBelowCenter = 0.33f; // sprites turn about a point near the tip
         private const float DrillPivotY = 1f / 12f;
