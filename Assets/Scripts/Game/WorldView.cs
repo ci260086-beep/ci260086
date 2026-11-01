@@ -13,14 +13,16 @@ namespace DeepDrill.Game
         private const int ChunkCols = 8;
         private const int ChunkRows = 5;
         private const float DrillFramesPerSecond = 14f;
+        private const float LeadLightRadius = 64f; // stage pixels
+        private const float DrillLightRadius = 16f;
         private const int FirstGlowTier = 7;
-        private const float TierGlowAlpha = 0.28f;
-        private const float StarGlowAlpha = 0.42f;
+        private const float TierGlowAlpha = 0.4f;
+        private const float StarGlowAlpha = 0.55f;
         private const int Motes = 24;
         private const float MoteTurnRate = 5f;
         private const float MoteSpacing = 2.1f;
         private const float MoteRadius = 0.75f;
-        private static readonly Color PlainGlow = new Color(1f, 0.8f, 0.45f, 0.14f);
+        private static readonly Color PlainGlow = new Color(1f, 0.8f, 0.45f, 0.2f);
         private const float CameraFollowRate = 6f;
         private const float DrillPivotBelowCenter = 0.33f; // sprites turn about a point near the tip
         private const float DrillPivotY = 1f / 12f;
@@ -45,9 +47,9 @@ namespace DeepDrill.Game
         private static readonly Color OverheatTint = new Color(1f, 0.4f, 0.3f);
         private static readonly Color HeadlampWarm = new Color(1f, 0.85f, 0.6f);
         private static readonly Color HeadlampHot = new Color(1f, 0.45f, 0.3f);
-        private const float HeadlampSize = 9f;
+        private const float HeadlampSize = 3f; // light_soft is 48 pixels across
         private const float HeadlampTop = 0.04f;
-        private const float HeadlampDeep = 0.22f;
+        private const float HeadlampDeep = 0.3f;
         private static readonly Color BossWarnTint = new Color(1f, 0.25f, 0.2f);
         private const float BossWarnRate = 14f;
         private const int BossFrameWidth = 64;
@@ -163,9 +165,10 @@ namespace DeepDrill.Game
             for (int i = 0; i < GlowCount; i++)
             {
                 var glow = MakeRenderer("glow", 5, transform);
-                glow.sprite = art.Get("fx_circle");
+                glow.sprite = art.Get("light_soft");
+                glow.sharedMaterial = AdditiveMaterial;
                 glow.color = PlainGlow;
-                glow.transform.localScale = new Vector3(2.4f, 2.4f, 1);
+                glow.transform.localScale = new Vector3(0.8f, 0.8f, 1);
                 glow.enabled = false;
                 glows.Add(glow);
             }
@@ -178,7 +181,8 @@ namespace DeepDrill.Game
             }
 
             headlamp = MakeRenderer("headlamp", 5, transform);
-            headlamp.sprite = art.Get("fx_circle");
+            headlamp.sprite = art.Get("light_soft");
+            headlamp.sharedMaterial = AdditiveMaterial;
             headlamp.transform.localScale = new Vector3(HeadlampSize, HeadlampSize, 1);
 
             for (int i = 0; i < Motes; i++)
@@ -521,6 +525,30 @@ namespace DeepDrill.Game
             c.a = Mathf.Lerp(HeadlampTop, HeadlampDeep, layer / (GameData.Layers.Count - 1f));
             headlamp.color = c;
             headlamp.transform.position = new Vector3(Stage.SnapToPixel(x), Stage.SnapToPixel(y), 0);
+        }
+
+        private static Material additiveMaterial;
+
+        /// <summary>Sprites with this material add light to what is behind them.</summary>
+        public static Material AdditiveMaterial =>
+            additiveMaterial != null ? additiveMaterial : additiveMaterial = new Material(Shader.Find("DeepDrill/SpriteAdditive"));
+
+        /// <summary>
+        /// Cuts the light of the drills in view into the darkness: a wide pool round the lead
+        /// drill's headlamp and a small one round each of the others, larger for glowing tiers.
+        /// </summary>
+        public void AddLights(LightMap lights)
+        {
+            Vector2 lead = Stage.WorldToStage(new Vector2((float)sim.Lead.Body.X, -(float)sim.Lead.Body.Y), CameraPosition);
+            lights.Add(lead, LeadLightRadius, 1.2f);
+            for (int i = 0; i < drillPool.Count; i++)
+            {
+                var sr = drillPool[i];
+                if (!sr.enabled) break;
+                Vector2 at = Stage.WorldToStage(sr.transform.position, CameraPosition);
+                bool bright = drillGlows[i].a >= StarGlowAlpha;
+                lights.Add(at, bright ? DrillLightRadius * 1.6f : DrillLightRadius, bright ? 1f : 0.7f);
+            }
         }
 
         // Crystal and above throw light in their own colour; the star core burns brightest.

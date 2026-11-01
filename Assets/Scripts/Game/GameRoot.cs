@@ -21,6 +21,8 @@ namespace DeepDrill.Game
         private const float SlowMotionSeconds = 1f;
         private const float SlowMotionRate = 0.2f;
         private const int LootFountain = 24;
+        private const float BlastLightRadius = 40f; // stage pixels, plus the blast's own radius
+        private const float BlastLightSeconds = 0.35f;
         private const int LootOreEvery = 3;
         private const float LootFlashSize = 6f;
         private const int BusySwarm = 50; // past this, only a third of the swings get full effects
@@ -189,6 +191,7 @@ namespace DeepDrill.Game
             timer.Restart();
             MaxEventCount = Mathf.Max(MaxEventCount, sim.Events.Count);
             DrainEvents();
+            world.AddLights(hud.Lights);
             music.SetMood(GameData.LayerOfRow(sim.State.depth), sim.BossActive);
             MaxEventsMs = Mathf.Max(MaxEventsMs, (float)timer.Elapsed.TotalMilliseconds);
             timer.Restart();
@@ -259,12 +262,14 @@ namespace DeepDrill.Game
                 case SimEventKind.StormStrike:
                     Vector2 strike = WorldView.CellCenter(e.Row, e.Col);
                     fx.Lightning(strike, world.CameraPosition.y + Stage.Height / 2f / Stage.PixelsPerUnit);
+                    hud.Lights.AddFlash(CellStage(e.Row, e.Col), Stage.Width, 1.5f, BlastLightSeconds); // the whole view lights up
                     world.Shake(0.3f, 3f);
                     hud.ShowToast("雷击！连击清零", 1.5f);
                     break;
 
                 case SimEventKind.Explosion:
                     fx.Explosion(WorldView.CellCenter(e.Row, e.Col), (int)e.Amount);
+                    hud.Lights.AddFlash(CellStage(e.Row, e.Col), BlastLightRadius + (float)e.Amount * Stage.PixelsPerUnit, 1.6f, BlastLightSeconds);
                     fx.Debris(WorldView.CellCenter(e.Row, e.Col), OreBits, 22);
                     world.Shake(0.2f, 3f);
                     sound.Play("blast", 0.7f, 0, true);

@@ -57,6 +57,8 @@ namespace DeepDrill.Game
             public bool Fade;
         }
 
+        private Material spriteMaterial;
+
         private sealed class Flyer
         {
             public Image Icon;
@@ -88,7 +90,7 @@ namespace DeepDrill.Game
         private RectTransform layer;
         private Font font;
         private Sprite whitePixel;
-        private Sprite[] fireFrames, smokeFrames, ringFrames, flashFrames;
+        private Sprite[] fireFrames, smokeFrames, ringFrames, flashFrames, glintFrames;
 
         /// <summary>Share of effects to play: lowered by the setting and by very large swarms.</summary>
         public float Density { get; set; } = 1f;
@@ -102,6 +104,7 @@ namespace DeepDrill.Game
             smokeFrames = art.Strip("fx_smoke", 16);
             ringFrames = art.Strip("fx_ring", 32);
             flashFrames = new[] { art.Get("fx_circle") };
+            glintFrames = new[] { art.Get("light_glint") };
             moteFrames = new Sprite[GameData.Layers.Count][];
             for (int l = 0; l < moteFrames.Length; l++) moteFrames[l] = art.Strip($"mote_{l}", MoteFrameWidth);
 
@@ -113,6 +116,7 @@ namespace DeepDrill.Game
                 sr.sortingOrder = 7;
                 sr.enabled = false;
                 anims.Add(new Anim { Sprite = sr });
+                spriteMaterial = sr.sharedMaterial;
             }
             for (int i = 0; i < BitCount; i++)
             {
@@ -132,7 +136,7 @@ namespace DeepDrill.Game
         public void Explosion(Vector2 world, int radius)
         {
             float size = radius * 2 + 1;
-            Play(flashFrames, world, size * 0.7f, size * 0.9f, 0.05f, 0f, false);
+            Play(flashFrames, world, size * 0.7f, size * 0.9f, 0.05f, 0f, false, true);
             Play(fireFrames, world, size * 0.5f, size * 0.55f, 0.26f, 0.03f, false);
             Play(smokeFrames, world, size * 0.5f, size * 1.1f, 0.6f, 0.2f, true);
             Play(ringFrames, world, size * 0.5f, size * 0.8f, 0.3f, 0.02f, true);
@@ -147,11 +151,11 @@ namespace DeepDrill.Game
             {
                 float t = i / (float)steps;
                 var at = new Vector2(x, Mathf.Lerp(fromY, strike.y, t));
-                Play(flashFrames, at, 0.5f, 0.3f, 0.4f, t * 0.05f, true);
+                Play(flashFrames, at, 0.5f, 0.3f, 0.4f, t * 0.05f, true, true);
                 x += UnityEngine.Random.Range(-0.45f, 0.45f);
                 x = Mathf.Lerp(x, strike.x, t * 0.5f); // drift back so the bolt lands where it hits
             }
-            Play(flashFrames, strike, 2.5f, 4f, 0.35f, 0.05f, true);
+            Play(flashFrames, strike, 2.5f, 4f, 0.35f, 0.05f, true, true);
             Spray(strike, new Color(0.85f, 0.8f, 1f), 10, true);
         }
 
@@ -161,13 +165,15 @@ namespace DeepDrill.Game
         }
 
         /// <summary>A burst of light at a spot; stands in for a merge or a pickup flash.</summary>
-        public void Flash(Vector2 world, float size) => Play(flashFrames, world, size * 0.6f, size, 0.1f, 0f, true);
+        public void Flash(Vector2 world, float size) => Play(flashFrames, world, size * 0.6f, size, 0.1f, 0f, true, true);
 
-        private void Play(Sprite[] frames, Vector2 world, float from, float to, float seconds, float delay, bool fade)
+        private void Play(Sprite[] frames, Vector2 world, float from, float to, float seconds, float delay, bool fade, bool additive = false)
         {
             foreach (var a in anims)
             {
                 if (a.Sprite.enabled || a.Frames != null) continue;
+                // flashes and bolts add light; fire and smoke paint over
+                a.Sprite.sharedMaterial = additive ? WorldView.AdditiveMaterial : spriteMaterial;
                 a.Frames = frames;
                 a.Delay = delay;
                 a.Time = 0;
@@ -232,7 +238,7 @@ namespace DeepDrill.Game
         }
 
         /// <summary>One bright frame of light on a gem.</summary>
-        public void Twinkle(Vector2 world) => Play(flashFrames, world, 0.25f, 0.5f, 0.1f, 0f, true);
+        public void Twinkle(Vector2 world) => Play(glintFrames, world, 0.4f, 1f, 0.3f, 0f, true, true); // a gem catches the light
 
         public void Debris(Vector2 world, Color color, int count) => Spray(world, color, count, false);
 

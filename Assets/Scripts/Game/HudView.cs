@@ -43,7 +43,8 @@ namespace DeepDrill.Game
         private const int GalleryCell = 16;
         private const int ComboFlashStep = 10;
         private const float TextSeconds = 0.1f;
-        private const float MaxDarkness = 0.4f;
+        private const float MaxDarkness = 0.62f; // the deepest layer away from any light; lights cut through it
+        private const float FrenzyDarkness = 0.7f; // frenzy lifts the dark a little
         private const int SpeedLines = 14;
         private const float BannerSeconds = 2.2f;
         private const float BannerBarHeight = 34f;
@@ -155,7 +156,11 @@ namespace DeepDrill.Game
         private Image frenzyButtonImage;
         private Text frenzyButtonLabel;
         private Image dragGhost;
-        private Image frenzyGlow, bannerTop, bannerBottom, darkness;
+        private Image frenzyGlow, bannerTop, bannerBottom;
+        private RawImage darkness;
+
+        /// <summary>The darkness over the dig area and the lights cut into it; the world adds its lights each frame.</summary>
+        public LightMap Lights { get; private set; }
         private Text bannerLabel;
         private float bannerTime;
         private HangarCell dragSource;
@@ -351,8 +356,13 @@ namespace DeepDrill.Game
         // The deeper the layer the darker the view, with a soft shadow round the edge of the dig area.
         private void BuildDarkness()
         {
-            darkness = Ui.Panel(stageRoot, "Darkness", 0, 0, Stage.DigWidth, Stage.Height, Color.clear);
+            Lights = new LightMap(Stage.DigWidth, Stage.Height);
+            var go = new GameObject("Darkness", typeof(RectTransform));
+            go.transform.SetParent(stageRoot, false);
+            darkness = go.AddComponent<RawImage>();
+            darkness.texture = Lights.Texture;
             darkness.raycastTarget = false;
+            Ui.TopLeft(darkness.rectTransform, 0, 0, Stage.DigWidth, Stage.Height);
             var edge = Ui.Panel(stageRoot, "Vignette", 0, 0, Stage.DigWidth, Stage.Height, new Color(1, 1, 1, 0.45f));
             edge.sprite = art.Get("dig_edge_shade");
             edge.raycastTarget = false;
@@ -361,9 +371,9 @@ namespace DeepDrill.Game
         private void UpdateDarkness()
         {
             int layer = GameData.LayerOfRow(sim.State.depth);
-            Color tint = Palette.Dark(layer);
-            tint.a = Mathf.Lerp(0f, MaxDarkness, layer / (GameData.Layers.Count - 1f));
-            darkness.color = tint;
+            float dark = Mathf.Lerp(0f, MaxDarkness, layer / (GameData.Layers.Count - 1f)) * (sim.InFrenzy ? FrenzyDarkness : 1f);
+            Lights.Build(Palette.Dark(layer), dark, Time.deltaTime);
+            Lights.Clear();
         }
 
         // Glowing edges and streaks of speed while frenzy runs.
