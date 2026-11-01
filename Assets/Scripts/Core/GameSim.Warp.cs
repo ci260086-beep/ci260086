@@ -33,7 +33,8 @@ namespace DeepDrill.Core
             if (Planet.Rule != PlanetRule.storm || (stormClock += dt) < Balance.StormSeconds) return;
             stormClock = 0;
             Combo = 0;
-            int col = random.Next(PixelWorld.Width / Tile);
+            // near the lead drill, so the strike lands where the player is looking
+            int col = Math.Max(0, Math.Min(PixelWorld.Width / Tile - 1, Lead.Body.Column + random.Next(-Balance.StormSpread, Balance.StormSpread + 1)));
             Events.Add(new SimEvent { Kind = SimEventKind.StormStrike, Row = Lead.Body.FeetRow, Col = col });
             Explode(Lead.Body.FeetRow, col, Balance.StormRadius);
         }

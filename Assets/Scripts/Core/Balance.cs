@@ -89,6 +89,7 @@ namespace DeepDrill.Core
         public const int FewDrillsCap = 12;
         public const double StormSeconds = 20;
         public const int StormRadius = 2;
+        public const int StormSpread = 5; // columns either side of the lead drill
         public const double TideSeconds = 30;
         public const double TideHigh = 3;
         public const double TideLow = 0.5;
