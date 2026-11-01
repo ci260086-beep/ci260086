@@ -1,4 +1,4 @@
--- Space art for the galaxy warp: the five planets of phase3.json (48x48, planet_0 to planet_4,
+-- Space art for the galaxy warp: the eight planets of phase3.json (48x48, planet_0 to planet_7,
 -- in the same order as "planets") and the 320x180 background of the star map (star_map),
 -- into Assets/Art/Items. Planets are lit from the upper left with a few hard bands of shade.
 -- Run: Aseprite.exe -b --script-param dir=<Assets/Art> [--script-param preview=<dir>] --script draw_space_art.lua
@@ -154,6 +154,71 @@ local PLANETS = {
       end
     end
   end,
+  -- 雷暴星: violet-black storm bands wrapped round the globe, lit by forks of lightning
+  function(g)
+    local cloud = ramp({ "120c1e", "22163a", "3a2660", "5e3e8e", "9a7ac8" })
+    local bolt, glow = hex("fff6a8"), hex("c8a8ff")
+    sphere(g, function(lon, lat, light, x, y)
+      local u, v = (lon + math.pi) / (2 * math.pi) * 10, (lat + 1.6) * 4
+      -- bands sheared by latitude so the storm looks like it is turning
+      local band = fbm(u + lat * 2.5, v * 1.6, 91, 10)
+      local swirl = math.sin(v * 2.2 + band * 5) * 0.12
+      return shade(cloud, math.max(0, math.min(1, light * 0.85 + swirl + (band - 0.5) * 0.35)), x, y)
+    end)
+    -- two forked bolts on the lit side, each a jagged walk with a glow halo
+    for _, b in ipairs({ { 15, 9, 1, 14, 91 }, { 27, 20, -1, 12, 92 } }) do
+      local x, y = b[1], b[2]
+      for i = 0, b[4] do
+        local nx = x + (hash(i, 0, b[5]) < 0.5 and -1 or 1) * (i % 2) + b[3] * (i % 3 == 0 and 1 or 0)
+        for _, d in ipairs({ { -1, 0 }, { 1, 0 }, { 0, -1 } }) do
+          local hx, hy = math.floor(nx + d[1]), math.floor(y + d[2])
+          if g:get(hx, hy) and g:get(hx, hy) ~= bolt then g:set(hx, hy, glow) end
+        end
+        g:set(nx, y, bolt)
+        if i == 6 then -- a short fork
+          for j = 1, 3 do g:set(nx + j * b[3] * -1, y + j, bolt) end
+        end
+        x, y = nx, y + 1
+      end
+    end
+  end,
+  -- 永冻星: an ice-blue shell cracked into plates, frost bright at the poles
+  function(g)
+    local ice = ramp({ "1a3a5a", "2e6a96", "5aa0d0", "9ad4f0", "e0f6ff" })
+    local crack = hex("0e2a46")
+    sphere(g, function(lon, lat, light, x, y)
+      local u, v = (lon + math.pi) / (2 * math.pi) * 9, (lat + 1.6) * 3
+      local n = fbm(u, v, 101, 9)
+      local m = fbm(u * 1.7 + 5, v * 1.7, 103, 15)
+      if math.abs(n - 0.5) < 0.022 or math.abs(m - 0.52) < 0.014 then
+        return light > 0.55 and hex("2e6a96") or crack
+      end
+      local polar = math.abs(lat) > 1.05 and 0.3 or 0
+      return shade(ice, math.max(0, math.min(1, light + polar + (n - 0.5) * 0.2)), x, y)
+    end)
+    -- glints of frost on the lit limb
+    for _, p in ipairs({ { 12, 13 }, { 17, 9 }, { 10, 20 } }) do
+      g:set(p[1], p[2], WHITE); g:set(p[1] - 1, p[2], hex("c8eeff")); g:set(p[1] + 1, p[2], hex("c8eeff"))
+      g:set(p[1], p[2] - 1, hex("c8eeff")); g:set(p[1], p[2] + 1, hex("c8eeff"))
+    end
+  end,
+  -- 潮汐星: a deep blue ocean world with bright bands of waves rolling round it
+  function(g)
+    local sea = ramp({ "081838", "0e2e66", "1a4e9a", "2e78c8", "6ab4f0" })
+    local foam = ramp({ "4a8ac0", "a8dcff", "ffffff" })
+    sphere(g, function(lon, lat, light, x, y)
+      local wave = math.sin(lat * 9 + math.sin(lon * 3) * 1.4)
+      local ripple = fbm((lon + math.pi) * 2, (lat + 1.6) * 3, 111, 13)
+      if wave > 0.82 then return shade(foam, light, x, y) end
+      local deep = (wave + 1) / 2 * 0.25 + (ripple - 0.5) * 0.2
+      return shade(sea, math.max(0, math.min(1, light * 0.9 + deep)), x, y)
+    end)
+    -- a small moon pulling the tide, upper right
+    for y = 3, 9 do for x = 37, 43 do
+      local d = (x - 40) ^ 2 + (y - 6) ^ 2
+      if d <= 9 then g:set(x, y, d <= 2 and hex("e8e8f0") or ((x + y) % 2 == 0 and hex("b4b4c2") or hex("8a8a98"))) end
+    end end
+  end,
 }
 
 local function outline(g)
@@ -227,7 +292,7 @@ for i = 0, 520 do
 end
 save(map, "star_map")
 
--- preview: the star map at 2x with the five planets laid over it at 2x
+-- preview: the star map at 3x with the planets laid over it in two rows
 if previewDir then
   local k = 3
   local img = Image(320 * k, 180 * k, ColorMode.RGB)
@@ -236,7 +301,7 @@ if previewDir then
     for a = 0, k - 1 do for b = 0, k - 1 do img:drawPixel(x * k + a, y * k + b, c) end end
   end end
   for i, g in ipairs(planets) do
-    local ox, oy = 14 + (i - 1) * 60, 66
+    local ox, oy = 14 + ((i - 1) % 5) * 60, (i <= 5) and 30 or 100
     for y = 0, 47 do for x = 0, 47 do
       local c = g:get(x, y)
       if c and pc.rgbaA(c) > 0 then

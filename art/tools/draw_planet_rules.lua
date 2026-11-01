@@ -1,6 +1,7 @@
 -- Planet rules and star map nodes, into Assets/Art/Items:
 --   planet_rule_<n>   16x16 icon for each planet with a rule, n is its index in phase3.json's
---                     planets: 1 low gravity, 2 heat, 3 hard rich rock, 4 double shards
+--                     planets: 1 low gravity, 2 heat, 3 hard rich rock, 4 double shards,
+--                     5 lightning, 6 ice crystal, 7 waves
 --   star_node_reached, star_node_locked, star_node_current   12x12 markers for the star map
 -- Run: Aseprite.exe -b --script-param dir=<Assets/Art> [--script-param preview=<dir>] --script draw_planet_rules.lua
 local dir = app.params["dir"]
@@ -116,10 +117,62 @@ local RULES = {
     shard(1, 6); shard(6, 4)
     g:pattern(9, 0, { "#.#.###", ".#....#", "#.#.###", "....#..", "....###" }, { ["#"] = GOLD_HI })
   end,
+  -- 5 雷暴星 storm: a bold lightning bolt out of a dark cloud
+  [5] = function(g)
+    g:ellipse(7, 3.5, 6.5, 3, hex("3a2660"))
+    g:ellipse(5, 2.5, 3.5, 2, hex("5e3e8e"))
+    g:rect(2, 2, 4, 2, hex("9a7ac8"))
+    g:pattern(4, 6, {
+      "...####",
+      "..####.",
+      ".####..",
+      "#######",
+      "...###.",
+      "..###..",
+      "..##...",
+      ".##....",
+      ".#.....",
+    }, { ["#"] = hex("ffe14a") })
+    g:pattern(5, 6, { "..w", ".w.", "w.." }, { w = hex("fff6c8") })
+  end,
+  -- 6 永冻星 frost: a six-armed ice crystal
+  [6] = function(g)
+    g:pattern(1, 1, {
+      ".....#.#.....",
+      "......#......",
+      "..#...#...#..",
+      "...#..#..#...",
+      "....#.#.#....",
+      ".....###.....",
+      "#############",
+      ".....###.....",
+      "....#.#.#....",
+      "...#..#..#...",
+      "..#...#...#..",
+      "......#......",
+      ".....#.#.....",
+    }, { ["#"] = hex("9ad4f0") })
+    g:rect(6, 6, 8, 8, hex("e0f6ff")); g:set(7, 7, WHITE)
+    for _, p in ipairs({ { 7, 2 }, { 7, 12 }, { 2, 7 }, { 12, 7 } }) do g:set(p[1], p[2], hex("e0f6ff")) end
+  end,
+  -- 7 潮汐星 tide: two rolling waves, foam on the crests
+  [7] = function(g)
+    local function wave(y, deep, mid)
+      g:pattern(0, y, {
+        "..###.....###...",
+        ".#mmm#...#mmm#..",
+        "#mmmmm###mmmmm##",
+        "dddddddddddddddd",
+      }, { ["#"] = hex("ffffff"), m = mid, d = deep })
+    end
+    wave(3, hex("1a4e9a"), hex("6ab4f0"))
+    wave(9, hex("0e2e66"), hex("2e78c8"))
+    g:rect(0, 13, 15, 14, hex("0e2e66"))
+  end,
 }
 
 local made = {}
-for n = 1, 4 do
+for n = 1, 7 do
   local g = canvas(16, 16)
   RULES[n](g)
   outline(g)
@@ -164,10 +217,10 @@ end
 star(current, 5.5, 6, 4, 1.8, WHITE); current:set(5, 6, hex("c8f0ff"))
 save(current, "star_node_current")
 
--- preview: the four rule icons and the three nodes at 8x on a night background
+-- preview: the seven rule icons and the three nodes at 8x on a night background
 if previewDir then
   local k = 8
-  local img = Image((4 * 18 + 3 * 14 + 4) * k, 20 * k, ColorMode.RGB)
+  local img = Image((7 * 18 + 3 * 14 + 4) * k, 20 * k, ColorMode.RGB)
   img:clear(hex("10102a"))
   local function put(ox, oy, g)
     for y = 0, g.h - 1 do for x = 0, g.w - 1 do
@@ -176,6 +229,6 @@ if previewDir then
     end end
   end
   for i, g in ipairs(made) do put(2 + (i - 1) * 18, 2, g) end
-  for i, g in ipairs({ reached, locked, current }) do put(2 + 4 * 18 + (i - 1) * 14, 4, g) end
+  for i, g in ipairs({ reached, locked, current }) do put(2 + 7 * 18 + (i - 1) * 14, 4, g) end
   img:saveAs(previewDir .. "/planet_rules_preview.png")
 end
