@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using DeepDrill.Core;
 using UnityEngine;
@@ -54,9 +54,29 @@ namespace DeepDrill.Game
             // write then swap, so a crash mid-write cannot destroy the save
             string tmp = path + ".tmp";
             File.WriteAllText(tmp, JsonUtility.ToJson(state, true));
-            if (File.Exists(path)) File.Replace(tmp, path, null);
-            else File.Move(tmp, path);
+            if (!File.Exists(path))
+            {
+                File.Move(tmp, path);
+                return;
+            }
+            // a virus scanner can hold the old file for a moment right after it was written;
+            // try again briefly rather than lose this save
+            for (int attempt = 1; ; attempt++)
+            {
+                try
+                {
+                    File.Replace(tmp, path, null);
+                    return;
+                }
+                catch (IOException) when (attempt < ReplaceAttempts)
+                {
+                    System.Threading.Thread.Sleep(ReplaceRetryMs);
+                }
+            }
         }
+
+        private const int ReplaceAttempts = 5;
+        private const int ReplaceRetryMs = 40;
 
         private static GameState NewGame() =>
             new GameState { seed = UnityEngine.Random.Range(1, int.MaxValue) };
