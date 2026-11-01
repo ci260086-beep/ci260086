@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 
 namespace DeepDrill.Core
 {
@@ -33,7 +33,9 @@ namespace DeepDrill.Core
             if (Planet.Rule != PlanetRule.storm || (stormClock += dt) < Balance.StormSeconds) return;
             stormClock = 0;
             Combo = 0;
-            Explode(Lead.Body.FeetRow, random.Next(PixelWorld.Width / Tile), Balance.StormRadius);
+            int col = random.Next(PixelWorld.Width / Tile);
+            Events.Add(new SimEvent { Kind = SimEventKind.StormStrike, Row = Lead.Body.FeetRow, Col = col });
+            Explode(Lead.Body.FeetRow, col, Balance.StormRadius);
         }
 
         private double stormClock;

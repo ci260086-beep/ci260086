@@ -250,6 +250,13 @@ namespace DeepDrill.Game
                     OnBroken(e);
                     break;
 
+                case SimEventKind.StormStrike:
+                    Vector2 strike = WorldView.CellCenter(e.Row, e.Col);
+                    fx.Lightning(strike, world.CameraPosition.y + Stage.Height / 2f / Stage.PixelsPerUnit);
+                    world.Shake(0.3f, 3f);
+                    if (sim.Combo == 0) hud.ShowToast("雷击！连击清零", 1.5f);
+                    break;
+
                 case SimEventKind.Explosion:
                     fx.Explosion(WorldView.CellCenter(e.Row, e.Col), (int)e.Amount);
                     fx.Debris(WorldView.CellCenter(e.Row, e.Col), OreBits, 22);

@@ -42,6 +42,7 @@ namespace DeepDrill.Core
         ChallengeDone,
         RunRestarted,
         Warped,
+        StormStrike,
     }
 
     public struct SimEvent

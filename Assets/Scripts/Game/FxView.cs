@@ -13,6 +13,7 @@ namespace DeepDrill.Game
     public sealed class FxView : MonoBehaviour
     {
         private const int BitCount = 260;
+        private const float LightningStep = 0.8f;
         private const float BitLife = 0.55f;
         private const float Gravity = 26f;
         private const float BounceLoss = 0.4f;
@@ -135,6 +136,23 @@ namespace DeepDrill.Game
             Play(fireFrames, world, size * 0.5f, size * 0.55f, 0.26f, 0.03f, false);
             Play(smokeFrames, world, size * 0.5f, size * 1.1f, 0.6f, 0.2f, true);
             Play(ringFrames, world, size * 0.5f, size * 0.8f, 0.3f, 0.02f, true);
+        }
+
+        /// <summary>A forked bolt of light from above the view down to where it strikes.</summary>
+        public void Lightning(Vector2 strike, float fromY)
+        {
+            float x = strike.x;
+            int steps = Mathf.Max(4, Mathf.CeilToInt((fromY - strike.y) / LightningStep));
+            for (int i = 0; i <= steps; i++)
+            {
+                float t = i / (float)steps;
+                var at = new Vector2(x, Mathf.Lerp(fromY, strike.y, t));
+                Play(flashFrames, at, 0.45f, 0.3f, 0.16f, t * 0.05f, true);
+                x += UnityEngine.Random.Range(-0.45f, 0.45f);
+                x = Mathf.Lerp(x, strike.x, t * 0.5f); // drift back so the bolt lands where it hits
+            }
+            Play(flashFrames, strike, 2.5f, 4f, 0.18f, 0.05f, true);
+            Spray(strike, new Color(0.85f, 0.8f, 1f), 10, true);
         }
 
         public void Puff(Vector2 world)
