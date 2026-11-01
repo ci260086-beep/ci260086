@@ -40,6 +40,16 @@ powershell -ExecutionPolicy Bypass -File tools\check.ps1 -Stage 名字
 - `Run.exe` 是不开 Unity 的测试。`master` 上应为 `total=174 passed=174 failed=0`。
 - `check.ps1 -Stage 名字` 关掉 Unity 后才能跑，先跑 EditMode 测试，再自动试玩并截图。`master` 上应为 177 条全过，约 4 分钟。跑完核对 `Logs\tests.xml` 的时间确实是刚生成的，再查 `Logs\play.log` 没有 `Exception`。
 
+### Claude B 的工作方式（2026-11-01 起）
+
+B 在这台电脑上只能点 PowerShell 和文件资源管理器、不能打字，所以：
+
+- **编译和外部测试在云端跑**：B 的云端有同一仓库的克隆，用这台电脑 Unity 的 DLL 编译 `Check.csproj`、`Run.csproj`、`Pace.csproj`。改动用 `git bundle` 在云端和 `C:\GAME\DeepDril2` 之间来回同步（放在 `Temp\`，不进 git）。
+- **Unity 内测试**：在 Unity 里打开 Window > General > Test Runner，点 Run All。代码从外部改过后，先在 Unity 里按 Ctrl+R 让它重新编译，否则跑的是旧代码。
+- **自动试玩截图**：菜单 **DeepDrill > Check: Play And Capture**，截图写到 `Screenshots\check`，日志写到 `Logs\check_play.txt`，最后一行是 `[check] finished ... N shots`。和 `check.ps1` 用同一个 `DemoDriver`，只是通过环境变量传 `--shots`、`--save`，结束时退出 Play 而不是关掉编辑器。
+- **Aseprite 脚本**：`%APPDATA%\Aseprite\scripts\deepdrill_job.lua` 读 `Temp\aseprite_job.lua` 里列的脚本和参数，在 Aseprite 界面里用 File > Scripts > deepdrill_job 运行，日志在 `Temp\aseprite_job.log`。每写一个文件 Aseprite 会弹一次安全确认。
+- 改脚本时 B 在云端用一个只模拟 Image、drawPixel、saveAs 的小运行器看预览；它画出的旧图和仓库逐像素一致。提交的图一律由 Aseprite 生成。
+
 ### 截图
 
 `check.ps1` 把截图写到 `Screenshots\名字_*.png`。要新增一张，在 `DemoDriver.cs` 里加 `yield return Shot("xxx");`，前面先摆好状态。`base_1` 是流派页，`base_5` 是挑战页，`rush` 是倒计时，`planets` 是星图，`layer_02` 到 `layer_12` 是各层，`boss_01` 到 `boss_12` 是 Boss。`Screenshots` 没有纳入 git。
@@ -84,9 +94,10 @@ tools\outside\out\pace\Pace.exe Assets\Resources\Data 8 1500 种子
 ### 当前进度
 
 - `master` 包含第五阶段的 ①②③⑤⑧，以及 ⑥ 里的挑战规则、流派专属规则和流派搭配。
-- `phase5-planets` 的 `f446205`：⑥ 剩下的雷暴、永冻、潮汐 3 颗星球。规则和外部测试已完成，**缺美术，Play 会报错，节奏没验证，Unity 测试和截图都没跑**。这部分的继续步骤写在这条分支 HANDOFF.md 的“暂停点”。
-- ④ 节奏重调：等用户试玩反馈，不要自己开始。
-- ⑦ 声音：等用户选音乐风格。建议芯片音乐，越深越暗。
+- ⑥ 3 颗新星球（雷暴、永冻、潮汐）已并入 `master`（2026-11-01，Claude B）：美术 23 在 Aseprite 里生成；雷暴星的雷击落在领头钻头左右 5 列内，有闪电和“雷击！连击清零”提示（`SimEventKind.StormStrike`、`FxView.Lightning`）。Unity 内 180 条测试全过，截图 planets、storm、tide 看过。节奏：星球 5、6、7 各 3 个种子（7、42、99）都在 9 到 13 局到地心；潮汐星种子 7 第一局在第 3 层卡了 124 分钟才重铸，地球种子 7 同一处也要 35 分钟，属于 ④ 的第一局波动，没改。
+- ④ 节奏重调：用户 2026-11-01 说先不用重调。
+- ⑦ 声音：用户选了**轻快**风格。
+- 字体：用户要求所有文字框里的长文字自动换行，不能超出框。做美术 21（像素字体）时逐页检查。
 - ⑧ Windows 打包：暂缓。这是用户的决定。
 
 ### 已知问题
