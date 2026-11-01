@@ -147,11 +147,11 @@ namespace DeepDrill.Game
             {
                 float t = i / (float)steps;
                 var at = new Vector2(x, Mathf.Lerp(fromY, strike.y, t));
-                Play(flashFrames, at, 0.45f, 0.3f, 0.16f, t * 0.05f, true);
+                Play(flashFrames, at, 0.5f, 0.3f, 0.4f, t * 0.05f, true);
                 x += UnityEngine.Random.Range(-0.45f, 0.45f);
                 x = Mathf.Lerp(x, strike.x, t * 0.5f); // drift back so the bolt lands where it hits
             }
-            Play(flashFrames, strike, 2.5f, 4f, 0.18f, 0.05f, true);
+            Play(flashFrames, strike, 2.5f, 4f, 0.35f, 0.05f, true);
             Spray(strike, new Color(0.85f, 0.8f, 1f), 10, true);
         }
 
