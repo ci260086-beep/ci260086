@@ -2,6 +2,7 @@
 -- Run: Aseprite.exe -b --script-param dir=<Assets/Art> --script draw_world_art.lua
 local dir = app.params["dir"]
 assert(dir, "pass --script-param dir=<Assets/Art>")
+local P = dofile((DEEPDRILL_ROOT or "") .. "art/tools/palette.lua")
 
 local function hex(s, a)
   return app.pixelColor.rgba(
@@ -273,7 +274,7 @@ for y = 0, 15 do
 end
 save(hide, "Layers/boss_hide")
 
--- drills, 8x12, 4 frames. Material sets the colours; the family sets the silhouette. Each tier
+-- drills, 8x12, 8 frames (art 19). Material sets the colours; the family sets the silhouette. Each tier
 -- has its own hue and brightness, and the same mid colours live in Palette.Tier.
 -- hi, mid, lo, outline, strip, gem
 local MATERIALS = {
@@ -294,14 +295,23 @@ local BLUE_GLASS = "4fb8e8"
 local STRIP_FROM, TWIN_STRIP_FROM, STAR_TIER = 5, 9, 12
 local STRIP_ROW = { std = 4, swift = 3, heavy = 4, blast = 5, magnet = 3 }
 -- spots just outside the body where a star core throws sparks, one set per frame
-local SPARKS = { { { 0, 0 }, { 7, 9 } }, { { 7, 0 }, { 1, 10 } }, { { 0, 6 }, { 6, 11 } }, { { 7, 5 }, { 1, 0 } } }
+local SPARKS = {
+  { { 0, 0 }, { 7, 9 } }, { { 0, 3 }, { 7, 10 } }, { { 7, 0 }, { 1, 10 } }, { { 7, 3 }, { 0, 9 } },
+  { { 0, 6 }, { 6, 11 } }, { { 1, 0 }, { 7, 7 } }, { { 7, 5 }, { 1, 0 } }, { { 6, 0 }, { 0, 7 } },
+}
+local DRILL_FRAMES = 8
+-- the bit's thread turns one pixel per frame: two lit rows, a mid tone, then the shadow, so the
+-- spiral reads as a smooth turn instead of the old on-off flicker
+local function spin(hi, mid, lo, k) return ({ hi, hi, mid, lo })[k % 4 + 1] end
+-- the cockpit glass catches the light for two frames in eight
+local function glassAt(glass, f) return (f == 3 or f == 4) and P.shift(glass, 1) or glass end
 
 local FAMILIES = { "std", "swift", "heavy", "blast", "magnet" }
 
 local function drillFrame(family, m, f, tier)
   local hi, mid, lo = hex(m[1]), hex(m[2]), hex(m[3])
   local g = canvas(8, 12)
-  local glass = hex(m[6] or BLUE_GLASS)
+  local glass = glassAt(hex(m[6] or BLUE_GLASS), f)
   if family == "swift" then
     -- slim body with swept tail fins and a long needle
     g:rect(2, 0, 5, 4, mid) g:rect(2, 0, 5, 0, hi) g:rect(5, 1, 5, 4, lo)
@@ -309,7 +319,7 @@ local function drillFrame(family, m, f, tier)
     for y = 5, 10 do
       local half = (y < 7) and 1 or 0
       local x0 = (y >= 9) and 3 or 3 - half
-      g:rect(x0, y, 4 + half, y, ((y + f) % 2 == 0) and hi or lo)
+      g:rect(x0, y, 4 + half, y, spin(hi, mid, lo, y + f))
     end
     g:set(3, 10, nil)
     g:set(3, 2, glass)
@@ -321,7 +331,7 @@ local function drillFrame(family, m, f, tier)
     for i, half in ipairs(widths) do
       local y = 5 + i
       for x = 4 - half, 3 + half do
-        g:set(x, y, ((x + y + f) % 3 == 0) and lo or hi)
+        g:set(x, y, spin(hi, mid, lo, x + y + f))
       end
     end
     g:rect(3, 2, 4, 3, glass)
@@ -336,7 +346,8 @@ local function drillFrame(family, m, f, tier)
     g:rect(3, 3, 4, 4, hex(m[6] or "e84a2e"))
     for y = 7, 10 do
       local half = (10 - y) // 2
-      g:rect(3 - half, y, 4 + half, y, ((y + f) % 2 == 0) and hex("ffb040") or lo)
+      -- the hot nose flickers through flame colours rather than spinning
+      g:rect(3 - half, y, 4 + half, y, ({ hex("ffb040"), hex("ffe27a"), hex("ffb040"), lo })[(y + f) % 4 + 1])
     end
   elseif family == "magnet" then
     -- a horseshoe: an arched body with red and blue prongs running down either side of the bit
@@ -346,7 +357,7 @@ local function drillFrame(family, m, f, tier)
     g:set(0, 3, hex("ff9a7a")) g:set(7, 3, hex("8ac0ff"))
     for y = 4, 10 do
       local half = (y < 8) and 1 or 0
-      g:rect(3 - half, y, 4 + half, y, ((y + f) % 2 == 0) and hi or lo)
+      g:rect(3 - half, y, 4 + half, y, spin(hi, mid, lo, y + f))
     end
     g:set(3, 2, glass)
   else
@@ -355,7 +366,7 @@ local function drillFrame(family, m, f, tier)
     for y = 5, 10 do
       local half = (10 - y) // 2
       for x = 3 - half, 4 + half do
-        g:set(x, y, ((x + y + f) % 3 == 0) and lo or hi)
+        g:set(x, y, spin(hi, mid, lo, x + y + f))
       end
     end
   end
@@ -376,10 +387,31 @@ end
 
 for fi, family in ipairs(FAMILIES) do
   for ti, m in ipairs(MATERIALS) do
-    local sheet = canvas(32, 12)
-    for f = 0, 3 do sheet:blit(drillFrame(family, m, f, ti), f * 8, 0) end
+    local sheet = canvas(8 * DRILL_FRAMES, 12)
+    for f = 0, DRILL_FRAMES - 1 do sheet:blit(drillFrame(family, m, f, ti), f * 8, 0) end
     save(sheet, "Drill/drill_" .. (fi - 1) .. "_" .. (ti - 1))
   end
+end
+
+-- preview of the drill animation: one row per family, five tiers side by side, all 8 frames each
+if app.params["preview"] then
+  local tiers, k = { 1, 4, 7, 9, 12 }, 4
+  local W, H = #tiers * (8 * DRILL_FRAMES + 6) + 4, #FAMILIES * 16 + 4
+  local img = Image(W * k, H * k, ColorMode.RGB)
+  img:clear(hex("2a2630"))
+  for fi, family in ipairs(FAMILIES) do
+    for i, ti in ipairs(tiers) do
+      for f = 0, DRILL_FRAMES - 1 do
+        local g = drillFrame(family, MATERIALS[ti], f, ti)
+        local ox, oy = 2 + (i - 1) * (8 * DRILL_FRAMES + 6) + f * 8, 2 + (fi - 1) * 16
+        for kk, c in pairs(g.px) do
+          local x, y = ox + kk % 8, oy + kk // 8
+          for a = 0, k - 1 do for b = 0, k - 1 do img:drawPixel(x * k + a, y * k + b, c) end end
+        end
+      end
+    end
+  end
+  img:saveAs(app.params["preview"] .. "/drill_anim_preview.png")
 end
 
 -- rare items are drawn one by one in draw_icons.lua
