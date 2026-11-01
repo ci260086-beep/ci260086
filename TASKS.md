@@ -69,7 +69,8 @@ Claude B 在自己的分支上提交并推送，由 Claude A 合并和验证。C
 | ⑦ 声音：用户选了轻快风格 | B | Claude B | `phase5-sound` | 完成 |
 | 第六阶段美术 18：调色板和描边规范（`art/PALETTE.md`、`art/tools/palette.lua`） | B | Claude B | `art/palette` | 完成 |
 | 第六阶段美术 19：钻头 8 帧动画 | B | Claude B | `art/drill-anim` | 完成 |
-| 第六阶段美术 20 到 22：发光和光照、像素字体和统一界面框、地表过渡和岩块变体 | B | Claude B | | 待做 |
+| 第六阶段美术 20：发光和光照 | B | Claude B | `art/lighting` | 完成 |
+| 第六阶段美术 21 到 22：像素字体和统一界面框、地表过渡和岩块变体 | B | Claude B | | 待做 |
 | 第六阶段美术 23 到 27（新内容）：3 颗星球、流派专属钻头和技能图标、挑战奖励外观、无尽深渊背景、离线结算和跳字样式 | B | | | 待做 |
 | ⑧ 存档版本号 | A | Claude A | `phase5-save` | 完成 |
 | ⑧ 修好 Windows 打包、用打包版确认 20 毫秒 | A | | | 暂缓 |
