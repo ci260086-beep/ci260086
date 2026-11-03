@@ -19,7 +19,10 @@ from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageFont
 
 ROOT = os.getcwd()
 REC = os.path.join(ROOT, "Recordings", "trailer")
-FONT = ImageFont.truetype(os.path.join(ROOT, "Assets/Resources/Fonts/FusionPixel8.ttf"), 8)
+# cards use the 12-pixel cut of the game's font (tools/trailer/fonts, SIL OFL): at 8 pixels some
+# characters blur into others once they are blown up this large
+FONT = ImageFont.truetype(os.path.join(ROOT, "tools/trailer/fonts/FusionPixel12.ttf"), 12)
+CARD_MAX_W = 200                   # stage pixels a card line may span inside the dig area
 W, H, PX = 1920, 1080, 6           # the stage is 320x180, six screen pixels to one
 DIG_W = 222 * PX                   # cards centre on the dig area, left of the side panel
 GOLD, WHITE, INK, SHADOW = (255, 226, 122), (244, 250, 255), (26, 18, 16), (26, 14, 36)
@@ -32,7 +35,7 @@ bar = 240.0 / timeline["bpm"]
 def text_mask(text):
     """The text in the pixel font at stage resolution, as a 1-bit mask."""
     left, top, right, bottom = FONT.getbbox(text)
-    img = Image.new("L", (right + 2, 12), 0)
+    img = Image.new("L", (right + 2, 16), 0)
     d = ImageDraw.Draw(img)
     d.fontmode = "1"
     d.text((0, 0), text, font=FONT, fill=255)
@@ -56,10 +59,16 @@ def styled(mask, color, scale):
     return canvas.resize((canvas.width * PX, canvas.height * PX), Image.NEAREST)
 
 
+def fit(mask, want):
+    """The largest whole scale up to `want` that keeps the line inside the dig area."""
+    return max(1, min(want, CARD_MAX_W // max(1, mask.width)))
+
+
 def card(lines, big):
     """Chinese over English, centred on each other."""
-    cn = styled(text_mask(lines[0]), GOLD, big)
-    en = styled(text_mask(lines[1]), WHITE, max(1, big - 1))
+    cn_mask, en_mask = text_mask(lines[0]), text_mask(lines[1])
+    cn = styled(cn_mask, GOLD, fit(cn_mask, big))
+    en = styled(en_mask, WHITE, fit(en_mask, max(1, big - 1)))
     out = Image.new("RGBA", (max(cn.width, en.width), cn.height + en.height - 2 * PX), (0, 0, 0, 0))
     out.alpha_composite(cn, ((out.width - cn.width) // 2, 0))
     out.alpha_composite(en, ((out.width - en.width) // 2, cn.height - 2 * PX))
@@ -77,7 +86,7 @@ def main():
     ffmpeg = subprocess.Popen(
         ["ffmpeg", "-loglevel", "error", "-y", "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{W}x{H}", "-r", str(fps),
          "-i", "-", "-i", audio, "-c:v", "libx264", "-preset", "medium", "-crf", "17", "-pix_fmt", "yuv420p",
-         "-c:a", "aac", "-b:a", "192k", "-shortest", "-movflags", "+faststart", out],
+         "-af", "loudnorm=I=-13:TP=-1:LRA=9", "-ar", "48000", "-c:a", "aac", "-b:a", "192k", "-shortest", "-movflags", "+faststart", out],
         stdin=subprocess.PIPE)
 
     beat_frames = bar / 4 * fps
@@ -94,17 +103,32 @@ def main():
             write_logo(ffmpeg, last, count + int(1.5 * fps))
             continue
 
-        frames = clip_frames(name)
-        first = int(clip.get("from", 0) * fps)
+        # a clip plays its own frames; a montage strings beats of other clips together
+        pieces = clip.get("montage") or [[name, clip.get("from", 0), clip["bars"]]]
+        sources, cuts = [], set()
+        for piece_clip, piece_from, piece_bars in pieces:
+            frames = clip_frames(piece_clip)
+            first = int(piece_from * fps)
+            n = round(piece_bars * bar * fps)
+            cuts.add(len(sources))
+            sources += [frames[min(len(frames) - 1, first + i)] for i in range(n)]
         cards = [card(clip["card"], 3), card(clip["card"], 4)] if clip.get("card") else None
         card_frames = int(beat_frames * 3)
+        climax = clip.get("section") == "climax"
         for i in range(count):
-            src = frames[min(len(frames) - 1, first + i)]
-            img = Image.open(src).convert("RGB")
+            img = Image.open(sources[min(len(sources) - 1, i)]).convert("RGB")
             if img.size != (W, H):
                 img = img.resize((W, H), Image.NEAREST)
-            if i < 2:  # a flash on the cut, on the beat
-                img = ImageEnhance.Brightness(img).enhance(1.6 - 0.3 * i)
+            since_cut = min((i - c for c in cuts if c <= i), default=i)
+            if since_cut < 3:  # punch in on every cut, settling over three frames
+                zoom = 1 + 0.06 * (3 - since_cut) / 3
+                zw, zh = int(W * zoom), int(H * zoom)
+                img = img.resize((zw, zh), Image.NEAREST).crop(((zw - W) // 2, (zh - H) // 2, (zw - W) // 2 + W, (zh - H) // 2 + H))
+            if since_cut < 2:  # and flash
+                img = ImageEnhance.Brightness(img).enhance(1.5 - 0.25 * since_cut)
+            beat_phase = (i % beat_frames) / beat_frames
+            if climax and beat_phase < 0.12:  # the climax shakes on every beat
+                img = img.transform(img.size, Image.AFFINE, (1, 0, PX * 2, 0, 1, -PX), resample=Image.NEAREST)
             if cards and i < card_frames:
                 c = cards[1] if i < 2 else cards[0]  # pops in big, then settles
                 shake = (PX * (2 if i % 2 else -2), 0) if i < 6 else (0, 0)

@@ -4,26 +4,39 @@ using System.IO;
 using System.Text.Json;
 using DeepDrill.Game;
 
-// The trailer's soundtrack: the trailer tune on the bar grid of timeline.json, a chord to land
-// the logo on, and the game's own sound effects where the shots call for them.
+// The trailer's soundtrack: TrailerMusic laid out by the sections of timeline.json, with the
+// game's own sound effects where the shots call for them.
+// Run: dotnet run -- ../timeline.json out.wav
 var timeline = JsonDocument.Parse(File.ReadAllText(args[0])).RootElement;
 double bpm = timeline.GetProperty("bpm").GetDouble();
 double bar = 4 * 60 / bpm;
-int rate = SfxSynth.SampleRate;
+int rate = DeepDrill.Trailer.TrailerMusic.Rate;
+double sfxPitch = SfxSynth.SampleRate / (double)rate; // effects are rendered at half the music's rate
 
 var starts = new Dictionary<string, double>();
+var sections = new List<(string kind, int start, int bars)>();
 double at = 0;
+int barAt = 0;
 foreach (var clip in timeline.GetProperty("clips").EnumerateArray())
 {
     starts[clip.GetProperty("clip").GetString()] = at;
-    at += clip.GetProperty("bars").GetDouble() * bar;
+    int bars = clip.GetProperty("bars").GetInt32();
+    string kind = clip.TryGetProperty("section", out var k) ? k.GetString() : "systems";
+    if (sections.Count > 0 && sections[^1].kind == kind) sections[^1] = (kind, sections[^1].start, sections[^1].bars + bars);
+    else sections.Add((kind, barAt, bars));
+    barAt += bars;
+    at += bars * bar;
 }
 double total = at + 1.5;
-var mix = new double[(int)(total * rate)];
+var music = new DeepDrill.Trailer.TrailerMusic(bpm, total);
+foreach (var (kind, start, bars) in sections) music.Section(kind, start, bars);
+var mix = music.Mixdown();
+double logo = starts["logo"];
 
 void Add(float[] sound, double time, double volume, double pitch = 1)
 {
     int start = (int)(time * rate);
+    pitch *= sfxPitch;
     int length = (int)(sound.Length / pitch);
     for (int i = 0; i < length && start + i < mix.Length; i++)
     {
@@ -33,29 +46,6 @@ void Add(float[] sound, double time, double volume, double pitch = 1)
         mix[start + i] += (sound[a] + (sound[a + 1] - sound[a]) * (src - a)) * volume;
     }
 }
-
-// music: two bars of drums and bass, then the full tune, cut where the logo lands
-var full = MusicSynth.Render(MusicSynth.Trailer(false));
-var build = MusicSynth.Render(MusicSynth.Trailer(true));
-int barSamples = full.Length / MusicSynth.Bars;
-double logo = starts["logo"];
-int musicEnd = (int)(logo * rate);
-for (int i = 0; i < musicEnd && i < mix.Length; i++)
-{
-    double v = i < 2 * barSamples ? build[i % build.Length] : full[i % full.Length];
-    double fade = Math.Min(1, (musicEnd - i) / (0.02 * rate));
-    mix[i] += v * 0.75 * fade;
-}
-
-// the logo chord: A major over the A minor tune, so the trailer ends lifted
-var sting = new List<SfxVoice>();
-foreach (double hz in new[] { 110.0, 220.0, 277.18, 329.63, 440.0 })
-    sting.Add(new SfxVoice { Wave = Wave.Triangle, Seconds = 4.5, FromHz = hz, ToHz = hz, Volume = 0.35, Curve = 1.6 });
-foreach (double hz in new[] { 554.37, 659.26, 880.0 })
-    sting.Add(new SfxVoice { Wave = Wave.Square, Duty = 0.25, Seconds = 3.0, FromHz = hz, ToHz = hz, Volume = 0.08, Curve = 1.8, VibratoHz = 5.5, VibratoDepth = 0.008 });
-sting.Add(new SfxVoice { Wave = Wave.Noise, Seconds = 2.5, FromHz = 12000, ToHz = 12000, LowPassFrom = 0.9, LowPassTo = 0.4, Volume = 0.3, Curve = 2.5 });
-sting.Add(new SfxVoice { Wave = Wave.Sine, Seconds = 0.6, FromHz = 90, ToHz = 35, Volume = 0.8, Curve = 1.5 });
-Add(SfxSynth.Render(sting, 0.8, 7), logo, 0.9);
 
 // effects
 var library = SfxSynth.Library();
@@ -76,8 +66,8 @@ foreach (var cue in timeline.GetProperty("sfx").EnumerateArray())
     if (name == "layer_breaks")
     {
         // one break sound per layer as the shot drops through them
-        double beat = 7.5 / 9;
-        for (int layer = 1; layer <= 9; layer++) Add(Sound(SfxSynth.BreakFor(layer)), offset + first + (layer - 1) * beat, vol);
+        double beat = 2 * bar / 8;
+        for (int layer = 1; layer <= 8; layer++) Add(Sound(SfxSynth.BreakFor(layer)), offset + first + (layer - 1) * beat, vol);
         continue;
     }
     int n = 0;

@@ -1,211 +1,43 @@
 {
- "bpm": 128,
+ "bpm": 140,
  "fps": 30,
  "clips": [
-  {
-   "clip": "intro",
-   "bars": 2,
-   "from": 0.0
-  },
-  {
-   "clip": "dig",
-   "bars": 2,
-   "from": 0.0,
-   "card": [
-    "挖！",
-    "DIG!"
-   ]
-  },
-  {
-   "clip": "combo",
-   "bars": 3,
-   "from": 0.0,
-   "card": [
-    "连击！",
-    "COMBO!"
-   ]
-  },
-  {
-   "clip": "merge",
-   "bars": 2,
-   "from": 0.0,
-   "card": [
-    "合成！",
-    "MERGE!"
-   ]
-  },
-  {
-   "clip": "layers",
-   "bars": 4,
-   "from": 0.0,
-   "card": [
-    "12 层地心",
-    "12 LAYERS DEEP"
-   ]
-  },
-  {
-   "clip": "boss",
-   "bars": 3,
-   "from": 0.0,
-   "card": [
-    "打穿 BOSS",
-    "BREAK THE BOSSES"
-   ]
-  },
-  {
-   "clip": "coins",
-   "bars": 3,
-   "from": 0.0,
-   "card": [
-    "停不下来",
-    "CAN'T STOP DIGGING"
-   ]
-  },
-  {
-   "clip": "warp",
-   "bars": 2,
-   "from": 0.0,
-   "card": [
-    "飞向新星球",
-    "NEW PLANETS"
-   ]
-  },
-  {
-   "clip": "logo",
-   "bars": 3
-  }
+  {"clip": "intro", "bars": 2, "section": "intro"},
+  {"clip": "dig", "bars": 1, "section": "drop", "card": ["挖！", "DIG!"]},
+  {"clip": "combo", "bars": 1, "section": "drop", "card": ["连击！", "COMBO!"]},
+  {"clip": "merge", "bars": 1, "section": "drop", "card": ["合成！", "MERGE!"]},
+  {"clip": "blast", "bars": 1, "section": "drop", "card": ["爆破！", "BOOM!"]},
+  {"clip": "tree", "bars": 2, "section": "systems", "card": ["技能树", "151 SKILLS"]},
+  {"clip": "systems", "bars": 2, "section": "systems", "card": ["流派 工厂 研究", "PLAYSTYLES"]},
+  {"clip": "layers", "bars": 2, "section": "systems", "card": ["12 层地心", "12 LAYERS DEEP"]},
+  {"clip": "boss", "bars": 2, "section": "systems", "card": ["BOSS 战", "BOSS FIGHTS"]},
+  {"clip": "achievements", "bars": 2, "section": "systems", "card": ["成就收藏", "46 ACHIEVEMENTS"]},
+  {"clip": "planets", "bars": 2, "section": "systems", "card": ["星际跃迁", "NEW PLANETS"]},
+  {"clip": "climax", "bars": 4, "section": "climax", "card": ["停不下来", "CAN'T STOP DIGGING"],
+   "montage": [["coins", 0.0, 1.0], ["boss", 1.6, 0.5], ["merge", 0.2, 0.5], ["layers", 1.6, 0.5], ["blast", 0.3, 0.5], ["coins", 1.0, 1.0]]},
+  {"clip": "logo", "bars": 3, "section": "logo"}
  ],
  "sfx": [
-  {
-   "at": 0.15,
-   "name": "break_0",
-   "every": 0.47,
-   "until": 3.6,
-   "vol": 0.6
-  },
-  {
-   "clip": "dig",
-   "at": 0.0,
-   "name": "land",
-   "vol": 0.8
-  },
-  {
-   "clip": "dig",
-   "at": 0.6,
-   "name": "coin",
-   "every": 0.47,
-   "until": 3.6,
-   "vol": 0.4
-  },
-  {
-   "clip": "combo",
-   "at": 0.0,
-   "name": "land",
-   "vol": 0.8
-  },
-  {
-   "clip": "combo",
-   "at": 0.2,
-   "name": "frenzy",
-   "vol": 0.6
-  },
-  {
-   "clip": "combo",
-   "at": 4.2,
-   "name": "upgrade",
-   "vol": 0.6
-  },
-  {
-   "clip": "merge",
-   "at": 0.0,
-   "name": "land",
-   "vol": 0.8
-  },
-  {
-   "clip": "merge",
-   "at": 0.6,
-   "name": "merge_all",
-   "vol": 0.7
-  },
-  {
-   "clip": "merge",
-   "at": 2.5,
-   "name": "merge_all",
-   "vol": 0.7
-  },
-  {
-   "clip": "layers",
-   "at": 0.0,
-   "name": "layer",
-   "vol": 0.6
-  },
-  {
-   "clip": "layers",
-   "at": 0.0,
-   "name": "layer_breaks",
-   "vol": 0.55
-  },
-  {
-   "clip": "layers",
-   "at": 5.0,
-   "name": "blast",
-   "vol": 0.7
-  },
-  {
-   "clip": "layers",
-   "at": 6.67,
-   "name": "blast",
-   "vol": 0.7
-  },
-  {
-   "clip": "boss",
-   "at": 0.0,
-   "name": "boss_start",
-   "vol": 0.8
-  },
-  {
-   "clip": "boss",
-   "at": 1.2,
-   "name": "boss_warn",
-   "vol": 0.6
-  },
-  {
-   "clip": "boss",
-   "at": 3.4,
-   "name": "boss_defeat",
-   "vol": 0.9
-  },
-  {
-   "clip": "coins",
-   "at": 0.0,
-   "name": "land",
-   "vol": 0.8
-  },
-  {
-   "clip": "coins",
-   "at": 0.2,
-   "name": "coin_rise",
-   "every": 0.117,
-   "until": 5.0,
-   "vol": 0.35
-  },
-  {
-   "clip": "warp",
-   "at": 0.0,
-   "name": "warp",
-   "vol": 0.7
-  },
-  {
-   "clip": "warp",
-   "at": 1.6,
-   "name": "storm",
-   "vol": 0.8
-  },
-  {
-   "clip": "logo",
-   "at": 0.0,
-   "name": "achievement",
-   "vol": 0.7
-  }
+  {"at": 0.1, "name": "break_0", "every": 0.214, "until": 3.2, "vol": 0.55},
+  {"clip": "dig", "at": 0.3, "name": "coin", "every": 0.214, "until": 1.5, "vol": 0.35},
+  {"clip": "combo", "at": 0.0, "name": "frenzy", "vol": 0.55},
+  {"clip": "combo", "at": 1.2, "name": "upgrade", "vol": 0.55},
+  {"clip": "merge", "at": 0.25, "name": "merge_all", "vol": 0.7},
+  {"clip": "blast", "at": 0.0, "name": "blast", "every": 0.286, "until": 1.5, "vol": 0.6},
+  {"clip": "tree", "at": 0.0, "name": "upgrade", "every": 0.214, "until": 3.2, "vol": 0.3},
+  {"clip": "systems", "at": 0.0, "name": "tab", "every": 0.686, "until": 3.0, "vol": 0.6},
+  {"clip": "layers", "at": 0.0, "name": "layer_breaks", "vol": 0.55},
+  {"clip": "boss", "at": 0.0, "name": "boss_start", "vol": 0.75},
+  {"clip": "boss", "at": 0.5, "name": "boss_warn", "vol": 0.5},
+  {"clip": "boss", "at": 1.8, "name": "boss_defeat", "vol": 0.85},
+  {"clip": "achievements", "at": 0.1, "name": "chime", "every": 0.214, "until": 2.7, "vol": 0.25},
+  {"clip": "achievements", "at": 2.75, "name": "achievement", "vol": 0.6},
+  {"clip": "planets", "at": 1.1, "name": "warp", "vol": 0.6},
+  {"clip": "planets", "at": 2.0, "name": "storm", "vol": 0.7},
+  {"clip": "climax", "at": 0.1, "name": "coin_rise", "every": 0.107, "until": 6.6, "vol": 0.25},
+  {"clip": "climax", "at": 1.714, "name": "boss_defeat", "vol": 0.6},
+  {"clip": "climax", "at": 2.57, "name": "merge_all", "vol": 0.5},
+  {"clip": "climax", "at": 4.29, "name": "blast", "vol": 0.6},
+  {"clip": "logo", "at": 0.0, "name": "achievement", "vol": 0.6}
  ]
 }
