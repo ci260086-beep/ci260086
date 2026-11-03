@@ -15,6 +15,7 @@ namespace DeepDrill.Game
         public double LeadSoftness; // 0 a bright pulse lead, 1 a round triangle lead
         public double Echo;         // a quiet repeat of the lead a dotted eighth later, for space
         public bool Calm;           // sparser melody rhythms, softer drums
+        public bool NoLead;         // drums, bass and arpeggio only: a build-up before the tune comes in
     }
 
     /// <summary>
@@ -94,7 +95,7 @@ namespace DeepDrill.Game
                     float sample = 0;
 
                     // lead: pulse wave with a short vibrato once the note has settled
-                    if (lead.Note > 0)
+                    if (lead.Note > 0 && !tune.NoLead)
                     {
                         double age = (lead.Age + stepT) * stepSeconds;
                         double vib = age > 0.15 ? Math.Sin(age * 2 * Math.PI * 5.5) * 0.004 : 0;
@@ -233,6 +234,13 @@ namespace DeepDrill.Game
             double p = phase % 1;
             return p < 0.5 ? p * 4 - 1 : 3 - p * 4;
         }
+
+        /// <summary>The trailer's tune: brighter and harder than anything in the game.</summary>
+        public static Tune Trailer(bool noLead) => new Tune
+        {
+            Root = 57, Minor = true, Bpm = 128, Seed = 4242, LeadDuty = 0.25, Brightness = 0.85,
+            Driving = true, LeadSoftness = 0.15, Echo = 0.18, NoLead = noLead,
+        };
 
         /// <summary>Which arrangement ForLayer uses: 0 the first bright one, 1 relaxed, 2 quiet.</summary>
         public static int Style = 2; // the user chose the quiet arrangement

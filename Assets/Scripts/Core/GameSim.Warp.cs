@@ -41,6 +41,9 @@ namespace DeepDrill.Core
 
         private double stormClock;
 
+        /// <summary>Brings the next storm strike to within a moment, for the trailer.</summary>
+        public void HurryStorm(double secondsLeft) => stormClock = Math.Max(0, Balance.StormSeconds - secondsLeft);
+
         public bool HasTide => Planet.Rule == PlanetRule.tide;
 
         public bool TideHigh => simTime % (Balance.TideSeconds * 2) < Balance.TideSeconds;
