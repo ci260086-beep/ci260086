@@ -198,7 +198,7 @@ namespace DeepDrill.Game
                 for (int f = 0; f < FlameFrames; f++) flameFrames[l][f] = art.Get($"flame_{l}_{f}");
             }
 
-            headlamp = MakeRenderer("headlamp", 5, transform);
+            headlamp = MakeRenderer("headlamp", 4, transform); // under the flame, so it does not wash it out
             headlamp.sprite = art.Get("light_soft");
             headlamp.sharedMaterial = AdditiveMaterial;
             headlamp.transform.localScale = new Vector3(HeadlampSize, HeadlampSize, 1);
