@@ -201,7 +201,7 @@ namespace DeepDrill.Game
         /// </summary>
         private BaseCard AddBaseItem(int index, int cols, int rows, Sprite icon, Color accent, Func<string> title,
             Func<string> sub, Func<string> third = null, Func<string> buttonText = null, Action click = null,
-            Func<bool> enabled = null, Func<float> progress = null)
+            Func<bool> enabled = null, Func<float> progress = null, int buttonWidth = ItemButtonWidth)
         {
             var tab = baseTabs[baseTabs.Count - 1].transform;
             float w = (Stage.Width - 8 - ItemGap * (cols - 1)) / cols;
@@ -215,7 +215,7 @@ namespace DeepDrill.Game
             // with a third line the button sits beside it, so the first two lines get the full width
             bool buttonLow = third != null && buttonText != null;
             float fullW = w - textX - 3;
-            float textW = buttonText != null && !buttonLow ? fullW - ItemButtonWidth - 2 : fullW;
+            float textW = buttonText != null && !buttonLow ? fullW - buttonWidth - 2 : fullW;
             const float line = 11;
             int lines = third != null ? 3 : 2;
             float textY = Mathf.Max(0, (h - lines * line) / 2 - 1);
@@ -227,7 +227,7 @@ namespace DeepDrill.Game
             card.Note.color = new Color32(0xf3, 0xe9, 0xdc, 0xff);
             if (third != null)
             {
-                card.Foot = Ui.Label(frame.transform, Font, "", textX, textY + line * 2, buttonLow ? fullW - ItemButtonWidth - 2 : textW, line, 6, TextAnchor.MiddleLeft);
+                card.Foot = Ui.Label(frame.transform, Font, "", textX, textY + line * 2, buttonLow ? fullW - buttonWidth - 2 : textW, line, 6, TextAnchor.MiddleLeft);
                 card.Foot.color = SoftText;
             }
             if (progress != null)
@@ -243,7 +243,7 @@ namespace DeepDrill.Game
             {
                 var row = new BaseRow { ButtonText = buttonText, Enabled = enabled };
                 float by = buttonLow ? textY + line * 2 : (h - CardButtonHeight - 2) / 2;
-                row.Button = Ui.Button(frame.transform, Font, "", w - ItemButtonWidth - 3, by, ItemButtonWidth, CardButtonHeight, 6, CardBright, out row.ButtonLabel);
+                row.Button = Ui.Button(frame.transform, Font, "", w - buttonWidth - 3, by, buttonWidth, CardButtonHeight, 6, CardBright, out row.ButtonLabel);
                 row.ButtonImage = row.Button.GetComponent<Image>();
                 row.Button.onClick.AddListener(() => click());
                 card.Buttons.Add(row);
@@ -377,7 +377,7 @@ namespace DeepDrill.Game
                     buttonText: () => sim.FactoryLevel(index) >= def.MaxLevel ? "满级"
                         : $"{NumberFormat.Short(sim.FactoryOreCost(index))} 矿" + (sim.FactoryCrystalCost(index) > 0 ? "+晶" : ""),
                     click: () => sim.UpgradeFactory(index), enabled: () => sim.CanUpgradeFactory(index),
-                    progress: () => sim.FactoryLevel(index) / (float)def.MaxLevel);
+                    progress: () => sim.FactoryLevel(index) / (float)def.MaxLevel, buttonWidth: 56);
             }
         }
 
