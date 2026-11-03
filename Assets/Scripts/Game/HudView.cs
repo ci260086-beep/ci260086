@@ -192,8 +192,7 @@ namespace DeepDrill.Game
         {
             sim = simulation;
             art = library;
-            Font = Font.CreateDynamicFontFromOSFont(
-                new[] { "Microsoft YaHei UI", "Microsoft YaHei", "SimHei", "Noto Sans CJK SC", "Arial" }, 16);
+            Font = Ui.LoadPixelFont();
 
             var canvasGo = new GameObject("Canvas", typeof(RectTransform));
             canvasGo.transform.SetParent(transform, false);

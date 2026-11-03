@@ -1,4 +1,4 @@
-using UnityEditor;
+﻿using UnityEditor;
 using UnityEngine;
 
 namespace DeepDrill.Editor
@@ -20,6 +20,16 @@ namespace DeepDrill.Editor
             importer.alphaIsTransparency = true;
             importer.npotScale = TextureImporterNPOTScale.None;
             importer.isReadable = assetPath.Contains("_layer_"); // the ground painter samples these pixel by pixel
+        }
+
+        // The pixel font renders hinted at whole pixels, so it stays sharp at 8, 16 and 24.
+        private void OnPreprocessAsset()
+        {
+            if (!assetPath.StartsWith("Assets/Resources/Fonts/") || !(assetImporter is TrueTypeFontImporter font)) return;
+            font.fontRenderingMode = FontRenderingMode.HintedRaster;
+            font.fontTextureCase = FontTextureCase.Dynamic;
+            font.includeFontData = true;
+            font.fontSize = Game.Ui.PixelFontSize;
         }
 
         // New art reaches the game by itself, including while the project is open in the Editor.

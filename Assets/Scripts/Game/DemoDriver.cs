@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 ﻿using System.Collections;
 using System.IO;
 using DeepDrill.Core;
@@ -316,6 +316,7 @@ namespace DeepDrill.Game
             yield return null;
             yield return null;
             Debug.Log($"[demo] shot {name} depth={root.Sim.State.depth} coins={root.Sim.State.coins:0.0}");
+            TextAudit.Check(name);
         }
 
         // Writes the real save file, reads it back and checks the fields that matter.

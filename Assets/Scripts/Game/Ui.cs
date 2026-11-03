@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.UI;
 
 namespace DeepDrill.Game
@@ -32,6 +32,26 @@ namespace DeepDrill.Game
             return image;
         }
 
+        public const int PixelFontSize = 8;
+
+        /// <summary>The pixel font only stays crisp at whole multiples of its 8-pixel size.</summary>
+        public static int PixelSize(int requested) => requested <= 11 ? PixelFontSize : requested <= 19 ? PixelFontSize * 2 : PixelFontSize * 3;
+
+        /// <summary>Fusion Pixel 8px, shipped with the game, with the OS font as a fallback for anything missing.</summary>
+        public static Font LoadPixelFont()
+        {
+            var font = Resources.Load<Font>("Fonts/FusionPixel8");
+            if (font == null)
+            {
+                Debug.LogWarning("Pixel font missing, using the system font");
+                return Font.CreateDynamicFontFromOSFont(new[] { "Microsoft YaHei UI", "Microsoft YaHei", "SimHei", "Arial" }, 16);
+            }
+            font.fontNames = new[] { "Fusion Pixel 8px Proportional SC", "Microsoft YaHei UI", "Microsoft YaHei" };
+            Font.textureRebuilt += f => { if (f == font && f.material.mainTexture != null) f.material.mainTexture.filterMode = FilterMode.Point; };
+            if (font.material.mainTexture != null) font.material.mainTexture.filterMode = FilterMode.Point;
+            return font;
+        }
+
         public static Text Label(Transform parent, Font font, string text, float x, float y, float w, float h,
             int size, TextAnchor anchor)
         {
@@ -40,12 +60,14 @@ namespace DeepDrill.Game
             var label = go.AddComponent<Text>();
             label.font = font;
             label.text = text;
-            label.fontSize = size;
+            label.fontSize = PixelSize(size);
             label.alignment = anchor;
             label.color = Color.white;
             label.raycastTarget = false;
-            label.horizontalOverflow = HorizontalWrapMode.Overflow;
+            // long text breaks onto the next line inside its box instead of running past it
+            label.horizontalOverflow = HorizontalWrapMode.Wrap;
             label.verticalOverflow = VerticalWrapMode.Overflow;
+            label.lineSpacing = 0.85f; // the font's own line is 12 pixels for 8-pixel glyphs
             TopLeft(label.rectTransform, x, y, w, h);
             return label;
         }

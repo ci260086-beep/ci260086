@@ -53,7 +53,7 @@ namespace DeepDrill.Editor
 
         private static void Record(string message, string stack, LogType type)
         {
-            bool demo = message.StartsWith("[demo]", StringComparison.Ordinal);
+            bool demo = message.StartsWith("[demo]", StringComparison.Ordinal) || message.StartsWith("[overflow]", StringComparison.Ordinal);
             if (!demo && type == LogType.Log) return;
             string line = type == LogType.Log ? message : $"{type}: {message}\n{stack}";
             File.AppendAllText(LogPath, line.TrimEnd() + "\n");
