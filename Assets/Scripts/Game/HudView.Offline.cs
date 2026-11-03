@@ -29,7 +29,6 @@ namespace DeepDrill.Game
             title.color = CoinColor;
             offlineDetail = Ui.Label(inner.transform, Font, "", 8, 16, OfflineWidth - 18, 34, 7, TextAnchor.UpperLeft);
             offlineDetail.color = SoftText;
-            offlineDetail.lineSpacing = 1.15f;
             offlineCoins = Ui.Label(inner.transform, Font, "", 0, 54, OfflineWidth - 2, 18, 12, TextAnchor.MiddleCenter);
             offlineCoins.color = CoinColor;
 
