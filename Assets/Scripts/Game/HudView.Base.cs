@@ -145,7 +145,7 @@ namespace DeepDrill.Game
 
         private void BuildAutomationTab()
         {
-            NewBaseTab("自动化", "sys_automation");
+            NewBaseTab("自动", "sys_automation"); // two characters fit beside the icon in the pixel font
             for (int i = 0; i < GameData.RebirthMilestones.Count; i++)
             {
                 var m = GameData.RebirthMilestones[i];

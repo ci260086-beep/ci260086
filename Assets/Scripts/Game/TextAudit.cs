@@ -23,9 +23,9 @@ namespace DeepDrill.Game
                 float wide = text.horizontalOverflow == HorizontalWrapMode.Overflow ? text.preferredWidth - rect.width : 0;
                 // a box shorter than one line is fine if the text keeps to one line; what matters is
                 // wrapping onto more lines than the box has room for
-                float line = text.fontSize * LineHeight * text.lineSpacing;
-                int fits = Mathf.Max(1, Mathf.FloorToInt((rect.height + Slack) / line));
-                int lines = Mathf.CeilToInt(text.preferredHeight / line - 0.05f);
+                float first = text.fontSize * LineHeight, line = first * text.lineSpacing;
+                int fits = 1 + Mathf.Max(0, Mathf.FloorToInt((rect.height - first + Slack) / line));
+                int lines = text.cachedTextGenerator.lineCount;
                 if (wide <= Slack && lines <= fits) continue;
                 found++;
                 string what = text.text.Replace("\n", " / ");
