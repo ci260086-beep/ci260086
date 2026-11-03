@@ -78,7 +78,7 @@
   {"id": "swarm", "name": "机群派", "branch": "hangar", "branchDiscount": 30, "trait": "no_merge", "desc": "不能合成；钻头半价，模拟上限 +60，每 10 台伤害 +5%",
    "bonuses": [{"effect": "buy_discount", "amount": 50}, {"effect": "hangar_slots", "amount": 60}, {"effect": "swarm_pct", "amount": 5}],
    "reward": {"effect": "buy_discount", "amount": 5, "desc": "永久钻头价格 -5%"}},
-  {"id": "craft", "name": "精工派", "branch": "drill", "branchDiscount": 30, "trait": "few_drills", "desc": "最多 12 台钻头；伤害 +400%，暴击率 +10%，暴击伤害 +100%",
+  {"id": "craft", "name": "精工派", "branch": "drill", "branchDiscount": 30, "trait": "few_drills", "desc": "最多 12 台钻头；伤害 +400%，暴击 +10%，暴伤 +100%",
    "bonuses": [{"effect": "dmg_pct", "amount": 400}, {"effect": "crit_chance", "amount": 10}, {"effect": "crit_mult", "amount": 100}],
    "reward": {"effect": "dmg_pct", "amount": 50, "desc": "永久全部伤害 +50%"}},
   {"id": "rich", "name": "富矿派", "branch": "wealth", "branchDiscount": 30, "trait": "ore_only", "desc": "普通岩石不给金币；矿物价值 ×5，宝箱 +100%",

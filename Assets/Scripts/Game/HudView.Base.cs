@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using DeepDrill.Core;
 using UnityEngine;
@@ -23,7 +23,7 @@ namespace DeepDrill.Game
         private const int BaseTabIcon = 16;
         private const int BaseRowHeight = 13;
         private const int BaseTop = 21;
-        private const int BaseButtonWidth = 54;
+        private const int BaseButtonWidth = 40; // "再点确认" is the longest button text: four characters
 
         private sealed class BaseRow
         {

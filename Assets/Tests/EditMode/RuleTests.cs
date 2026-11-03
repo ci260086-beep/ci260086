@@ -439,7 +439,16 @@ namespace DeepDrill.Tests
             while (sim.State.depth < 5) sim.Tick(0.1);
             var reloaded = new GameSim(sim.State);
             Assert.AreEqual(sim.State.drills.Count, reloaded.Units.Count);
-        
+        }
+
+        [TestCase(6.27e9, "6.27B")]
+        [TestCase(3.6e7, "36.0M")]
+        [TestCase(104.78e9, "105B")]
+        [TestCase(999.9e3, "1.00M")]
+        [TestCase(512, "512")]
+        public void Compact_KeepsThreeFigures(double value, string expected)
+        {
+            Assert.AreEqual(expected, NumberFormat.Compact(value));
+        }
     }
-}
 }

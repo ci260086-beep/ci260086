@@ -1,4 +1,4 @@
-using DeepDrill.Core;
+﻿using DeepDrill.Core;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -8,7 +8,7 @@ namespace DeepDrill.Game
     public sealed partial class HudView
     {
         private const int OfflineWidth = 170;
-        private const int OfflineHeight = 92;
+        private const int OfflineHeight = 100;
         private const float OfflineCountSeconds = 0.8f;
 
         private GameObject offlineRoot;
@@ -27,13 +27,13 @@ namespace DeepDrill.Game
 
             var title = Ui.Label(inner.transform, Font, "欢迎回来", 0, 3, OfflineWidth - 2, 12, 9, TextAnchor.MiddleCenter);
             title.color = CoinColor;
-            offlineDetail = Ui.Label(inner.transform, Font, "", 8, 16, OfflineWidth - 18, 30, 7, TextAnchor.UpperLeft);
+            offlineDetail = Ui.Label(inner.transform, Font, "", 8, 18, OfflineWidth - 18, 30, 7, TextAnchor.UpperLeft);
             offlineDetail.color = SoftText;
             offlineDetail.lineSpacing = 1.15f;
-            offlineCoins = Ui.Label(inner.transform, Font, "", 0, 48, OfflineWidth - 2, 16, 12, TextAnchor.MiddleCenter);
+            offlineCoins = Ui.Label(inner.transform, Font, "", 0, 50, OfflineWidth - 2, 18, 12, TextAnchor.MiddleCenter);
             offlineCoins.color = CoinColor;
 
-            var take = Ui.Button(inner.transform, Font, "收下", (OfflineWidth - 62) / 2f, 70, 60, 16, 8, CardBright, out _);
+            var take = Ui.Button(inner.transform, Font, "收下", (OfflineWidth - 62) / 2f, 76, 60, 16, 8, CardBright, out _);
             take.onClick.AddListener(CloseOffline);
             offlineRoot.SetActive(false);
         }
@@ -42,7 +42,7 @@ namespace DeepDrill.Game
         {
             offlineTotal = report.Coins;
             offlineShown = 0;
-            string paid = report.Capped ? $"结算 {FormatDuration(report.SecondsPaid)}（已到上限，可在技能树延长）" : "全部结算";
+            string paid = report.Capped ? $"结算 {FormatDuration(report.SecondsPaid)}（已达上限）" : "全部结算";
             offlineDetail.text = $"离开了 {FormatDuration(report.SecondsAway)}\n{paid}\n离线效率 {report.Rate * 100:0}%";
             offlineRoot.transform.SetAsLastSibling();
             offlineRoot.SetActive(true);

@@ -340,7 +340,7 @@ namespace DeepDrill.Game
             bossFill.raycastTarget = false;
             bossArmorFill = Ui.Panel(bossBar.transform, "Armor", 1, 1, 0, 2, ArmorColor);
             bossArmorFill.raycastTarget = false;
-            bossLabel = Floating("", (Stage.DigWidth - BossBarWidth) / 2f, 12, BossBarWidth, 10, 7, TextAnchor.MiddleCenter);
+            bossLabel = Floating("", 2, 12, Stage.DigWidth - 4, 10, 7, TextAnchor.MiddleCenter); // name, armour and clock need the full width
 
             depthLabel = Floating("", Stage.DigWidth - 124, 2, 120, 14, 9, TextAnchor.MiddleRight);
             clockLabel = Floating("", Stage.DigWidth - 124, 15, 120, 10, 7, TextAnchor.MiddleRight);
@@ -528,8 +528,9 @@ namespace DeepDrill.Game
             pageTitles.Add("图鉴");
 
             var stats = NewPage(panel.transform, "统计");
-            statsLabel = Ui.Label(stats.transform, Font, "", 4, PanelTitleHeight, Stage.PanelWidth - 8, 126, 6, TextAnchor.UpperLeft);
-            rebirthButton = Ui.Button(stats.transform, Font, "", 3, 144, Stage.PanelWidth - 6, 18, 7, FrenzyColor, out rebirthLabel);
+            // fourteen short lines of 8-pixel text, then a two-line reforge button under them
+            statsLabel = Ui.Label(stats.transform, Font, "", 4, PanelTitleHeight, Stage.PanelWidth - 8, 130, 6, TextAnchor.UpperLeft);
+            rebirthButton = Ui.Button(stats.transform, Font, "", 3, 152, Stage.PanelWidth - 6, 24, 7, FrenzyColor, out rebirthLabel);
             rebirthButton.onClick.AddListener(OnRebirthClicked);
 
             var settings = NewPage(panel.transform, "设置");
@@ -578,7 +579,7 @@ namespace DeepDrill.Game
             var fresh = Ui.Button(settings.transform, Font, "新游戏", 4, PanelTitleHeight + 82, Stage.PanelWidth - 8, 14, 7, CardBright, out newGameLabel);
             fresh.onClick.AddListener(OnNewGameClicked);
 
-            var keys = Ui.Label(settings.transform, Font, "快捷键\n1-6 切换页面  Esc 返回\n空格 狂热  C 一键合成\nB 批量购买", 4, PanelTitleHeight + 100, Stage.PanelWidth - 8, 40, 6, TextAnchor.UpperLeft);
+            var keys = Ui.Label(settings.transform, Font, "快捷键\n1-6 切换页面  Esc 返回\n空格 狂热  C 一键合成\nB 批量购买", 4, PanelTitleHeight + 100, Stage.PanelWidth - 8, 64, 6, TextAnchor.UpperLeft);
             keys.color = SoftText;
             keys.horizontalOverflow = HorizontalWrapMode.Wrap;
         }
@@ -975,7 +976,7 @@ namespace DeepDrill.Game
                 int count = BulkCount(f);
                 // the bulk size is on the button above the cards, so only the cost goes here
                 card.Price.text = !unlocked ? "未解锁"
-                    : NumberFormat.Short(count > 1 ? sim.DrillsCost(f, count) : sim.DrillPrice(f));
+                    : NumberFormat.Compact(count > 1 ? sim.DrillsCost(f, count) : sim.DrillPrice(f));
                 card.Price.color = can ? CoinColor : DimText;
             }
             mergeAllButton.interactable = !sim.MergeBlocked && HasTwins();
@@ -1036,17 +1037,24 @@ namespace DeepDrill.Game
             UpdateGalleryTabs();
         }
 
+        private static string ShortDuration(double seconds)
+        {
+            int minutes = (int)(seconds / 60);
+            return minutes < 60 ? $"{minutes}分钟" : $"{minutes / 60}时{minutes % 60}分";
+        }
+
         private void UpdateStats()
         {
             var s = sim.State;
             int rares = 0;
             foreach (var rare in s.rares) rares += rare.count > 0 ? 1 : 0;
+            // each line has to fit the 68-pixel panel in the 8-pixel font: about eight characters
             statsLabel.text =
-                $"本局时长 {FormatDuration(s.runSeconds)}\n本局最深 {GameData.FormatDepth(s.maxDepth)}\n" +
-                $"最大深度 {GameData.FormatDepth(s.maxDepthEver)}\n本局收入 {NumberFormat.Short(s.totalIncome)}\n" +
-                $"每秒伤害 {NumberFormat.Short(sim.TotalDps)}\n钻头 {NumberFormat.Short(s.drills.Count)}\n" +
-                $"最高连击 {s.bestCombo}\n累计合成 {s.mergesEver}\n打败 Boss {s.bossesEver}\n" +
-                $"星核碎片 {s.shards}\n重铸 {s.rebirths} 次  跃迁 {s.warps} 次\n当前星球 {sim.Planet.Name}\n" +
+                $"时长 {ShortDuration(s.runSeconds)}\n本局 {GameData.FormatDepth(s.maxDepth)}\n" +
+                $"最深 {GameData.FormatDepth(s.maxDepthEver)}\n收入 {NumberFormat.Short(s.totalIncome)}\n" +
+                $"秒伤 {NumberFormat.Short(sim.TotalDps)}\n钻头 {NumberFormat.Short(s.drills.Count)}\n" +
+                $"连击 {s.bestCombo}\n合成 {s.mergesEver}\nBoss {s.bossesEver}\n" +
+                $"碎片 {s.shards}\n重铸 {s.rebirths}  跃迁 {s.warps}\n星球 {sim.Planet.Name}\n" +
                 $"成就 {s.achievements.Count}/{GameData.Achievements.Count}\n稀有 {rares}/{GameData.Rares.Count}";
         }
     }
