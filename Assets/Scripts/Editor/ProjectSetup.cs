@@ -16,6 +16,11 @@ namespace DeepDrill.Editor
         private const string ScenePath = "Assets/Scenes/Main.unity";
         private const string LibraryPath = "Assets/Resources/ArtLibrary.asset";
 
+        // The game is 挖了个爽, Drill Thrill in English. Kept in ASCII here because these name the
+        // exe and the save folder (LocalLow/DrillThrill/Drill Thrill); the Chinese name is shown in game.
+        public const string ProductName = "Drill Thrill";
+        public const string CompanyName = "DrillThrill";
+
         [MenuItem("DeepDrill/Setup Project")]
         public static void Run()
         {
@@ -29,9 +34,9 @@ namespace DeepDrill.Editor
             EditorSceneManager.SaveScene(scene, ScenePath);
             EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene(ScenePath, true) };
 
-            PlayerSettings.productName = "Deep Drill";
+            PlayerSettings.productName = ProductName;
             PlayerSettings.bundleVersion = "0.1";
-            PlayerSettings.companyName = "DeepDrill";
+            PlayerSettings.companyName = CompanyName;
             PlayerSettings.defaultScreenWidth = 1280;
             PlayerSettings.defaultScreenHeight = 720;
             PlayerSettings.fullScreenMode = FullScreenMode.Windowed;
@@ -114,6 +119,19 @@ namespace DeepDrill.Editor
             library.SetSprites(sprites);
             EditorUtility.SetDirty(library);
             Debug.Log($"ArtLibrary holds {sprites.Count} sprites");
+        }
+    }
+
+    /// <summary>Keeps the player settings on the current name when the project opens, so an older checkout's settings cannot linger.</summary>
+    [InitializeOnLoad]
+    public static class ProductNameGuard
+    {
+        static ProductNameGuard()
+        {
+            if (PlayerSettings.productName == ProjectSetup.ProductName && PlayerSettings.companyName == ProjectSetup.CompanyName) return;
+            PlayerSettings.productName = ProjectSetup.ProductName;
+            PlayerSettings.companyName = ProjectSetup.CompanyName;
+            AssetDatabase.SaveAssets();
         }
     }
 }

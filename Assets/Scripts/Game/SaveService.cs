@@ -9,6 +9,25 @@ namespace DeepDrill.Game
     {
         private readonly string path;
 
+        /// <summary>
+        /// Copies a save from the game's old folder when the new one has none yet. The old file is
+        /// left where it was, as a backup.
+        /// </summary>
+        public static void AdoptOldSave(string path, string oldPath)
+        {
+            try
+            {
+                if (File.Exists(path) || string.IsNullOrEmpty(oldPath) || !File.Exists(oldPath)) return;
+                Directory.CreateDirectory(Path.GetDirectoryName(path));
+                File.Copy(oldPath, path);
+                UnityEngine.Debug.Log($"[save] adopted the save from {oldPath}");
+            }
+            catch (IOException e)
+            {
+                UnityEngine.Debug.LogWarning($"[save] could not copy the old save: {e.Message}");
+            }
+        }
+
         public SaveService(string path)
         {
             this.path = path;

@@ -113,6 +113,13 @@ namespace DeepDrill.Game
             go.AddComponent<GameRoot>();
         }
 
+        // Before the rename the game was 深渊钻头 / Deep Drill, saving under LocalLow/DeepDrill/Deep Drill.
+        private static string OldSavePath()
+        {
+            var folder = Directory.GetParent(Application.persistentDataPath)?.Parent;
+            return folder == null ? null : Path.Combine(folder.FullName, "DeepDrill", "Deep Drill", "save.json");
+        }
+
         private void Awake()
         {
             Application.targetFrameRate = 60;
@@ -120,6 +127,7 @@ namespace DeepDrill.Game
             GameData.Load(name => Resources.Load<TextAsset>("Data/" + name).text);
 
             string savePath = CommandLine.Value("--save") ?? Path.Combine(Application.persistentDataPath, "save.json");
+            if (CommandLine.Value("--save") == null) SaveService.AdoptOldSave(savePath, OldSavePath());
             saves = new SaveService(savePath);
             sim = new GameSim(saves.Load());
             double offline = sim.ApplyOffline(DateTimeOffset.UtcNow.ToUnixTimeSeconds());
