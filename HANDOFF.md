@@ -99,6 +99,7 @@ tools\outside\out\pace\Pace.exe Assets\Resources\Data 8 1500 种子
 - ⑦ 声音（`phase5-sound`，已并入 `master`）：用户选了**轻快**风格。`MusicSynth` 用代码合成 8 小节循环（脉冲波主旋律、三角波低音、琶音、噪声鼓），每层一首，Boss 战一首更快的；越深调越低、越偏小调，但速度不降。`MusicPlayer` 在后台线程渲染、按深度和 Boss 状态交叉淡入；设置页加了“音乐”音量（默认 75%）。之前舞台摄像机没有 `AudioListener`，游戏里其实一直没有声音，这次补上了。`SaveService.Save` 的 `File.Replace` 被占用时重试 5 次（每次 40 毫秒），存档内容和格式不变。
 - 字体：用户要求所有文字框里的长文字自动换行，不能超出框。做美术 21（像素字体）时逐页检查。
 - 第六阶段美术 18（`art/PALETTE.md`、`art/tools/palette.lua`）和 19（钻头 8 帧，`draw_world_art.lua`）已并入 `master`。新美术一律用 `palette.lua`。旧美术的 5 种描边色差别很小，没有重画。
+- 美术 21（`art/pixel-font`，已并入 `master`）：界面字体是 `Assets/Resources/Fonts/FusionPixel8.ttf`（缝合像素体 8px 简体常用字子集，SIL OFL，见 `CREDITS.md`），只在 8、16、24 绘制（`Ui.PixelSize`），行距 0.75（9 像素一行）。`Ui.Label` 默认自动换行。自动试玩每张截图后跑 `TextAudit.Check`，超框的文字在 `Logs/check_play.txt` 里以 `[overflow]` 列出，合并前要为 0。按钮、卡片、行用九宫格边框 `ui9_button`、`ui9_inset`、`ui9_panel`（`draw_ui_frames.lua`，`Ui.Framed`）。不要再用 `FontStyle.Bold`，像素字体会糊。
 - 美术 20（`art/lighting`，已并入 `master`）：挖掘区的暗色是 `LightMap`，每帧按舞台一半分辨率算，分 6 级加棋盘格抖动；领头钻头、视野内每台钻头、爆炸、雷击在里面挖出光圈（`WorldView.AddLights`、`LightMap.AddFlash`）。最深层暗度 0.62（原来 0.4）。头灯、钻头光晕、点击闪光、闪电用加法着色器 `DeepDrill/SpriteAdditive`（`WorldView.AdditiveMaterial`）和新图 `light_soft`；宝石闪光改用 `light_glint`。
 - ⑧ Windows 打包：暂缓。这是用户的决定。
 
