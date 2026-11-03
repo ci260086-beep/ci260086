@@ -150,12 +150,10 @@ namespace DeepDrill.Game
             sim.State.warps = GameData.Planets.FindIndex(p => p.Rule == PlanetRule.storm);
             sim.Teleport(GameData.Layers[2].RowStart + 10, Balance.StartColumn);
             root.SnapCamera();
-            root.Hud.ShowPlanetCard(3);
-            bool closed = false, struck = false;
+            bool struck = false;
             yield return Record("warp", 3.75f, t =>
             {
-                if (!closed && t >= 1.4f) { closed = true; root.Hud.CloseCard(); }
-                if (!struck && t >= 1.6f) { struck = true; sim.HurryStorm(0.6); } // lightning lands near 2.2 s
+                if (!struck && t >= 1.0f) { struck = true; sim.HurryStorm(0.6); } // lightning lands near 1.6 s, after the card
             });
 
             Debug.Log("[trailer] done");

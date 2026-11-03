@@ -833,7 +833,8 @@ namespace DeepDrill.Game
             if (textClock >= TextSeconds)
             {
                 textClock = 0;
-                coinsLabel.text = NumberFormat.Short(s.coins - coinsInFlight);
+                // coins still flying to the counter are shown when they land; never below zero
+                coinsLabel.text = NumberFormat.Short(Filming ? s.coins : System.Math.Max(0, s.coins - coinsInFlight));
                 incomeLabel.text = $"{NumberFormat.Short(s.incomePerSecond)} 每秒金币";
                 oresLabel.text = NumberFormat.Short(s.ores - oresInFlight);
                 drillsLabel.text = $"钻头 {NumberFormat.Short(s.drills.Count)}";
