@@ -30,6 +30,7 @@ namespace DeepDrill.Game
             folder = recordFolder;
             root.Hud.GuidesOff = true;
             root.Hud.Filming = true;
+            root.TrailerHype = true;
             Directory.CreateDirectory(folder);
             StartCoroutine(Run());
         }
@@ -61,9 +62,9 @@ namespace DeepDrill.Game
             sim.State.autoDrills = sim.State.autoSkills = false; // nothing spends the scripted coins
             yield return new WaitForSeconds(1f);
 
-            // cold open: a fresh game, the player taps the drill into the topsoil
+            // cold open (after the edit's "ready?" card): a fresh game, the player taps the drill in
             float nextTap = 0;
-            yield return Record("intro", 2 * Bar, t =>
+            yield return Record("intro", Bar, t =>
             {
                 if (t < nextTap) return;
                 nextTap = t + 0.1f;

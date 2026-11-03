@@ -59,16 +59,16 @@ def styled(mask, color, scale):
     return canvas.resize((canvas.width * PX, canvas.height * PX), Image.NEAREST)
 
 
-def fit(mask, want):
-    """The largest whole scale up to `want` that keeps the line inside the dig area."""
-    return max(1, min(want, CARD_MAX_W // max(1, mask.width)))
+def fit(mask, want, max_w=CARD_MAX_W):
+    """The largest whole scale up to `want` that keeps the line inside `max_w` stage pixels."""
+    return max(1, min(want, max_w // max(1, mask.width)))
 
 
-def card(lines, big):
+def card(lines, big, max_w=CARD_MAX_W):
     """Chinese over English, centred on each other."""
     cn_mask, en_mask = text_mask(lines[0]), text_mask(lines[1])
-    cn = styled(cn_mask, GOLD, fit(cn_mask, big))
-    en = styled(en_mask, WHITE, fit(en_mask, max(1, big - 1)))
+    cn = styled(cn_mask, GOLD, fit(cn_mask, big, max_w))
+    en = styled(en_mask, WHITE, fit(en_mask, max(1, big - 2), max_w))
     out = Image.new("RGBA", (max(cn.width, en.width), cn.height + en.height - 2 * PX), (0, 0, 0, 0))
     out.alpha_composite(cn, ((out.width - cn.width) // 2, 0))
     out.alpha_composite(en, ((out.width - en.width) // 2, cn.height - 2 * PX))
@@ -102,6 +102,10 @@ def main():
         if name == "logo":
             write_logo(ffmpeg, last, count + int(1.5 * fps))
             continue
+        if clip.get("synthetic") == "ready":
+            last = write_ready(ffmpeg, count, clip["card"], beat_frames)
+            print(f"{name}: {count} frames", flush=True)
+            continue
         if clip.get("synthetic") == "planets":
             last = write_planets(ffmpeg, count, clip["card"], beat_frames)
             print(f"{name}: {count} frames", flush=True)
@@ -118,7 +122,7 @@ def main():
             sources += [frames[min(len(frames) - 1, first + i)] for i in range(n)]
         cards = [card(clip["card"], 3), card(clip["card"], 4)] if clip.get("card") else None
         card_frames = int(beat_frames * 3)
-        climax = clip.get("section") == "climax"
+        climax = clip.get("section") in ("climax", "drop")
         for i in range(count):
             img = Image.open(sources[min(len(sources) - 1, i)]).convert("RGB")
             if img.size != (W, H):
@@ -148,6 +152,28 @@ def main():
     ffmpeg.stdin.close()
     ffmpeg.wait()
     print("wrote", out)
+
+
+def write_ready(ffmpeg, count, lines, beat_frames):
+    """The cold open: the first frame of the game, dark, under a huge card that thumps on the beat."""
+    first = clip_frames("intro")[0]
+    base = ImageEnhance.Brightness(Image.open(first).convert("RGB").filter(ImageFilter.GaussianBlur(10))).enhance(0.3)
+    title = card(lines, 4, 300)
+    frame_out = None
+    for i in range(count):
+        frame = base.convert("RGBA")
+        beat = int(i / beat_frames)
+        since = i - int(beat * beat_frames)
+        if beat in (0, 2) and since < 3:  # thumps on beats one and three, with the kick
+            scale = 1 + 0.12 * (3 - since) / 3
+            t = title.resize((int(title.width * scale), int(title.height * scale)), Image.NEAREST)
+        else:
+            t = title
+        shake = PX * (2 if i % 2 else -2) if since < 3 and beat in (0, 2) else 0
+        frame.alpha_composite(t, ((W - t.width) // 2 + shake, (H - t.height) // 2))
+        frame_out = frame.convert("RGB")
+        ffmpeg.stdin.write(frame_out.tobytes())
+    return frame_out
 
 
 def silhouette(img):
@@ -183,7 +209,7 @@ def write_planets(ffmpeg, count, lines, beat_frames):
     shadows = [silhouette(Image.open(os.path.join(art, f"planet_{i}.png")).convert("RGBA")) for i in range(1, 8)]
     # an arc of seven slots across the lower two thirds of the stage, each a little smaller
     slots = [(92 + i * 31, 118 - int(18 * (1 - ((i - 3) / 3.5) ** 2)), 40 - i * 2) for i in range(7)]
-    title = card(lines, 4)
+    title = card(lines, 4, 300)
     frames_out = None
     for i in range(count):
         stage = space.copy()

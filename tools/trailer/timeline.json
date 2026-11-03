@@ -3,8 +3,18 @@
  "fps": 30,
  "clips": [
   {
+   "clip": "ready",
+   "bars": 1,
+   "section": "intro",
+   "synthetic": "ready",
+   "card": [
+    "准备好了吗？",
+    "READY TO DIG?"
+   ]
+  },
+  {
    "clip": "intro",
-   "bars": 2,
+   "bars": 1,
    "section": "intro"
   },
   {
@@ -147,11 +157,110 @@
  ],
  "sfx": [
   {
+   "clip": "ready",
+   "at": 0.0,
+   "name": "land",
+   "vol": 0.9
+  },
+  {
+   "clip": "ready",
+   "at": 0.857,
+   "name": "land",
+   "vol": 0.7
+  },
+  {
+   "clip": "intro",
+   "at": 0.05,
+   "name": "break_0",
+   "every": 0.107,
+   "until": 1.6,
+   "vol": 0.55
+  },
+  {
+   "clip": "intro",
    "at": 0.1,
+   "name": "coin",
+   "every": 0.214,
+   "until": 1.6,
+   "vol": 0.3
+  },
+  {
+   "clip": "dig",
+   "at": 0.0,
+   "name": "break_0",
+   "every": 0.107,
+   "until": 1.6,
+   "vol": 0.5
+  },
+  {
+   "clip": "dig",
+   "at": 0.0,
+   "name": "land",
+   "vol": 0.8
+  },
+  {
+   "clip": "combo",
+   "at": 0.0,
+   "name": "break_0",
+   "every": 0.107,
+   "until": 1.6,
+   "vol": 0.45
+  },
+  {
+   "clip": "combo",
+   "at": 0.05,
+   "name": "coin_rise",
+   "every": 0.107,
+   "until": 1.6,
+   "vol": 0.3
+  },
+  {
+   "clip": "merge",
+   "at": 0.0,
    "name": "break_0",
    "every": 0.214,
-   "until": 3.2,
-   "vol": 0.55
+   "until": 1.6,
+   "vol": 0.4
+  },
+  {
+   "clip": "merge",
+   "at": 0.05,
+   "name": "coin",
+   "every": 0.107,
+   "until": 1.6,
+   "vol": 0.3
+  },
+  {
+   "clip": "blast",
+   "at": 0.0,
+   "name": "coin",
+   "every": 0.107,
+   "until": 1.6,
+   "vol": 0.3
+  },
+  {
+   "clip": "layers",
+   "at": 0.0,
+   "name": "coin",
+   "every": 0.107,
+   "until": 3.3,
+   "vol": 0.22
+  },
+  {
+   "clip": "boss",
+   "at": 0.0,
+   "name": "hard",
+   "every": 0.107,
+   "until": 1.8,
+   "vol": 0.35
+  },
+  {
+   "clip": "climax",
+   "at": 0.0,
+   "name": "break_0",
+   "every": 0.107,
+   "until": 6.6,
+   "vol": 0.3
   },
   {
    "clip": "dig",

@@ -521,9 +521,39 @@ namespace DeepDrill.Game
             if (e.Lead) world.Shake(hard ? 0.28f : 0.12f, hard ? 4f : 2f);
         }
 
+        /// <summary>
+        /// Set by the trailer: every break throws more dirt, a cloud of dust, a burst of coins
+        /// towards the counter and a jolt of the screen.
+        /// </summary>
+        public bool TrailerHype { get; set; }
+        private float hypeCoinClock, hypeShakeClock;
+        private const float HypeCoinGap = 0.04f, HypeShakeGap = 0.09f;
+
+        private void Hype(in SimEvent e, Vector2 center)
+        {
+            fx.Debris(center, BitsColor(e.Block), 12);
+            fx.Debris(center + new Vector2(0.3f, 0.2f), DirtBits, 8);
+            fx.Puff(center + new Vector2(-0.4f, 0.1f));
+            fx.Puff(center + new Vector2(0.4f, 0.3f));
+            float now = Time.time;
+            if (now - hypeCoinClock >= HypeCoinGap)
+            {
+                hypeCoinClock = now;
+                Vector2 from = CellStage(e.Row, e.Col);
+                for (int i = 0; i < 2; i++)
+                    fx.FlyIcon(art.Get("icon_coin"), from + new Vector2(UnityEngine.Random.Range(-6f, 6f), UnityEngine.Random.Range(-4f, 4f)), hud.CoinTarget, () => hud.Land(0, 0));
+            }
+            if (now - hypeShakeClock >= HypeShakeGap)
+            {
+                hypeShakeClock = now;
+                world.Shake(0.12f, 2.5f);
+            }
+        }
+
         private void OnBroken(in SimEvent e)
         {
             Vector2 center = WorldView.CellCenter(e.Row, e.Col);
+            if (TrailerHype) Hype(e, center);
             fx.Debris(center, BitsColor(e.Block), e.Block == BlockType.Chest ? 18 : 6);
             fx.Puff(center);
             sound.Play(e.Block == BlockType.HardRock || e.Block == BlockType.SuperHard ? "hard" : SfxSynth.BreakFor(GameData.LayerOfRow(e.Row)), 0.35f);
