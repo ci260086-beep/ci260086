@@ -44,6 +44,16 @@ namespace DeepDrill.Tests
         }
 
         [Test]
+        public void OldSave_ReadsLeaderboardRecordsAsZero()
+        {
+            var state = Load("save_v6_early.json");
+            Assert.AreEqual(0, state.standardBestRow);
+            Assert.AreEqual(0, state.playSecondsEver, 1e-9);
+            Assert.AreEqual(0, state.longestRunSeconds, 1e-9);
+            Assert.AreEqual(0, state.mostDrills);
+        }
+
+        [Test]
         public void OldSave_DoesNotReplayCardsItHasOutgrown()
         {
             var state = Load("save_v6_boss_stall.json");

@@ -75,6 +75,7 @@ namespace DeepDrill.Game
         {
             sim.PackHoles();
             saves.Save(sim.State);
+            Leaderboards.SubmitAll(sim.State);
         }
 
         public void SnapCamera() => world.SnapToDrill();

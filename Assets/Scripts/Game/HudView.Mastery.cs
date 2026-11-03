@@ -5,7 +5,7 @@ using UnityEngine.UI;
 
 namespace DeepDrill.Game
 {
-    /// <summary>The gallery's tabs: the collection, drill milestones and layer mastery.</summary>
+    /// <summary>The gallery's tabs: the collection, drill milestones, layer mastery and records.</summary>
     public sealed partial class HudView
     {
         private const int GalleryTabX = 130;
@@ -29,6 +29,10 @@ namespace DeepDrill.Game
         private readonly List<Text> familyBestLabels = new List<Text>();
         private readonly List<Image[]> milestoneCells = new List<Image[]>();
         private readonly List<MasteryRow> masteryRows = new List<MasteryRow>();
+        private readonly List<Text> recordValues = new List<Text>();
+        private const int RecordRowHeight = 26;
+        private const int RecordRowGap = 1;
+        private const int RecordRowWidth = Stage.Width - 12;
         private int galleryTab;
 
         private Transform NewGalleryTab(Transform page, string title)
@@ -126,6 +130,34 @@ namespace DeepDrill.Game
         {
             if (galleryTab == 1) UpdateMilestones();
             if (galleryTab == 2) UpdateMastery();
+            if (galleryTab == 3) UpdateRecords();
+        }
+
+        // One card per leaderboard: its name and rule on the left, the player's record on the right.
+        private void BuildLeaderboardTab(Transform page)
+        {
+            var tab = NewGalleryTab(page, "排行");
+            for (int i = 0; i < Leaderboards.All.Count; i++)
+            {
+                var board = Leaderboards.All[i];
+                float y = 18 + i * (RecordRowHeight + RecordRowGap);
+                var box = Ui.Framed(Ui.Panel(tab, "record", 6, y, RecordRowWidth, RecordRowHeight, CardDim), Ui.FrameKind.Inset);
+                Ui.Label(box.transform, Font, board.Name, 4, 3, 120, 10, 7, TextAnchor.MiddleLeft);
+                var rule = Ui.Label(box.transform, Font, board.Rule, 4, 13, RecordRowWidth - 8, 10, 6, TextAnchor.MiddleLeft);
+                rule.color = SoftText;
+                var value = Ui.Label(box.transform, Font, "", 126, 3, RecordRowWidth - 130, 10, 7, TextAnchor.MiddleRight);
+                value.color = CoinColor;
+                recordValues.Add(value);
+            }
+            float noteY = 18 + Leaderboards.All.Count * (RecordRowHeight + RecordRowGap);
+            var note = Ui.Label(tab, Font, Leaderboards.Backend == null ? "全球排名会在 Steam 版开放，现在显示你自己的最好成绩" : "成绩会自动上传到 Steam 排行榜",
+                6, noteY, RecordRowWidth, 10, 6, TextAnchor.MiddleLeft);
+            note.color = SoftText;
+        }
+
+        private void UpdateRecords()
+        {
+            for (int i = 0; i < recordValues.Count; i++) recordValues[i].text = Leaderboards.All[i].Show(sim.State);
         }
 
         private void UpdateMilestones()

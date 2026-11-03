@@ -635,10 +635,31 @@ namespace DeepDrill.Core
         private void AdvanceRunClock(double dt)
         {
             State.runSeconds += dt;
+            State.playSecondsEver += dt;
+            State.longestRunSeconds = Math.Max(State.longestRunSeconds, State.runSeconds);
             runRateClock += dt;
             if (runRateClock < 1) return;
             runRateClock = 0;
             State.peakShardRate = Math.Max(State.peakShardRate, ShardsPerMinute);
+            UpdateRecords();
+        }
+
+        /// <summary>True while this run has bought and owns nothing but standard drills.</summary>
+        public bool StandardOnlyRun
+        {
+            get
+            {
+                for (int f = 1; f < State.bought.Count; f++) if (State.bought[f] > 0) return false;
+                foreach (int code in State.drills) if (DrillCode.Family(code) != 0) return false;
+                return true;
+            }
+        }
+
+        /// <summary>Leaderboard records that are sampled rather than counted: drills owned and the standard-drill depth.</summary>
+        public void UpdateRecords()
+        {
+            State.mostDrills = Math.Max(State.mostDrills, State.drills.Count);
+            if (StandardOnlyRun) State.standardBestRow = Math.Max(State.standardBestRow, State.maxDepth);
         }
 
         /// <summary>Trades the run for star core shards. Shards and lifetime records are all that stay.</summary>

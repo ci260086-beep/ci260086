@@ -67,6 +67,12 @@ namespace DeepDrill.Core
         public List<double> layerPixels = new List<double>(); // pixels ever dug per layer
         public int eventsClaimed;
 
+        // leaderboard records (added after version 7; old saves read them as zero)
+        public int standardBestRow;      // deepest row of a run that used only standard drills
+        public double playSecondsEver;   // every second of play, across all runs
+        public double longestRunSeconds; // the longest single run
+        public int mostDrills;           // most drills owned at once
+
         // the player's automation rules
         public bool autoSkills;
         public bool autoDrills;

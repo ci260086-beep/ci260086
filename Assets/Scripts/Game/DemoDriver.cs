@@ -157,6 +157,13 @@ namespace DeepDrill.Game
             root.Hud.ShowGalleryPage();
             yield return new WaitForSeconds(0.3f);
             yield return Shot("gallery");
+            // records with a standard-only run on the books, so every leaderboard row has a value
+            sim.State.standardBestRow = Math.Max(sim.State.standardBestRow, GameData.Layers[3].RowStart + 12);
+            sim.UpdateRecords();
+            root.Hud.ShowRecordsPage();
+            yield return new WaitForSeconds(0.3f);
+            yield return Shot("records");
+            root.Hud.ShowGalleryPage();
             // a run with one school picked and one to pair it with, so both base tabs show live buttons
             int deepest = sim.State.maxDepthEver;
             sim.State.rebirths = Math.Max(1, sim.State.rebirths);

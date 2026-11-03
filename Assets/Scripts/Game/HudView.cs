@@ -320,6 +320,14 @@ namespace DeepDrill.Game
 
         public void ShowGalleryPage() => ShowPage(PageGallery);
 
+        /// <summary>Opens the gallery on its records tab, the leaderboard page.</summary>
+        public void ShowRecordsPage()
+        {
+            ShowPage(PageGallery);
+            ShowGalleryTab(3);
+            UpdateGalleryTabs();
+        }
+
         public void ShowHangarPage() => ShowPage(PageHangar);
 
         private Text Floating(string text, float x, float y, float w, float h, int size, TextAnchor anchor)
@@ -766,6 +774,7 @@ namespace DeepDrill.Game
 
             BuildMilestoneTab(page.transform);
             BuildMasteryTab(page.transform);
+            BuildLeaderboardTab(page.transform);
             ShowGalleryTab(0);
         }
 
