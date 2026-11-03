@@ -39,6 +39,28 @@ namespace DeepDrill.Game
         private readonly List<Image> planetNodes = new List<Image>();
         private readonly List<Image> baseTabButtons = new List<Image>();
         private readonly List<List<BaseRow>> baseRows = new List<List<BaseRow>>();
+        private readonly List<List<BaseCard>> baseCards = new List<List<BaseCard>>();
+
+        // A card on a base tab: a coloured header with an icon, a name and a status chip, a few
+        // lines of text and up to two buttons along the bottom. Text and state are read live.
+        private sealed class BaseCard
+        {
+            public Text Status, Body, Note, Foot;
+            public Image Chip, Header, Progress;
+            public Func<float> ProgressValue;
+            public float ProgressWidth;
+            public Func<string> StatusText, BodyText, NoteText, FootText;
+            public Func<Color> StatusColor, HeaderColor;
+            public readonly List<BaseRow> Buttons = new List<BaseRow>();
+        }
+
+        private const int CardHeader = 13;
+        private const int CardButtonHeight = 11;
+        private static readonly Color CardBody = new Color32(0x24, 0x1a, 0x16, 0xff);
+        private static readonly Color ChipGold = new Color32(0xe8, 0xb0, 0x2a, 0xff);
+        private static readonly Color ChipTeal = new Color32(0x50, 0xb8, 0xa4, 0xff);
+        private static readonly Color ChipGreen = new Color32(0x76, 0xa8, 0x3a, 0xff);
+        private static readonly Color ChipDim = new Color32(0x5a, 0x48, 0x40, 0xff);
         private Transform basePage;
         private Text baseInfo;
         private int baseTab;
@@ -72,6 +94,7 @@ namespace DeepDrill.Game
             Ui.TopLeft((RectTransform)tab.transform, 0, 0, Stage.Width, Stage.Height);
             baseTabs.Add(tab);
             baseRows.Add(new List<BaseRow>());
+            baseCards.Add(new List<BaseCard>());
 
             var button = Ui.Button(basePage, Font, title, 4 + index * (BaseTabWidth + 1), 2, BaseTabWidth, BaseTabHeight, 6, RailColor, out Text label);
             if (icon != null)
@@ -126,6 +149,123 @@ namespace DeepDrill.Game
             baseRows[baseRows.Count - 1].Add(item);
         }
 
+        /// <summary>Adds a card to the newest tab at a stage position.</summary>
+        private BaseCard AddBaseCard(float x, float y, float w, float h, Sprite icon, string title, Func<Color> headerColor,
+            Func<string> body, Func<string> note = null, Func<string> status = null, Func<Color> statusColor = null,
+            Func<string> foot = null)
+        {
+            var tab = baseTabs[baseTabs.Count - 1].transform;
+            var frame = Ui.Framed(Ui.Panel(tab, "card", x, y, w, h, CardBody), Ui.FrameKind.Panel);
+            var card = new BaseCard { BodyText = body, NoteText = note, StatusText = status, StatusColor = statusColor, HeaderColor = headerColor };
+            card.Header = Ui.Panel(frame.transform, "header", 2, 2, w - 4, CardHeader, headerColor());
+            card.Header.raycastTarget = false;
+            if (icon != null) Ui.Icon(card.Header.transform, icon, 2, 2, SkillIconSize);
+            var name = Ui.Label(card.Header.transform, Font, title, 14, 0, w - 60, CardHeader, 8, TextAnchor.MiddleLeft);
+            name.color = Color.white;
+            if (status != null)
+            {
+                card.Chip = Ui.Framed(Ui.Panel(card.Header.transform, "chip", w - 4 - 42, 1, 40, CardHeader - 2, ChipDim), Ui.FrameKind.Inset);
+                card.Status = Ui.Label(card.Chip.transform, Font, "", 0, 0, 40, CardHeader - 2, 6, TextAnchor.MiddleCenter);
+            }
+            // two lines of body, one line of note, then a footer line shared with the buttons
+            float textTop = CardHeader + 3;
+            const float line = 11; // the 8-pixel font needs 21 pixels for two lines
+            float buttonsTop = h - CardButtonHeight - 3;
+            card.Body = Ui.Label(frame.transform, Font, "", 4, textTop, w - 8, line * 2, 6, TextAnchor.UpperLeft);
+            card.Body.color = new Color32(0xf3, 0xe9, 0xdc, 0xff);
+            if (note != null)
+            {
+                card.Note = Ui.Label(frame.transform, Font, "", 4, textTop + line * 2, w - 8, line, 6, TextAnchor.UpperLeft);
+                card.Note.color = SoftText;
+            }
+            card.FootText = foot;
+            if (foot != null)
+            {
+                card.Foot = Ui.Label(frame.transform, Font, "", 4, buttonsTop, w - 8 - 2 * (BaseButtonWidth + 2), CardButtonHeight, 6, TextAnchor.MiddleLeft);
+                card.Foot.color = DimText;
+            }
+            baseCards[baseCards.Count - 1].Add(card);
+            return card;
+        }
+
+        private const float ItemTop = BaseTop + BaseRowHeight + 2;
+        private const float ItemBottom = Stage.Height - 2;
+        private const float ItemGap = 2;
+        private const int ItemIcon = 18; // a 9-pixel skill icon at twice its size
+        private const int ItemButtonWidth = 30; // two or three characters: 开始, 进入, 已完成
+
+        /// <summary>
+        /// A list card on a base tab: an accent bar, an icon, a bright title line, one or two soft
+        /// lines under it, an optional progress bar and a button on the right. Placed on a grid of
+        /// `cols` by `rows` filling the space under the tab's header row.
+        /// </summary>
+        private BaseCard AddBaseItem(int index, int cols, int rows, Sprite icon, Color accent, Func<string> title,
+            Func<string> sub, Func<string> third = null, Func<string> buttonText = null, Action click = null,
+            Func<bool> enabled = null, Func<float> progress = null, int buttonWidth = ItemButtonWidth)
+        {
+            var tab = baseTabs[baseTabs.Count - 1].transform;
+            float w = (Stage.Width - 8 - ItemGap * (cols - 1)) / cols;
+            float h = (ItemBottom - ItemTop - ItemGap * (rows - 1)) / rows;
+            float x = 4 + index % cols * (w + ItemGap), y = ItemTop + index / cols * (h + ItemGap);
+            var frame = Ui.Framed(Ui.Panel(tab, "item", x, y, w, h, CardBody), Ui.FrameKind.Inset);
+            var bar = Ui.Panel(frame.transform, "accent", 1, 1, 2, h - 2, accent);
+            bar.raycastTarget = false;
+            if (icon != null) Ui.Icon(frame.transform, icon, 5, (h - ItemIcon) / 2, ItemIcon);
+            float textX = icon != null ? 7 + ItemIcon : 6;
+            // with a third line the button sits beside it, so the first two lines get the full width
+            bool buttonLow = third != null && buttonText != null;
+            float fullW = w - textX - 3;
+            float textW = buttonText != null && !buttonLow ? fullW - buttonWidth - 2 : fullW;
+            const float line = 11;
+            int lines = third != null ? 3 : 2;
+            float textY = Mathf.Max(0, (h - lines * line) / 2 - 1);
+            var card = new BaseCard { BodyText = title, NoteText = sub, FootText = third, HeaderColor = () => accent };
+            card.Header = bar;
+            card.Body = Ui.Label(frame.transform, Font, "", textX, textY, textW, line, 8, TextAnchor.MiddleLeft);
+            card.Body.color = Color.white;
+            card.Note = Ui.Label(frame.transform, Font, "", textX, textY + line, textW, line, 6, TextAnchor.MiddleLeft);
+            card.Note.color = new Color32(0xf3, 0xe9, 0xdc, 0xff);
+            if (third != null)
+            {
+                card.Foot = Ui.Label(frame.transform, Font, "", textX, textY + line * 2, buttonLow ? fullW - buttonWidth - 2 : textW, line, 6, TextAnchor.MiddleLeft);
+                card.Foot.color = SoftText;
+            }
+            if (progress != null)
+            {
+                var track = Ui.Panel(frame.transform, "track", textX, h - 4, textW, 2, PanelColor);
+                track.raycastTarget = false;
+                card.Progress = Ui.Panel(track.transform, "fill", 0, 0, 0, 2, accent);
+                card.Progress.raycastTarget = false;
+                card.ProgressValue = progress;
+                card.ProgressWidth = textW;
+            }
+            if (buttonText != null)
+            {
+                var row = new BaseRow { ButtonText = buttonText, Enabled = enabled };
+                float by = buttonLow ? textY + line * 2 : (h - CardButtonHeight - 2) / 2;
+                row.Button = Ui.Button(frame.transform, Font, "", w - buttonWidth - 3, by, buttonWidth, CardButtonHeight, 6, CardBright, out row.ButtonLabel);
+                row.ButtonImage = row.Button.GetComponent<Image>();
+                row.Button.onClick.AddListener(() => click());
+                card.Buttons.Add(row);
+            }
+            baseCards[baseCards.Count - 1].Add(card);
+            return card;
+        }
+
+        private Sprite EffectIcon(SkillEffect effect) => art.Get("sicon_" + effect);
+
+        /// <summary>Puts a button along a card's bottom edge, right to left.</summary>
+        private void AddCardButton(BaseCard card, RectTransform frame, Func<string> text, Action click, Func<bool> enabled)
+        {
+            int index = card.Buttons.Count;
+            float w = frame.sizeDelta.x, h = frame.sizeDelta.y;
+            var row = new BaseRow { ButtonText = text, Enabled = enabled };
+            row.Button = Ui.Button(frame, Font, "", w - 4 - (index + 1) * (BaseButtonWidth + 2), h - CardButtonHeight - 3, BaseButtonWidth, CardButtonHeight, 6, CardBright, out row.ButtonLabel);
+            row.ButtonImage = row.Button.GetComponent<Image>();
+            row.Button.onClick.AddListener(() => click());
+            card.Buttons.Add(row);
+        }
+
         private void UpdateBase()
         {
             UpdatePlanetStrip();
@@ -134,11 +274,34 @@ namespace DeepDrill.Game
             {
                 row.Label.text = row.Text();
                 if (row.Button == null) continue;
-                bool on = row.Enabled == null || row.Enabled();
-                row.ButtonLabel.text = row.ButtonText();
-                row.Button.interactable = on;
-                row.ButtonImage.color = on ? BuyColor : LockedColor;
+                UpdateBaseButton(row);
             }
+            foreach (var card in baseCards[baseTab])
+            {
+                card.Body.text = card.BodyText();
+                if (card.Note != null) card.Note.text = card.NoteText();
+                if (card.Foot != null) card.Foot.text = card.FootText();
+                card.Header.color = card.HeaderColor();
+                if (card.Progress != null)
+                    card.Progress.rectTransform.sizeDelta = new Vector2(card.ProgressWidth * Mathf.Clamp01(card.ProgressValue()), 2);
+                if (card.Status != null)
+                {
+                    string status = card.StatusText();
+                    card.Chip.gameObject.SetActive(!string.IsNullOrEmpty(status));
+                    card.Status.text = status;
+                    card.Chip.color = card.StatusColor != null ? card.StatusColor() : ChipDim;
+                }
+                foreach (var button in card.Buttons) UpdateBaseButton(button);
+            }
+        }
+
+        private void UpdateBaseButton(BaseRow row)
+        {
+            bool on = row.Enabled == null || row.Enabled();
+            row.ButtonLabel.text = row.ButtonText();
+            row.Button.interactable = on;
+            row.ButtonImage.color = on ? BuyColor : LockedColor;
+            row.Button.gameObject.SetActive(!string.IsNullOrEmpty(row.ButtonLabel.text));
         }
 
         private static string OnOff(bool on) => on ? "开" : "关";
@@ -165,51 +328,75 @@ namespace DeepDrill.Game
                 () => "下一层", CycleAutoRebirth, open);
         }
 
+        // Four school cards, two by two: what the school changes, what clearing it earns, and
+        // the buttons to take it for this run or pair it as a second school once cleared.
         private void BuildSchoolTab()
         {
             NewBaseTab("流派", "sys_school");
-            AddBaseRow(0, () => !sim.SchoolsUnlocked ? "第一次重铸后解锁，每局选一派，重铸后可以重选"
-                : sim.CurrentSchool != null ? $"本局流派：{sim.CurrentSchool.Name}" + (sim.SecondSchool != null ? $" + {sim.SecondSchool.Name}" : "，已通关的流派可以当第二流派")
+            AddBaseRow(0, () => !sim.SchoolsUnlocked ? "第一次重铸后解锁：每局选一派，重铸后可以重选"
+                : sim.CurrentSchool != null ? $"本局流派：{sim.CurrentSchool.Name}" + (sim.SecondSchool != null ? $" + {sim.SecondSchool.Name}" : "　·　通关过的流派可以搭配成第二流派")
                 : "本局还没选流派");
+            const float top = BaseTop + BaseRowHeight + 2, gap = 3;
+            float w = (Stage.Width - 8 - gap) / 2f, h = (Stage.Height - 14 - top - gap) / 2f;
             for (int i = 0; i < GameData.Schools.Count; i++)
             {
                 int index = i;
                 var school = GameData.Schools[i];
-                AddBaseRow(1 + i * 2, () => $"{school.Name}：{school.Desc}", () => sim.State.school == index ? "本局" : "选择",
-                    () => sim.ChooseSchool(index), () => sim.CanChooseSchool(index));
-                AddBaseRow(2 + i * 2, () => $"  本派技能分支价格 -{school.BranchDiscount:0}%；{(sim.SchoolCleared(index) ? "已通关" : "通关奖励")}：{school.Reward.Desc}",
-                    () => sim.State.secondSchool == index ? "搭配中" : "搭配", () => sim.ChooseSecond(index), () => sim.CanChooseSecond(index));
+                Color32 branch = BranchColors.TryGetValue(school.Branch, out var c) ? c : (Color32)CoinColor;
+                Color header = Color.Lerp(branch, Color.black, 0.45f);
+                float x = 4 + i % 2 * (w + gap), y = top + i / 2 * (h + gap);
+                string icon = school.Bonuses.Count > 0 ? "sicon_" + school.Bonuses[0].Effect : "sys_school";
+                var card = AddBaseCard(x, y, w, h, art.Get(icon), school.Name,
+                    () => sim.State.school == index || sim.State.secondSchool == index ? (Color)Color.Lerp(branch, Color.black, 0.2f) : header,
+                    () => school.Desc,
+                    () => $"{(sim.SchoolCleared(index) ? "已通关" : "通关奖励")}：{school.Reward.Desc}",
+                    () => sim.State.school == index ? "本局" : sim.State.secondSchool == index ? "搭配中" : sim.SchoolCleared(index) ? "已通关" : "",
+                    () => sim.State.school == index ? ChipGold : sim.State.secondSchool == index ? ChipTeal : ChipGreen,
+                    () => $"分支技能 -{school.BranchDiscount:0}%");
+                var frame = (RectTransform)card.Header.transform.parent;
+                AddCardButton(card, frame, () => sim.State.school == index ? "" : "选择", () => sim.ChooseSchool(index), () => sim.CanChooseSchool(index));
+                AddCardButton(card, frame, () => sim.SchoolCleared(index) && sim.State.school != index && sim.State.secondSchool != index ? "搭配" : "",
+                    () => sim.ChooseSecond(index), () => sim.CanChooseSecond(index));
             }
         }
 
         private void BuildFactoryTab()
         {
             NewBaseTab("工厂", "sys_factory");
-            AddBaseRow(0, () => $"矿物 {NumberFormat.Short(sim.State.ores)}   地心结晶 {sim.Crystals}/{GameData.CrystalCap:0}" +
-                (sim.CrystalsFull ? "（已满）" : $"   下一颗 {sim.CrystalProgress * 100:0}%"));
+            AddBaseRow(0, () => $"矿物 {NumberFormat.Short(sim.State.ores)}　地心结晶 {sim.Crystals}/{GameData.CrystalCap:0}" +
+                (sim.CrystalsFull ? "（已满）" : $"　下一颗 {sim.CrystalProgress * 100:0}%") + $"　·　每 {GameData.CrystalSeconds / 3600:0} 小时长一颗，每 {GameData.FactoryCrystalEvery} 级工厂用一颗",
+                info: "结晶离线也在长");
+            var accent = new Color32(0xe0, 0x8a, 0x4a, 0xff);
             for (int i = 0; i < GameData.Factory.Count; i++)
             {
                 int index = i;
                 var def = GameData.Factory[i];
-                AddBaseRow(1 + i, () => $"{def.Name} {sim.FactoryLevel(index)}/{def.MaxLevel}：{def.Desc}",
-                    () => sim.FactoryLevel(index) >= def.MaxLevel ? "满级"
-                        : $"{NumberFormat.Short(sim.FactoryOreCost(index))} 矿" + (sim.FactoryCrystalCost(index) > 0 ? " +结晶" : ""),
-                    () => sim.UpgradeFactory(index), () => sim.CanUpgradeFactory(index));
+                AddBaseItem(i, 1, GameData.Factory.Count, EffectIcon(def.Effect), accent,
+                    () => $"{def.Name}　Lv {sim.FactoryLevel(index)}/{def.MaxLevel}",
+                    () => def.Desc,
+                    buttonText: () => sim.FactoryLevel(index) >= def.MaxLevel ? "满级"
+                        : $"{NumberFormat.Short(sim.FactoryOreCost(index))} 矿" + (sim.FactoryCrystalCost(index) > 0 ? "+晶" : ""),
+                    click: () => sim.UpgradeFactory(index), enabled: () => sim.CanUpgradeFactory(index),
+                    progress: () => sim.FactoryLevel(index) / (float)def.MaxLevel, buttonWidth: 56);
             }
-            AddBaseRow(2 + GameData.Factory.Count, () => $"结晶每 {GameData.CrystalSeconds / 3600:0} 小时长一颗，离线也在长，每 {GameData.FactoryCrystalEvery} 级工厂要用一颗");
         }
 
         private void BuildResearchTab()
         {
             NewBaseTab("研究", "sys_lab");
-            AddBaseRow(0, () => $"地心结晶 {sim.Crystals}   " + (sim.ActiveResearch != null
+            AddBaseRow(0, () => $"地心结晶 {sim.Crystals}　" + (sim.ActiveResearch != null
                     ? $"研究中：{sim.ActiveResearch.Name}，还要 {FormatDuration(sim.State.researchLeft)}" : "没有进行中的研究"),
                 () => "用结晶加速", () => sim.RushResearch(), () => sim.CanRushResearch);
-            for (int i = 0; i < GameData.Research.Count; i++)
+            var accent = new Color32(0x50, 0xb8, 0xa4, 0xff);
+            int count = GameData.Research.Count;
+            for (int i = 0; i < count; i++)
             {
                 int index = i;
                 var def = GameData.Research[i];
-                AddBaseRow(1 + i, () => $"{def.Name}：{def.Desc}（{FormatDuration(def.Seconds)}，{def.Crystals} 结晶）",
+                AddBaseItem(i, 2, (count + 1) / 2, EffectIcon(def.Effect), accent,
+                    () => def.Name,
+                    () => def.Desc,
+                    () => $"{FormatDuration(def.Seconds)}　{def.Crystals} 结晶",
                     () => sim.ResearchDone(index) ? "已完成" : "开始", () => sim.StartResearch(index), () => sim.CanResearch(index));
             }
         }
@@ -217,20 +404,33 @@ namespace DeepDrill.Game
         private void BuildExpeditionTab()
         {
             NewBaseTab("探险", "sys_expedition");
-            AddBaseRow(0, () => $"探险员 {sim.State.explorers}，空闲 {sim.ExplorersIdle}。远古遗迹的宝箱里可能救出探险员");
-            for (int i = 0; i < GameData.Expeditions.Count; i++)
+            AddBaseRow(0, () => $"探险员 {sim.State.explorers}，空闲 {sim.ExplorersIdle}　·　远古遗迹的宝箱里可能救出探险员");
+            var accent = new Color32(0x76, 0xa8, 0x3a, 0xff);
+            int count = GameData.Expeditions.Count;
+            for (int i = 0; i < count; i++)
             {
                 int index = i;
                 var trip = GameData.Expeditions[i];
-                AddBaseRow(1 + i, () => $"{trip.Name}：{FormatDuration(trip.Seconds)}，成功率 {trip.Success * 100:0}%，{trip.Shards} 碎片 {trip.Ores:0} 矿" + (trip.Crystals > 0 ? $" {trip.Crystals:0} 结晶" : ""),
+                AddBaseItem(i, 2, (count + 1) / 2, art.Get("sys_expedition"), accent,
+                    () => $"{trip.Name}　{FormatDuration(trip.Seconds)}　成功 {trip.Success * 100:0}%",
+                    () => $"{trip.Shards} 碎片 {trip.Ores:0} 矿" + (trip.Crystals > 0 ? $" {trip.Crystals:0} 结晶" : ""),
+                    () => TripsUnderway(index),
                     () => "出发", () => sim.SendExpedition(index), () => sim.CanSendExpedition(index));
             }
-            for (int i = 0; i < 4; i++)
+        }
+
+        // How many teams are out on this trip, and when the first one is back.
+        private string TripsUnderway(int trip)
+        {
+            int teams = 0;
+            double soonest = double.MaxValue;
+            for (int i = 0; i < sim.State.expeditionTiers.Count; i++)
             {
-                int index = i;
-                AddBaseRow(6 + i, () => index < sim.State.expeditionTiers.Count
-                    ? $"{GameData.Expeditions[sim.State.expeditionTiers[index]].Name}：还要 {FormatDuration(sim.State.expeditionLeft[index])}" : "");
+                if (sim.State.expeditionTiers[i] != trip) continue;
+                teams++;
+                soonest = Math.Min(soonest, sim.State.expeditionLeft[i]);
             }
+            return teams == 0 ? "" : $"{teams} 队在外，{FormatDuration(soonest)}";
         }
 
         private void BuildChallengeTab()
@@ -239,13 +439,17 @@ namespace DeepDrill.Game
             AddBaseRow(0, () => sim.CurrentChallenge != null ? $"挑战中：{sim.CurrentChallenge.Name}，目标 {GameData.FormatDepth(sim.CurrentChallenge.TargetRow)}"
                     : sim.ChallengesUnlocked ? "进入挑战会放弃本局，不给碎片" : $"到达{GameData.Layers[Balance.ChallengeLayer].Name}后解锁",
                 () => "放弃", () => sim.AbandonChallenge(), () => sim.CurrentChallenge != null);
-            for (int i = 0; i < GameData.Challenges.Count; i++)
+            var accent = new Color32(0xe8, 0x40, 0x2e, 0xff);
+            int count = GameData.Challenges.Count;
+            for (int i = 0; i < count; i++)
             {
                 int index = i;
                 var def = GameData.Challenges[i];
-                AddBaseRow(1 + i / 2 * 2, () => $"{def.Name}：{def.Desc}",
-                    () => sim.ChallengeDone(index) ? "已完成" : "进入", () => sim.StartChallenge(index), () => sim.CanStartChallenge(index), column: i % 2);
-                AddBaseRow(2 + i / 2 * 2, () => $"  挖到 {GameData.FormatDepth(def.TargetRow)}：{def.Reward.Desc}", column: i % 2);
+                AddBaseItem(i, 2, (count + 1) / 2, EffectIcon(def.Reward.Effect), accent,
+                    () => def.Name,
+                    () => $"{def.Desc}·{GameData.FormatDepth(def.TargetRow)}",
+                    () => def.Reward.Desc,
+                    () => sim.ChallengeDone(index) ? "已完成" : "进入", () => sim.StartChallenge(index), () => sim.CanStartChallenge(index));
             }
         }
 
