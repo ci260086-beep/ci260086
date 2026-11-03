@@ -64,7 +64,6 @@ namespace DeepDrill.Game
             {
                 int y = 18 + f * MilestoneRowHeight;
                 var name = Ui.Label(tab, Font, GameData.Families[f].Name, 6, y, 62, 8, 7, TextAnchor.MiddleLeft);
-                name.fontStyle = FontStyle.Bold;
                 var best = Ui.Label(tab, Font, "", 6, y + 8, 62, 8, 6, TextAnchor.MiddleLeft);
                 best.color = SoftText;
                 familyBestLabels.Add(best);

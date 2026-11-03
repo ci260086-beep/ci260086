@@ -26,13 +26,11 @@ namespace DeepDrill.Game
             var inner = Ui.Panel(dim.transform, "Inner", x + 1, y + 1, OfflineWidth - 2, OfflineHeight - 2, PanelColor);
 
             var title = Ui.Label(inner.transform, Font, "欢迎回来", 0, 3, OfflineWidth - 2, 12, 9, TextAnchor.MiddleCenter);
-            title.fontStyle = FontStyle.Bold;
             title.color = CoinColor;
             offlineDetail = Ui.Label(inner.transform, Font, "", 8, 16, OfflineWidth - 18, 30, 7, TextAnchor.UpperLeft);
             offlineDetail.color = SoftText;
             offlineDetail.lineSpacing = 1.15f;
             offlineCoins = Ui.Label(inner.transform, Font, "", 0, 48, OfflineWidth - 2, 16, 12, TextAnchor.MiddleCenter);
-            offlineCoins.fontStyle = FontStyle.Bold;
             offlineCoins.color = CoinColor;
 
             var take = Ui.Button(inner.transform, Font, "收下", (OfflineWidth - 62) / 2f, 70, 60, 16, 8, CardBright, out _);

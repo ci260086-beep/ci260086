@@ -10,6 +10,7 @@ namespace DeepDrill.Game
     public static class TextAudit
     {
         private const float Slack = 1.5f; // stage pixels
+        private const float LineHeight = 1.5f; // Fusion Pixel's line is 12 pixels for 8-pixel glyphs
 
         public static int Check(string shot)
         {
@@ -20,12 +21,16 @@ namespace DeepDrill.Game
                 var rect = text.rectTransform.rect;
                 if (rect.width <= 0 || rect.height <= 0) continue;
                 float wide = text.horizontalOverflow == HorizontalWrapMode.Overflow ? text.preferredWidth - rect.width : 0;
-                float tall = text.preferredHeight - rect.height;
-                if (wide <= Slack && tall <= Slack) continue;
+                // a box shorter than one line is fine if the text keeps to one line; what matters is
+                // wrapping onto more lines than the box has room for
+                float line = text.fontSize * LineHeight * text.lineSpacing;
+                int fits = Mathf.Max(1, Mathf.FloorToInt((rect.height + Slack) / line));
+                int lines = Mathf.CeilToInt(text.preferredHeight / line - 0.05f);
+                if (wide <= Slack && lines <= fits) continue;
                 found++;
                 string what = text.text.Replace("\n", " / ");
                 if (what.Length > 40) what = what.Substring(0, 40) + "…";
-                Debug.Log($"[overflow] {shot} {PathOf(text.transform)} size={text.fontSize} box={rect.width:0}x{rect.height:0} need={text.preferredWidth:0}x{text.preferredHeight:0} \"{what}\"");
+                Debug.Log($"[overflow] {shot} {PathOf(text.transform)} size={text.fontSize} lines={lines}/{fits} box={rect.width:0}x{rect.height:0} need={text.preferredWidth:0}x{text.preferredHeight:0} \"{what}\"");
             }
             return found;
         }

@@ -222,7 +222,6 @@ namespace DeepDrill.Game
             inner.raycastTarget = false;
             tooltipIcon = Ui.Icon(inner.transform, art.Get("tab_drill"), 5, 4, SkillIconSize);
             tooltipName = Ui.Label(inner.transform, Font, "", 18, 2, 110, 10, 8, TextAnchor.MiddleLeft);
-            tooltipName.fontStyle = FontStyle.Bold;
             tooltipDesc = Ui.Label(inner.transform, Font, "", 4, 14, 124, 9, 6, TextAnchor.MiddleLeft);
             tooltipDesc.color = SoftText;
             tooltipEffect = Ui.Label(inner.transform, Font, "", 4, 23, 124, 9, 6, TextAnchor.MiddleLeft);

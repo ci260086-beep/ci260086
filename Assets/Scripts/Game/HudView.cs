@@ -246,8 +246,7 @@ namespace DeepDrill.Game
             toastLabel.color = CoinColor;
             hintLabel = Floating("", 4, 158, Stage.DigWidth - 8, 10, 7, TextAnchor.MiddleCenter);
             BuildOfflinePanel();
-            guideLabel = Floating("", 0, 24, Stage.DigWidth, 18, 13, TextAnchor.MiddleCenter);
-            guideLabel.fontStyle = FontStyle.Bold;
+            guideLabel = Floating("", 0, 74, Stage.DigWidth, 18, 13, TextAnchor.MiddleCenter); // below the stats column
 
             var eventsGo = new GameObject("EventSystem");
             eventsGo.transform.SetParent(transform, false);
@@ -329,12 +328,11 @@ namespace DeepDrill.Game
         {
             coinsLabel = Floating("0", 4, 2, 110, 18, 14, TextAnchor.MiddleLeft);
             coinsLabel.color = CoinColor;
-            coinsLabel.fontStyle = FontStyle.Bold;
             incomeLabel = Floating("", 4, 20, 110, 10, 7, TextAnchor.MiddleLeft);
             Ui.Icon(stageRoot, art.Get("icon_copper"), 4, 32, 8);
             oresLabel = Floating("0", 15, 31, 80, 10, 8, TextAnchor.MiddleLeft);
             drillsLabel = Floating("", 4, 42, 100, 10, 7, TextAnchor.MiddleLeft);
-            comboLabel = Floating("", 4, 53, 100, 11, 8, TextAnchor.MiddleLeft);
+            comboLabel = Floating("", 4, 53, 200, 18, 8, TextAnchor.MiddleLeft);
 
             bossBar = Ui.Panel(stageRoot, "BossBar", (Stage.DigWidth - BossBarWidth) / 2f, 4, BossBarWidth, 7, PanelColor);
             bossBar.raycastTarget = false;
@@ -345,7 +343,6 @@ namespace DeepDrill.Game
             bossLabel = Floating("", (Stage.DigWidth - BossBarWidth) / 2f, 12, BossBarWidth, 10, 7, TextAnchor.MiddleCenter);
 
             depthLabel = Floating("", Stage.DigWidth - 124, 2, 120, 14, 9, TextAnchor.MiddleRight);
-            depthLabel.fontStyle = FontStyle.Bold;
             clockLabel = Floating("", Stage.DigWidth - 124, 15, 120, 10, 7, TextAnchor.MiddleRight);
 
             versionLabel = Floating("", 3, 171, 90, 8, 6, TextAnchor.MiddleLeft);
@@ -417,7 +414,6 @@ namespace DeepDrill.Game
             bannerTop.raycastTarget = bannerBottom.raycastTarget = false;
             bannerLabel = Floating("", 0, 74, Stage.DigWidth, 26, 18, TextAnchor.MiddleCenter);
             bannerLabel.color = FrenzyColor;
-            bannerLabel.fontStyle = FontStyle.Bold;
             bannerSubtitle = Floating("", 0, 100, Stage.DigWidth, 12, 8, TextAnchor.MiddleCenter);
             bannerSubtitle.color = CoinColor;
         }
@@ -507,7 +503,6 @@ namespace DeepDrill.Game
             var panel = Ui.Panel(stageRoot, "Panel", Stage.PanelX, 0, Stage.PanelWidth, Stage.Height, Color.clear);
             sidePanel = panel.gameObject;
             panelTitle = Ui.Label(panel.transform, Font, "", 0, 2, Stage.PanelWidth, 12, 8, TextAnchor.MiddleCenter);
-            panelTitle.fontStyle = FontStyle.Bold;
             footerLabel = Ui.Label(panel.transform, Font, "", 3, Stage.Height - FooterHeight, Stage.PanelWidth - 6,
                 FooterHeight - 2, 6, TextAnchor.MiddleLeft);
             footerLabel.color = SoftText;
@@ -680,8 +675,9 @@ namespace DeepDrill.Game
             var bg = Ui.Panel(parent, family.Id, 3, y, Stage.PanelWidth - 6, FamilyCardHeight - 1, CardBright);
             var card = new FamilyCard { Family = family, Background = bg };
             card.Icon = Ui.Icon(bg.transform, art.Strip($"drill_{family.Index}_0", 8)[0], 2, 1, 11);
-            card.Name = Ui.Label(bg.transform, Font, family.Name, 15, 0, 56, 7, 6, TextAnchor.MiddleLeft);
-            card.Price = Ui.Label(bg.transform, Font, "", 15, 7, 56, 7, 5, TextAnchor.MiddleLeft);
+            // one line each: the name on the left, the price on the right, both in the 8-pixel font
+            card.Name = Ui.Label(bg.transform, Font, family.Name, 15, 0, 30, FamilyCardHeight - 1, 8, TextAnchor.MiddleLeft);
+            card.Price = Ui.Label(bg.transform, Font, "", 40, 0, Stage.PanelWidth - 6 - 42, FamilyCardHeight - 1, 8, TextAnchor.MiddleRight);
 
             var button = bg.gameObject.AddComponent<Button>();
             button.targetGraphic = bg;
@@ -730,7 +726,6 @@ namespace DeepDrill.Game
             pages[PageGallery] = page.gameObject;
 
             galleryCount = Ui.Label(page.transform, Font, "", 6, 2, 122, 12, 7, TextAnchor.MiddleLeft);
-            galleryCount.fontStyle = FontStyle.Bold;
 
             var close = Ui.Button(page.transform, Font, "关闭", Stage.Width - 34, 2, 30, 12, 7, CardBright, out _);
             close.onClick.AddListener(() => ShowPage(PageHangar));
@@ -893,7 +888,7 @@ namespace DeepDrill.Game
             lastComboTier = tier;
 
             comboFlash = Mathf.Max(0, comboFlash - Time.unscaledDeltaTime * 4f);
-            comboLabel.fontSize = 8 + tier * 2;
+            comboLabel.fontSize = Ui.PixelSize(8 + tier * 2);
             comboLabel.color = Color.Lerp(ComboColors[tier], Color.white, comboFlash);
             comboLabel.rectTransform.localScale = Vector3.one * (1 + comboFlash * 0.4f);
         }
@@ -978,9 +973,9 @@ namespace DeepDrill.Game
                 card.Icon.color = unlocked ? Color.white : NotOwned;
                 card.Name.color = can ? Color.white : SoftText;
                 int count = BulkCount(f);
+                // the bulk size is on the button above the cards, so only the cost goes here
                 card.Price.text = !unlocked ? "未解锁"
-                    : count > 1 ? $"×{count} {NumberFormat.Short(sim.DrillsCost(f, count))}"
-                    : NumberFormat.Short(sim.DrillPrice(f));
+                    : NumberFormat.Short(count > 1 ? sim.DrillsCost(f, count) : sim.DrillPrice(f));
                 card.Price.color = can ? CoinColor : DimText;
             }
             mergeAllButton.interactable = !sim.MergeBlocked && HasTwins();

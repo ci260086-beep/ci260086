@@ -322,7 +322,7 @@ namespace DeepDrill.Game
             }
             f.Label.text = text;
             f.Label.color = color;
-            f.Label.fontSize = size;
+            f.Label.fontSize = Ui.PixelSize(size);
             f.From = stage;
             f.Time = 0;
             f.Jitter = style == Text3.Crit ? 1.5f : 0f;

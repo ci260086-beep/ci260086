@@ -33,6 +33,10 @@ namespace DeepDrill.Game
         }
 
         public const int PixelFontSize = 8;
+        public const float LineSpacing = 0.75f; // the font's own line is 12 pixels for 8-pixel glyphs; 9 keeps lists compact
+
+        /// <summary>Height of one line of text at a font size, in stage pixels.</summary>
+        public static float LineHeight(int size) => size * 1.5f * LineSpacing;
 
         /// <summary>The pixel font only stays crisp at whole multiples of its 8-pixel size.</summary>
         public static int PixelSize(int requested) => requested <= 11 ? PixelFontSize : requested <= 19 ? PixelFontSize * 2 : PixelFontSize * 3;
@@ -67,7 +71,7 @@ namespace DeepDrill.Game
             // long text breaks onto the next line inside its box instead of running past it
             label.horizontalOverflow = HorizontalWrapMode.Wrap;
             label.verticalOverflow = VerticalWrapMode.Overflow;
-            label.lineSpacing = 0.85f; // the font's own line is 12 pixels for 8-pixel glyphs
+            label.lineSpacing = LineSpacing;
             TopLeft(label.rectTransform, x, y, w, h);
             return label;
         }

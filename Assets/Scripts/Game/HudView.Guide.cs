@@ -50,7 +50,6 @@ namespace DeepDrill.Game
 
             cardPicture = Ui.Panel(inner.transform, "Picture", 3, 14, 48 * CardPicture, 32 * CardPicture, Color.white);
             cardTitle = Ui.Label(inner.transform, Font, "", 3, 1, CardWidth - 8, 12, 8, TextAnchor.MiddleLeft);
-            cardTitle.fontStyle = FontStyle.Bold;
             cardTitle.color = CoinColor;
             cardText = Ui.Label(inner.transform, Font, "", 102, 15, CardWidth - 108, 60, 6, TextAnchor.UpperLeft);
             cardText.horizontalOverflow = HorizontalWrapMode.Wrap;
