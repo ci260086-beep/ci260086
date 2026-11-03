@@ -145,7 +145,8 @@ namespace DeepDrill.Game
         private RectTransform treeContent;
         private Sprite dashSprite;
         private RectTransform tooltip;
-        private Image tooltipFrame, tooltipIcon;
+        private Image tooltipFrame, tooltipIcon, tooltipInner;
+        private const float TooltipWidth = 156, TooltipTextTop = 14, TooltipLine = 9;
         private Text tooltipName, tooltipDesc, tooltipEffect, tooltipPrice;
         private float treeZoom = StartZoom;
         private float treeTime;
@@ -215,18 +216,37 @@ namespace DeepDrill.Game
 
         private void BuildTooltip(Transform parent)
         {
-            tooltipFrame = Ui.Panel(parent, "Tooltip", 0, 0, 132, 48, Color.white);
+            tooltipFrame = Ui.Panel(parent, "Tooltip", 0, 0, TooltipWidth, 48, Color.white);
             tooltipFrame.raycastTarget = false;
             tooltip = tooltipFrame.rectTransform;
-            var inner = Ui.Panel(tooltip, "Inner", 1, 1, 130, 46, new Color32(0x14, 0x10, 0x20, 245));
-            inner.raycastTarget = false;
-            tooltipIcon = Ui.Icon(inner.transform, art.Get("tab_drill"), 5, 4, SkillIconSize);
-            tooltipName = Ui.Label(inner.transform, Font, "", 18, 2, 110, 10, 8, TextAnchor.MiddleLeft);
-            tooltipDesc = Ui.Label(inner.transform, Font, "", 4, 14, 124, 9, 6, TextAnchor.MiddleLeft);
+            tooltipInner = Ui.Panel(tooltip, "Inner", 1, 1, TooltipWidth - 2, 46, new Color32(0x14, 0x10, 0x20, 245));
+            tooltipInner.raycastTarget = false;
+            var inner = tooltipInner.transform;
+            tooltipIcon = Ui.Icon(inner, art.Get("tab_drill"), 5, 4, SkillIconSize);
+            tooltipName = Ui.Label(inner, Font, "", 18, 2, TooltipWidth - 24, 10, 8, TextAnchor.MiddleLeft);
+            tooltipDesc = Ui.Label(inner, Font, "", 4, 14, TooltipWidth - 10, 9, 6, TextAnchor.UpperLeft);
             tooltipDesc.color = SoftText;
-            tooltipEffect = Ui.Label(inner.transform, Font, "", 4, 23, 124, 9, 6, TextAnchor.MiddleLeft);
-            tooltipPrice = Ui.Label(inner.transform, Font, "", 4, 33, 124, 10, 7, TextAnchor.MiddleLeft);
+            tooltipEffect = Ui.Label(inner, Font, "", 4, 23, TooltipWidth - 10, 9, 6, TextAnchor.UpperLeft);
+            tooltipPrice = Ui.Label(inner, Font, "", 4, 33, TooltipWidth - 10, 10, 7, TextAnchor.UpperLeft);
             tooltip.gameObject.SetActive(false);
+        }
+
+        // Each line takes the height its wrapped text needs, so a long description pushes the
+        // rest down instead of drawing over it, and the box grows to fit.
+        private void LayoutTooltip()
+        {
+            float y = TooltipTextTop;
+            foreach (var label in new[] { tooltipDesc, tooltipEffect, tooltipPrice })
+            {
+                var rt = label.rectTransform;
+                float h = string.IsNullOrEmpty(label.text) ? 0 : Mathf.Max(TooltipLine, Mathf.Ceil(label.preferredHeight));
+                rt.anchoredPosition = new Vector2(rt.anchoredPosition.x, -y);
+                rt.sizeDelta = new Vector2(rt.sizeDelta.x, Mathf.Max(h, 1));
+                y += h + (h > 0 ? 1 : 0);
+            }
+            float height = y + 2;
+            tooltip.sizeDelta = new Vector2(TooltipWidth, height + 2);
+            tooltipInner.rectTransform.sizeDelta = new Vector2(TooltipWidth - 2, height);
         }
 
         private static void Center(RectTransform rt, Vector2 at, float w, float h)
@@ -420,6 +440,7 @@ namespace DeepDrill.Game
                 tooltipPrice.color = sim.State.coins >= cost ? CoinColor : PriceRed;
             }
 
+            LayoutTooltip();
             Vector2 stage = new Vector2(Stage.Width / 2f, Stage.Height / 2f)
                 + new Vector2(1, -1) * (treeContent.anchoredPosition + node.Root.anchoredPosition * treeZoom);
             float x = Mathf.Clamp(stage.x + 12, 2, Stage.Width - tooltip.sizeDelta.x - 2);

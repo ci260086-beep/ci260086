@@ -139,6 +139,10 @@ namespace DeepDrill.Game
             root.Hud.HoverSkill("drill_01");
             yield return new WaitForSeconds(0.2f);
             yield return Shot("tree_hover");
+            // the root skill has the longest description: its lines must stack, not overlap
+            root.Hud.HoverSkill(GameSim.RootSkill);
+            yield return new WaitForSeconds(0.2f);
+            yield return Shot("tree_hover_root");
             root.Hud.BurstSkill("strata_01");
             yield return new WaitForSeconds(0.3f);
             yield return Shot("tree_burst");

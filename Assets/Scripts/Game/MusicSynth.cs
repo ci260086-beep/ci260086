@@ -235,7 +235,7 @@ namespace DeepDrill.Game
         }
 
         /// <summary>Which arrangement ForLayer uses: 0 the first bright one, 1 relaxed, 2 quiet.</summary>
-        public static int Style = 1;
+        public static int Style = 2; // the user chose the quiet arrangement
 
         /// <summary>The tune for a layer (zero based) or its guardian fight. Deeper layers sit lower and get more minor.</summary>
         public static Tune ForLayer(int layer, bool boss) => ForLayer(layer, boss, Style);
