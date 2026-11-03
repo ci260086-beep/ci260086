@@ -96,6 +96,14 @@ namespace DeepDrill.Game
         private Dictionary<int, Sprite[]> drillFrames;
         private SpriteRenderer bossFace;
         private SpriteRenderer headlamp;
+        private SpriteRenderer flame;
+        private Sprite[][] flameFrames;
+        private float flameClock;
+        private const int FlameLevels = 4, FlameFrames = 4;
+        private const float FlameFps = 10f;
+        private const float FlameLift = 10f / 16f;   // the sprite's base sits 10 pixels below its centre
+        private const float FlameDying = 0.3f;        // under this share of the combo window the flame drops a size
+        private static readonly float[] FlameLight = { 0, 6, 12, 18 }; // extra light radius per level, stage pixels
         private Sprite[] boostFrames;
         private readonly List<SpriteRenderer> boostFx = new List<SpriteRenderer>();
         private float bossHitLeft;
@@ -180,6 +188,16 @@ namespace DeepDrill.Game
                 boostFx.Add(fx);
             }
 
+            // the combo burns on the lead drill, behind its body so the drill sits in the fire
+            flame = MakeRenderer("comboFlame", 5, transform);
+            flame.enabled = false;
+            flameFrames = new Sprite[FlameLevels][];
+            for (int l = 0; l < FlameLevels; l++)
+            {
+                flameFrames[l] = new Sprite[FlameFrames];
+                for (int f = 0; f < FlameFrames; f++) flameFrames[l][f] = art.Get($"flame_{l}_{f}");
+            }
+
             headlamp = MakeRenderer("headlamp", 5, transform);
             headlamp.sprite = art.Get("light_soft");
             headlamp.sharedMaterial = AdditiveMaterial;
@@ -262,6 +280,7 @@ namespace DeepDrill.Game
             DrawMoveFx();
             DrawBoostFx();
             DrawHeadlamp(leadX, leadY);
+            DrawFlame(leadX, leadY, dt);
             DrawParallax(target);
             var timer = System.Diagnostics.Stopwatch.StartNew();
             DrawChunks(target);
@@ -527,6 +546,29 @@ namespace DeepDrill.Game
             headlamp.transform.position = new Vector3(Stage.SnapToPixel(x), Stage.SnapToPixel(y), 0);
         }
 
+        /// <summary>
+        /// The combo flame's size: 0 an ember before the bonus starts, 1 some bonus, 2 past half the
+        /// cap, 3 blue at the cap. Drops one size as the chain's window runs out.
+        /// </summary>
+        public static int FlameLevel(GameSim sim)
+        {
+            if (sim.Combo < 2) return -1;
+            double heat = sim.ComboHeat;
+            int level = heat >= 0.999 ? 3 : heat >= 0.5 ? 2 : heat > 0 ? 1 : 0;
+            if (sim.ComboWindowShare < FlameDying && level > 0) level--;
+            return level;
+        }
+
+        private void DrawFlame(float x, float y, float dt)
+        {
+            int level = FlameLevel(sim);
+            flame.enabled = level >= 0;
+            if (level < 0) return;
+            flameClock += dt * FlameFps * (1 + level * 0.25f);
+            flame.sprite = flameFrames[level][(int)flameClock % FlameFrames];
+            flame.transform.position = new Vector3(Stage.SnapToPixel(x), Stage.SnapToPixel(y + FlameLift), 0);
+        }
+
         private static Material additiveMaterial;
 
         /// <summary>Sprites with this material add light to what is behind them.</summary>
@@ -540,7 +582,8 @@ namespace DeepDrill.Game
         public void AddLights(LightMap lights)
         {
             Vector2 lead = Stage.WorldToStage(new Vector2((float)sim.Lead.Body.X, -(float)sim.Lead.Body.Y), CameraPosition);
-            lights.Add(lead, LeadLightRadius, 1.2f);
+            int burning = FlameLevel(sim);
+            lights.Add(lead, LeadLightRadius + (burning > 0 ? FlameLight[burning] : 0), 1.2f);
             for (int i = 0; i < drillPool.Count; i++)
             {
                 var sr = drillPool[i];
