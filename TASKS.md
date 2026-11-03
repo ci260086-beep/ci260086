@@ -71,7 +71,7 @@ Claude B 在自己的分支上提交并推送，由 Claude A 合并和验证。C
 | 第六阶段美术 19：钻头 8 帧动画 | B | Claude B | `art/drill-anim` | 完成 |
 | 第六阶段美术 20：发光和光照 | B | Claude B | `art/lighting` | 完成 |
 | 第六阶段美术 21：像素字体和统一界面框 | B | Claude B | `art/pixel-font` | 完成 |
-| 第六阶段美术 22：地表过渡和岩块变体 | B | Claude B | | 待做 |
+| 第六阶段美术 22：地表过渡和岩块变体 | B | Claude B | `art/ground` | 完成 |
 | 成就和技能树图标重画（用户要求精致、没有 AI 味） | B | Claude B | `art/icons` | 完成 |
 | 音效：Boss、各层机制、按钮、成就、合成等专属音效 | B | Claude B | | 待做 |
 | 排行榜：只用标准钻到达的最深层、最长游戏时长、最高钻头等级、最多钻头数量；先做游戏内统计和界面，用户还没有 Steamworks 账号，接口留着 | B | Claude B | | 待做 |
