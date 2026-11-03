@@ -139,6 +139,8 @@ namespace DeepDrill.Game
             sim.FillFrenzy();
             sim.StartFrenzy();
             yield return new WaitForSeconds(2f);
+            sim.State.coins = 1000;
+            yield return null;
             yield return Record("coins", 5.6f, t =>
             {
                 sim.State.coins = Math.Pow(10, 3 + 27 * Mathf.Clamp01(t / 5f));
@@ -146,10 +148,21 @@ namespace DeepDrill.Game
                 if (!sim.InFrenzy) { sim.FillFrenzy(); sim.StartFrenzy(); }
             });
 
-            // 8. a warp to the storm planet, and its first lightning strike
-            sim.State.warps = GameData.Planets.FindIndex(p => p.Rule == PlanetRule.storm);
-            sim.Teleport(GameData.Layers[2].RowStart + 10, Balance.StartColumn);
-            root.SnapCamera();
+            // 8. a real warp to the storm planet: a new world from its surface, and its first strike
+            sim.State.warps = GameData.Planets.FindIndex(p => p.Rule == PlanetRule.storm) - 1;
+            sim.State.maxDepthEver = GameData.TotalRows;
+            sim.State.challenge = -1;
+            bool warped = sim.Warp();
+            yield return null;
+            yield return null;
+            root.Hud.CloseCard();
+            sim.State.coins = 1e9;
+            sim.Buy(GameSim.RootSkill);
+            sim.BuyDrills(0, 24);
+            sim.State.coins = 0;
+            yield return new WaitForSeconds(2.5f);
+            root.Hud.CloseCard();
+            Debug.Log($"[trailer] warped={warped} planet={sim.Planet.Name}");
             bool struck = false;
             yield return Record("warp", 3.75f, t =>
             {
