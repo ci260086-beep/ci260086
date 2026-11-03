@@ -33,6 +33,30 @@ namespace DeepDrill.Game
         }
 
         public const int PixelFontSize = 8;
+
+        // nine-slice frames drawn by art/tools/draw_ui_frames.lua; null until the HUD hands them over
+        private static Sprite buttonFrame, insetFrame, panelFrame;
+        private const float FramePixelsPerUnit = 100f / 16f; // canvas units per art pixel: art is 16 PPU, the canvas 100
+
+        public static void UseFrames(Sprite button, Sprite inset, Sprite panel)
+        {
+            buttonFrame = button;
+            insetFrame = inset;
+            panelFrame = panel;
+        }
+
+        public enum FrameKind { Button, Inset, Panel }
+
+        /// <summary>Gives a plain panel a pixel frame; its colour still tints the fill.</summary>
+        public static Image Framed(Image image, FrameKind kind)
+        {
+            var sprite = kind == FrameKind.Button ? buttonFrame : kind == FrameKind.Inset ? insetFrame : panelFrame;
+            if (sprite == null) return image;
+            image.sprite = sprite;
+            image.type = Image.Type.Sliced;
+            image.pixelsPerUnitMultiplier = FramePixelsPerUnit;
+            return image;
+        }
         public const float LineSpacing = 0.75f; // the font's own line is 12 pixels for 8-pixel glyphs; 9 keeps lists compact
 
         /// <summary>Height of one line of text at a font size, in stage pixels.</summary>
@@ -79,7 +103,7 @@ namespace DeepDrill.Game
         public static Button Button(Transform parent, Font font, string text, float x, float y, float w, float h,
             int size, Color color, out Text label)
         {
-            var image = Panel(parent, "button", x, y, w, h, color);
+            var image = Framed(Panel(parent, "button", x, y, w, h, color), FrameKind.Button);
             var button = image.gameObject.AddComponent<Button>();
             button.targetGraphic = image;
             label = Label(image.transform, font, text, 0, 0, w, h, size, TextAnchor.MiddleCenter);

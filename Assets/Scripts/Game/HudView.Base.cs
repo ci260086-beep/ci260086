@@ -110,7 +110,7 @@ namespace DeepDrill.Game
             float width = column < 0 ? Stage.Width - 8 : (Stage.Width - 8) / 2f - 1;
             float x = column <= 0 ? 4 : 4 + (Stage.Width - 8) / 2f + 1;
             float y = BaseTop + row * BaseRowHeight;
-            var box = Ui.Panel(tab, "row", x, y, width, BaseRowHeight - 1, CardDim);
+            var box = Ui.Framed(Ui.Panel(tab, "row", x, y, width, BaseRowHeight - 1, CardDim), Ui.FrameKind.Inset);
             var item = new BaseRow { Text = text, ButtonText = buttonText, Enabled = enabled };
             float textWidth = buttonText == null ? width - 4 : width - BaseButtonWidth - 5;
             item.Label = Ui.Label(box.transform, Font, "", 2, 0, textWidth, BaseRowHeight - 1, 6, TextAnchor.MiddleLeft);

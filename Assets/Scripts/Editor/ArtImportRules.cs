@@ -20,6 +20,8 @@ namespace DeepDrill.Editor
             importer.alphaIsTransparency = true;
             importer.npotScale = TextureImporterNPOTScale.None;
             importer.isReadable = assetPath.Contains("_layer_"); // the ground painter samples these pixel by pixel
+            // interface frames stretch from the middle and keep 4-pixel corners
+            if (System.IO.Path.GetFileName(assetPath).StartsWith("ui9_")) importer.spriteBorder = new Vector4(4, 4, 4, 4);
         }
 
         // The pixel font renders hinted at whole pixels, so it stays sharp at 8, 16 and 24.

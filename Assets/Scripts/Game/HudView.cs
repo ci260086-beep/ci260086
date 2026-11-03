@@ -43,6 +43,7 @@ namespace DeepDrill.Game
         private const int GalleryCell = 16;
         private const int ComboFlashStep = 10;
         private const float TextSeconds = 0.1f;
+        private const int ToastBigChars = 12;
         private const float MaxDarkness = 0.62f; // the deepest layer away from any light; lights cut through it
         private const float FrenzyDarkness = 0.7f; // frenzy lifts the dark a little
         private const int SpeedLines = 14;
@@ -193,6 +194,7 @@ namespace DeepDrill.Game
             sim = simulation;
             art = library;
             Font = Ui.LoadPixelFont();
+            Ui.UseFrames(art.Get("ui9_button"), art.Get("ui9_inset"), art.Get("ui9_panel"));
 
             var canvasGo = new GameObject("Canvas", typeof(RectTransform));
             canvasGo.transform.SetParent(transform, false);
@@ -292,6 +294,9 @@ namespace DeepDrill.Game
         public void ShowToast(string text, float seconds)
         {
             toastLabel.text = text;
+            // the big 16-pixel size holds about thirteen characters across the dig area; longer
+            // messages drop to the 8-pixel size rather than spilling onto a second line
+            toastLabel.fontSize = text.Length > ToastBigChars ? Ui.PixelFontSize : Ui.PixelFontSize * 2;
             toastTime = seconds;
         }
 
@@ -579,7 +584,7 @@ namespace DeepDrill.Game
             var fresh = Ui.Button(settings.transform, Font, "新游戏", 4, PanelTitleHeight + 82, Stage.PanelWidth - 8, 14, 7, CardBright, out newGameLabel);
             fresh.onClick.AddListener(OnNewGameClicked);
 
-            var keys = Ui.Label(settings.transform, Font, "快捷键\n1-6 切换页面  Esc 返回\n空格 狂热  C 一键合成\nB 批量购买", 4, PanelTitleHeight + 100, Stage.PanelWidth - 8, 64, 6, TextAnchor.UpperLeft);
+            var keys = Ui.Label(settings.transform, Font, "快捷键\n1-6 切换页面\nEsc 返回\n空格 狂热\nC 一键合成\nB 批量购买", 4, PanelTitleHeight + 100, Stage.PanelWidth - 8, 64, 6, TextAnchor.UpperLeft);
             keys.color = SoftText;
             keys.horizontalOverflow = HorizontalWrapMode.Wrap;
         }
@@ -673,7 +678,7 @@ namespace DeepDrill.Game
 
         private FamilyCard BuildFamilyCard(Transform parent, FamilyDef family, int y)
         {
-            var bg = Ui.Panel(parent, family.Id, 3, y, Stage.PanelWidth - 6, FamilyCardHeight - 1, CardBright);
+            var bg = Ui.Framed(Ui.Panel(parent, family.Id, 3, y, Stage.PanelWidth - 6, FamilyCardHeight - 1, CardBright), Ui.FrameKind.Button);
             var card = new FamilyCard { Family = family, Background = bg };
             card.Icon = Ui.Icon(bg.transform, art.Strip($"drill_{family.Index}_0", 8)[0], 2, 1, 11);
             // one line each: the name on the left, the price on the right, both in the 8-pixel font
