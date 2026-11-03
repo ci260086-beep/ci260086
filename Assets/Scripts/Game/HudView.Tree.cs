@@ -29,7 +29,7 @@ namespace DeepDrill.Game
         private const int KeySize = 17;
         private const int SmallSize = 13;
         private const int KeyRing = 10;
-        private const int SkillIconSize = 7;
+        private const int SkillIconSize = 9; // sicon_ art is 9x9 since the icon pass
 
         private sealed class BranchStyle
         {
