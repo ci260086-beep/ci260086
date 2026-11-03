@@ -420,7 +420,7 @@ namespace DeepDrill.Game
             tooltipIcon.color = node.Style.Bright;
             tooltipName.text = $"{skill.Name}  Lv{level}/{skill.MaxLevel}";
             tooltipName.color = node.Style.Bright;
-            tooltipDesc.text = skill.Desc;
+            tooltipDesc.text = Ui.NoBreak(skill.Desc);
             tooltipEffect.text = maxed ? $"当前 {FormatEffect(skill, level)}" : $"{FormatEffect(skill, level)} → {FormatEffect(skill, level + 1)}";
 
             if (!sim.LayerReached(skill))

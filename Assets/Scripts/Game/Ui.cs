@@ -34,6 +34,13 @@ namespace DeepDrill.Game
 
         public const int PixelFontSize = 8;
 
+        /// <summary>
+        /// Swaps spaces for no-break spaces, so Chinese text with numbers in it ("第 2 级") wraps
+        /// character by character like the rest of the sentence instead of breaking at the space.
+        /// The pixel font maps U+00A0 to its space.
+        /// </summary>
+        public static string NoBreak(string text) => text?.Replace(' ', '\u00A0');
+
         // nine-slice frames drawn by art/tools/draw_ui_frames.lua; null until the HUD hands them over
         private static Sprite buttonFrame, insetFrame, panelFrame;
         private const float FramePixelsPerUnit = 100f / 16f; // canvas units per art pixel: art is 16 PPU, the canvas 100
