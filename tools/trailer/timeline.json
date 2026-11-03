@@ -1,0 +1,211 @@
+{
+ "bpm": 128,
+ "fps": 30,
+ "clips": [
+  {
+   "clip": "intro",
+   "bars": 2,
+   "from": 0.0
+  },
+  {
+   "clip": "dig",
+   "bars": 2,
+   "from": 0.0,
+   "card": [
+    "挖！",
+    "DIG!"
+   ]
+  },
+  {
+   "clip": "combo",
+   "bars": 3,
+   "from": 0.0,
+   "card": [
+    "连击！",
+    "COMBO!"
+   ]
+  },
+  {
+   "clip": "merge",
+   "bars": 2,
+   "from": 0.0,
+   "card": [
+    "合成！",
+    "MERGE!"
+   ]
+  },
+  {
+   "clip": "layers",
+   "bars": 4,
+   "from": 0.0,
+   "card": [
+    "12 层地心",
+    "12 LAYERS DEEP"
+   ]
+  },
+  {
+   "clip": "boss",
+   "bars": 3,
+   "from": 0.0,
+   "card": [
+    "打穿 BOSS",
+    "BREAK THE BOSSES"
+   ]
+  },
+  {
+   "clip": "coins",
+   "bars": 3,
+   "from": 0.0,
+   "card": [
+    "停不下来",
+    "CAN'T STOP DIGGING"
+   ]
+  },
+  {
+   "clip": "warp",
+   "bars": 2,
+   "from": 0.0,
+   "card": [
+    "飞向新星球",
+    "NEW PLANETS"
+   ]
+  },
+  {
+   "clip": "logo",
+   "bars": 3
+  }
+ ],
+ "sfx": [
+  {
+   "at": 0.15,
+   "name": "break_0",
+   "every": 0.47,
+   "until": 3.6,
+   "vol": 0.6
+  },
+  {
+   "clip": "dig",
+   "at": 0.0,
+   "name": "land",
+   "vol": 0.8
+  },
+  {
+   "clip": "dig",
+   "at": 0.6,
+   "name": "coin",
+   "every": 0.47,
+   "until": 3.6,
+   "vol": 0.4
+  },
+  {
+   "clip": "combo",
+   "at": 0.0,
+   "name": "land",
+   "vol": 0.8
+  },
+  {
+   "clip": "combo",
+   "at": 0.2,
+   "name": "frenzy",
+   "vol": 0.6
+  },
+  {
+   "clip": "combo",
+   "at": 4.2,
+   "name": "upgrade",
+   "vol": 0.6
+  },
+  {
+   "clip": "merge",
+   "at": 0.0,
+   "name": "land",
+   "vol": 0.8
+  },
+  {
+   "clip": "merge",
+   "at": 0.6,
+   "name": "merge_all",
+   "vol": 0.7
+  },
+  {
+   "clip": "merge",
+   "at": 2.5,
+   "name": "merge_all",
+   "vol": 0.7
+  },
+  {
+   "clip": "layers",
+   "at": 0.0,
+   "name": "layer",
+   "vol": 0.6
+  },
+  {
+   "clip": "layers",
+   "at": 0.0,
+   "name": "layer_breaks",
+   "vol": 0.55
+  },
+  {
+   "clip": "layers",
+   "at": 5.0,
+   "name": "blast",
+   "vol": 0.7
+  },
+  {
+   "clip": "layers",
+   "at": 6.67,
+   "name": "blast",
+   "vol": 0.7
+  },
+  {
+   "clip": "boss",
+   "at": 0.0,
+   "name": "boss_start",
+   "vol": 0.8
+  },
+  {
+   "clip": "boss",
+   "at": 1.2,
+   "name": "boss_warn",
+   "vol": 0.6
+  },
+  {
+   "clip": "boss",
+   "at": 3.4,
+   "name": "boss_defeat",
+   "vol": 0.9
+  },
+  {
+   "clip": "coins",
+   "at": 0.0,
+   "name": "land",
+   "vol": 0.8
+  },
+  {
+   "clip": "coins",
+   "at": 0.2,
+   "name": "coin_rise",
+   "every": 0.117,
+   "until": 5.0,
+   "vol": 0.35
+  },
+  {
+   "clip": "warp",
+   "at": 0.0,
+   "name": "warp",
+   "vol": 0.7
+  },
+  {
+   "clip": "warp",
+   "at": 2.2,
+   "name": "storm",
+   "vol": 0.8
+  },
+  {
+   "clip": "logo",
+   "at": 0.0,
+   "name": "achievement",
+   "vol": 0.7
+  }
+ ]
+}
