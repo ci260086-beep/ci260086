@@ -16,7 +16,9 @@ namespace DeepDrill.Game
     {
         public const int Fps = 30;
         private const float Tail = 0.5f;    // each clip runs a little long so the edit can trim on the beat
-        private const int LayersShown = 9;  // layers 2 to 10; the guardian of the tenth comes next
+        private const int LayersShown = 8;  // layers 2 to 9, a quarter bar each
+        private const int StarTab = 6;      // the base page's star map
+        private const int DeepStormLayer = 8;
         private const int BossLayer = 9;    // deeper than every layer shown, so its body is still there
 
         private GameRoot root;
@@ -51,70 +53,129 @@ namespace DeepDrill.Game
             Debug.Log($"[trailer] {clip} {frames} frames");
         }
 
+        private const float Bar = 240f / 140f; // the trailer is cut at 140 beats a minute
+
         private IEnumerator Run()
         {
             var sim = root.Sim;
             sim.State.autoDrills = sim.State.autoSkills = false; // nothing spends the scripted coins
             yield return new WaitForSeconds(1f);
 
-            // 1. a fresh game: the player taps the drill and it bites into the topsoil
+            // cold open: a fresh game, the player taps the drill into the topsoil
             float nextTap = 0;
-            yield return Record("intro", 3.75f, t =>
+            yield return Record("intro", 2 * Bar, t =>
             {
                 if (t < nextTap) return;
-                nextTap = t + 0.12f;
+                nextTap = t + 0.1f;
                 root.ClickCell(sim.Lead.Body.BodyRow + 1, sim.Lead.Body.Column);
             });
 
-            // 2. a handful of drills dig on their own
-            sim.State.coins = 1e6;
+            // the drop: a swarm digging in a frenzy
+            sim.State.coins = 1e9;
             sim.Buy(GameSim.RootSkill);
-            for (int i = 0; i < 6; i++) sim.BuyDrill(0);
-            sim.State.coins = 120; // an early-game purse, not the million it took to set this up
-            yield return new WaitForSeconds(2.5f);
-            yield return Record("dig", 3.75f);
+            sim.BuyDrills(0, 40);
+            sim.BuyDrills(1, 12);
+            sim.State.coins = 250;
+            sim.FillFrenzy();
+            sim.StartFrenzy();
+            yield return new WaitForSeconds(2f);
+            yield return Record("dig", Bar, t => sim.PrimeCombo(30));
 
-            // 3. the chain builds: the lead drill's flame goes from ember to blue
-            for (int i = 0; i < 10; i++) sim.BuyDrill(1);
-            yield return new WaitForSeconds(1f);
-            yield return Record("combo", 5.6f, t => sim.PrimeCombo(2 + (int)(t / 5f * 120)));
+            // the chain heats the lead drill's flame from ember to blue in one bar
+            yield return Record("combo", Bar, t => sim.PrimeCombo(2 + (int)(t / Bar * 130)));
 
-            // 4. a hangar full of drills merges up the ladder
+            // a hangar full of drills merges up the ladder
             sim.State.coins = 1e12;
-            sim.BuyDrills(0, 96);
-            yield return new WaitForSeconds(1f);
-            bool merged = false, refilled = false, mergedAgain = false;
-            yield return Record("merge", 3.75f, t =>
+            sim.BuyDrills(0, 120);
+            yield return new WaitForSeconds(0.6f);
+            bool merged = false;
+            yield return Record("merge", Bar, t =>
             {
-                if (!merged && t >= 0.6f) { merged = true; sim.MergeEverything(); }
-                if (!refilled && t >= 1.9f) { refilled = true; for (int i = 0; i < 64; i++) sim.State.drills.Add(DrillCode.Make(2, 3)); sim.SyncDrills(); }
-                if (!mergedAgain && t >= 2.5f) { mergedAgain = true; sim.MergeEverything(); }
+                if (!merged && t >= 0.25f) { merged = true; sim.MergeEverything(); }
                 sim.PrimeCombo(150);
             });
 
-            // 5. down through the layers, one beat each, in a frenzy
+            // charges going off one after another
+            int blasts = 0;
+            yield return Record("blast", Bar, t =>
+            {
+                int due = (int)(t / (Bar / 6));
+                while (blasts <= due && blasts < 6)
+                {
+                    sim.Detonate(sim.Lead.Body.FeetRow + 2 + blasts % 3, Balance.StartColumn - 6 + blasts * 3);
+                    blasts++;
+                }
+            });
+
+            // the skill tree, zoomed out, lighting up node after node
+            sim.State.coins = 1e30;
+            sim.State.maxDepthEver = Math.Max(sim.State.maxDepthEver, GameData.TotalRows);
+            root.Hud.ShowTreePage();
+            root.Hud.CenterTree();
+            root.Hud.ZoomTree(-10);
+            yield return new WaitForSeconds(0.6f);
+            int nextSkill = 0;
+            yield return Record("tree", 2 * Bar, t =>
+            {
+                int due = (int)(t / (2 * Bar) * GameData.Skills.Count);
+                while (nextSkill <= due && nextSkill < GameData.Skills.Count)
+                {
+                    string id = GameData.Skills[nextSkill++].Id;
+                    if (sim.Buy(id)) root.Hud.BurstSkill(id);
+                }
+            });
+
+            // the base's systems, one beat each
+            sim.State.rebirths = Math.Max(1, sim.State.rebirths);
+            sim.State.schoolsCleared.Add(GameData.Schools.Count - 1);
+            sim.ChooseSchool(0);
+            int[] tabs = { 1, 2, 3, 4, 5 };
+            int shownTab = -1;
+            root.Hud.ShowBasePage(tabs[0]);
+            yield return new WaitForSeconds(0.4f);
+            yield return Record("systems", 2 * Bar, t =>
+            {
+                int i = Mathf.Min(tabs.Length - 1, (int)(t / (2 * Bar / tabs.Length)));
+                if (i == shownTab) return;
+                shownTab = i;
+                root.Hud.ShowBasePage(tabs[i]);
+            });
+
+            // the collection filling up
+            var achievements = GameData.Achievements;
+            sim.State.achievements.Clear();
+            root.Hud.ShowGalleryPage();
+            yield return new WaitForSeconds(0.3f);
+            int unlocked = 0;
+            yield return Record("achievements", 2 * Bar, t =>
+            {
+                int due = (int)(t / (1.6f * Bar) * achievements.Count);
+                while (unlocked <= due && unlocked < achievements.Count) sim.State.achievements.Add(achievements[unlocked++].Id);
+            });
+            root.Hud.ShowHangarPage();
+
+            // down through the layers, a quarter bar each
             sim.FillFrenzy();
             sim.StartFrenzy();
             int shown = 0;
-            float beat = 7.5f / LayersShown;
-            yield return Record("layers", 7.5f, t =>
+            float step = 2 * Bar / LayersShown;
+            yield return Record("layers", 2 * Bar, t =>
             {
-                int s = Mathf.Min(LayersShown, 1 + (int)(t / beat));
-                if (s == shown) return;
-                shown = s;
-                var layer = GameData.Layers[s];
-                sim.State.bossesDefeated = s;
+                int layerIndex = Mathf.Min(LayersShown, 1 + (int)(t / step));
+                if (layerIndex == shown) return;
+                shown = layerIndex;
+                var layer = GameData.Layers[layerIndex];
+                sim.State.bossesDefeated = layerIndex;
                 int mid = (layer.RowStart + layer.RowEnd) / 2;
                 sim.Teleport(mid, Balance.StartColumn);
                 root.SnapCamera();
-                if (s == 1) sim.World.CarveRect(16 * 16, (mid + 2) * 16, 24 * 16, (mid + 6) * 16); // sand pours
-                if (s == 7 || s == 9) sim.Detonate(mid + 3, Balance.StartColumn + 3); // magma pockets go up
+                if (layerIndex == 1) sim.World.CarveRect(16 * 16, (mid + 2) * 16, 24 * 16, (mid + 6) * 16); // sand pours
+                if (layerIndex >= 6) sim.Detonate(mid + 3, Balance.StartColumn + 3);
                 if (!sim.InFrenzy) { sim.FillFrenzy(); sim.StartFrenzy(); }
                 sim.PrimeCombo(150);
             });
 
-            // 6. a guardian: it arrives, winds up, and the swarm breaks through it. It has to be
-            // deeper than anything shown before, as guardians above the drill are already gone.
+            // a guardian, landed on by a thousand drills and broken through
             sim.State.bossesDefeated = BossLayer;
             while (sim.State.drills.Count < 1000) sim.State.drills.Add(DrillCode.Make(sim.State.drills.Count % GameData.Families.Count, 6 + sim.State.drills.Count % 6));
             sim.SyncDrills();
@@ -124,49 +185,59 @@ namespace DeepDrill.Game
             while (!sim.BossActive && Time.time < bossWait) yield return null;
             Debug.Log($"[trailer] boss active={sim.BossActive}");
             bool hurried = false, beaten = false;
-            yield return Record("boss", 5.6f, t =>
+            yield return Record("boss", 2 * Bar, t =>
             {
-                if (!hurried && t >= 1.2f) { hurried = true; sim.HurryBossMove(); }
-                if (!beaten && t >= 3.4f && sim.BossActive) { beaten = true; sim.DefeatBossNow(); }
+                if (!hurried && t >= 0.5f) { hurried = true; sim.HurryBossMove(); }
+                if (!beaten && t >= 1.8f && sim.BossActive) { beaten = true; sim.DefeatBossNow(); }
             });
 
-            // 7. past the guardian with a thousand drills, and the coin count runs away
-            int deepLayer = BossLayer + 1;
-            sim.State.bossesDefeated = deepLayer;
-            var deep = GameData.Layers[deepLayer];
-            sim.Teleport(deep.RowStart + 12, Balance.StartColumn);
+            // the star map, then a real warp to the storm planet and its first strike
+            root.Hud.ShowBasePage(StarTab);
+            yield return new WaitForSeconds(0.3f);
+            bool warped = false, settled = false, struck = false;
+            yield return Record("planets", 2 * Bar, t =>
+            {
+                if (!warped && t >= 1.1f)
+                {
+                    warped = true;
+                    sim.State.warps = GameData.Planets.FindIndex(p => p.Rule == PlanetRule.storm) - 1;
+                    sim.State.maxDepthEver = GameData.TotalRows;
+                    sim.State.challenge = -1;
+                    sim.Warp();
+                    root.Hud.ShowHangarPage();
+                }
+                if (warped && !settled && t >= 1.2f)
+                {
+                    settled = true;
+                    root.Hud.CloseCard();
+                    sim.State.coins = 1e9;
+                    sim.Buy(GameSim.RootSkill);
+                    sim.BuyDrills(0, 30);
+                    sim.State.coins = 0;
+                }
+                if (settled && !struck && t >= 1.5f) { struck = true; sim.HurryStorm(0.5); }
+            });
+            Debug.Log($"[trailer] planet={sim.Planet.Name}");
+
+            // the climax on the storm planet: a thousand drills, lightning and a runaway count
+            sim.State.bossesDefeated = DeepStormLayer;
+            var deep = GameData.Layers[DeepStormLayer];
+            sim.Teleport((deep.RowStart + deep.RowEnd) / 2, Balance.StartColumn);
+            while (sim.State.drills.Count < 1000) sim.State.drills.Add(DrillCode.Make(sim.State.drills.Count % GameData.Families.Count, 6 + sim.State.drills.Count % 6));
+            sim.SyncDrills();
             root.SnapCamera();
             sim.FillFrenzy();
             sim.StartFrenzy();
             yield return new WaitForSeconds(2f);
             sim.State.coins = 1000;
             yield return null;
-            yield return Record("coins", 5.6f, t =>
+            float nextStrike = 0.3f;
+            yield return Record("coins", 2.5f * Bar, t =>
             {
-                sim.State.coins = Math.Pow(10, 3 + 27 * Mathf.Clamp01(t / 5f));
+                sim.State.coins = Math.Pow(10, 3 + 27 * Mathf.Clamp01(t / (2.2f * Bar)));
                 sim.PrimeCombo(150);
                 if (!sim.InFrenzy) { sim.FillFrenzy(); sim.StartFrenzy(); }
-            });
-
-            // 8. a real warp to the storm planet: a new world from its surface, and its first strike
-            sim.State.warps = GameData.Planets.FindIndex(p => p.Rule == PlanetRule.storm) - 1;
-            sim.State.maxDepthEver = GameData.TotalRows;
-            sim.State.challenge = -1;
-            bool warped = sim.Warp();
-            yield return null;
-            yield return null;
-            root.Hud.CloseCard();
-            sim.State.coins = 1e9;
-            sim.Buy(GameSim.RootSkill);
-            sim.BuyDrills(0, 24);
-            sim.State.coins = 0;
-            yield return new WaitForSeconds(2.5f);
-            root.Hud.CloseCard();
-            Debug.Log($"[trailer] warped={warped} planet={sim.Planet.Name}");
-            bool struck = false;
-            yield return Record("warp", 3.75f, t =>
-            {
-                if (!struck && t >= 1.0f) { struck = true; sim.HurryStorm(0.6); } // lightning lands near 1.6 s, after the card
+                if (t >= nextStrike) { nextStrike += Bar / 2; sim.HurryStorm(0); }
             });
 
             Debug.Log("[trailer] done");
