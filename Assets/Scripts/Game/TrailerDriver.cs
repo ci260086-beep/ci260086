@@ -150,7 +150,13 @@ namespace DeepDrill.Game
             yield return Record("achievements", 2 * Bar, t =>
             {
                 int due = (int)(t / (1.6f * Bar) * achievements.Count);
-                while (unlocked <= due && unlocked < achievements.Count) sim.State.achievements.Add(achievements[unlocked++].Id);
+                while (unlocked <= due && unlocked < achievements.Count)
+                {
+                    string id = achievements[unlocked++].Id;
+                    if (!sim.State.achievements.Contains(id)) sim.State.achievements.Add(id);
+                    var rare = GameData.Rares[unlocked * 7 % GameData.Rares.Count]; // the rare items fill in alongside
+                    sim.State.AddRare(rare.Id);
+                }
             });
             root.Hud.ShowHangarPage();
 
