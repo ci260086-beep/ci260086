@@ -102,6 +102,10 @@ def main():
         if name == "logo":
             write_logo(ffmpeg, last, count + int(1.5 * fps))
             continue
+        if clip.get("synthetic") == "planets":
+            last = write_planets(ffmpeg, count, clip["card"], beat_frames)
+            print(f"{name}: {count} frames", flush=True)
+            continue
 
         # a clip plays its own frames; a montage strings beats of other clips together
         pieces = clip.get("montage") or [[name, clip.get("from", 0), clip["bars"]]]
@@ -146,21 +150,82 @@ def main():
     print("wrote", out)
 
 
+def silhouette(img):
+    """A planet as a black shape against space: near-black fill, a dim violet rim on its lit side."""
+    a = img.getchannel("A").point(lambda v: 255 if v > 127 else 0)
+    out = Image.new("RGBA", img.size, (0, 0, 0, 0))
+    out.paste(Image.new("RGBA", img.size, (14, 12, 22, 255)), (0, 0), a)
+    inner = a.filter(ImageFilter.MinFilter(3))
+    rim = Image.eval(a, lambda v: v).point(lambda v: v)
+    edge = Image.new("L", img.size, 0)
+    edge.paste(a, (0, 0))
+    edge.paste(0, (0, 0), inner)
+    # only the upper-left half of the rim catches the light
+    for y in range(img.height):
+        for x in range(img.width):
+            if edge.getpixel((x, y)) and x + y > img.width:
+                edge.putpixel((x, y), 0)
+    out.paste(Image.new("RGBA", img.size, (78, 58, 120, 255)), (0, 0), edge)
+    q = text_mask("?")
+    q = q.resize((q.width * 2, q.height * 2), Image.NEAREST)
+    qs = Image.new("RGBA", q.size, (0, 0, 0, 0))
+    qs.paste(Image.new("RGBA", q.size, (120, 100, 170, 255)), (0, 0), q)
+    out.alpha_composite(qs, ((img.width - q.width) // 2, (img.height - q.height) // 2))
+    return out
+
+
+def write_planets(ffmpeg, count, lines, beat_frames):
+    """Earth lit at the left and the planets still to come as silhouettes, one per beat, under a
+    big card: the warp is shown without giving the new worlds away."""
+    art = os.path.join(ROOT, "Assets/Art/Items")
+    space = Image.open(os.path.join(art, "star_map.png")).convert("RGBA")
+    earth = Image.open(os.path.join(art, "planet_0.png")).convert("RGBA")
+    shadows = [silhouette(Image.open(os.path.join(art, f"planet_{i}.png")).convert("RGBA")) for i in range(1, 8)]
+    # an arc of seven slots across the lower two thirds of the stage, each a little smaller
+    slots = [(92 + i * 31, 118 - int(18 * (1 - ((i - 3) / 3.5) ** 2)), 40 - i * 2) for i in range(7)]
+    title = card(lines, 4)
+    frames_out = None
+    for i in range(count):
+        stage = space.copy()
+        stage.alpha_composite(earth, (18, 96))
+        shown = min(7, int(i / beat_frames))  # one more planet every beat
+        for k in range(shown):
+            x, y, size = slots[k]
+            sh = shadows[k].resize((size, size), Image.NEAREST)
+            age = i - int(k * beat_frames)
+            if age < 2:  # each arrives with a white flash of its shape
+                flash = Image.new("RGBA", sh.size, (255, 255, 255, 0))
+                flash.putalpha(sh.getchannel("A"))
+                sh = flash
+            stage.alpha_composite(sh, (x - size // 2, y - size // 2))
+        frame = stage.resize((W, H), Image.NEAREST)
+        if i < 2:
+            frame = ImageEnhance.Brightness(frame.convert("RGB")).enhance(1.6 - 0.3 * i).convert("RGBA")
+        t = title if i >= 2 else title.resize((int(title.width * 1.12), int(title.height * 1.12)), Image.NEAREST)
+        shake = PX * (2 if i % 2 else -2) if i < 6 else 0
+        frame.alpha_composite(t, ((W - t.width) // 2 + shake, int(H * 0.2) - t.height // 2))
+        frames_out = frame.convert("RGB")
+        ffmpeg.stdin.write(frames_out.tobytes())
+    return frames_out
+
+
 def write_logo(ffmpeg, background, count):
     """The last shot, darkened and blurred, with the logo landing on it and the call to wishlist."""
     base = ImageEnhance.Brightness(background.filter(ImageFilter.GaussianBlur(14))).enhance(0.35)
     logo = Image.open(os.path.join(ROOT, "art/trailer/logo.png")).convert("RGBA")
     logo_big = logo.resize((logo.width * PX, logo.height * PX), Image.NEAREST)
     logo_pop = logo.resize((int(logo.width * PX * 1.15), int(logo.height * PX * 1.15)), Image.NEAREST)
-    cta = card(["加入 Steam 愿望单", "WISHLIST ON STEAM"], 2)
+    cta = card(["加入 Steam 愿望单", "WISHLIST ON STEAM"], 3)
     for i in range(count):
         frame = base.convert("RGBA")
         if i < 2:
             frame = ImageEnhance.Brightness(frame.convert("RGB")).enhance(2.2 - 0.5 * i).convert("RGBA")
         lg = logo_pop if i < 3 else logo_big
-        frame.alpha_composite(lg, ((W - lg.width) // 2, int(H * 0.36) - lg.height // 2))
-        if i >= int(bar * fps * 0.5):  # the call to action comes in half a bar later
-            frame.alpha_composite(cta, ((W - cta.width) // 2, int(H * 0.78) - cta.height // 2))
+        frame.alpha_composite(lg, ((W - lg.width) // 2, int(H * 0.34) - lg.height // 2))
+        if i >= int(bar * fps * 0.25):  # the call to action lands a beat after the logo, and pulses
+            pulse = 1.08 if (i // int(bar * fps * 0.25)) % 2 == 0 and i % int(bar * fps * 0.25) < 3 else 1.0
+            c = cta if pulse == 1.0 else cta.resize((int(cta.width * pulse), int(cta.height * pulse)), Image.NEAREST)
+            frame.alpha_composite(c, ((W - c.width) // 2, int(H * 0.76) - c.height // 2))
         ffmpeg.stdin.write(frame.convert("RGB").tobytes())
     print(f"logo: {count} frames", flush=True)
 

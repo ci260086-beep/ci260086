@@ -10,7 +10,7 @@ local root = DEEPDRILL_ROOT or ""
 local previewDir = app.params["preview"]
 local pc = app.pixelColor
 
-local W, H = 160, 56
+local W, H = 184, 60
 
 local function canvas(w, h)
   local g = { w = w, h = h, px = {} }
