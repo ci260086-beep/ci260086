@@ -276,6 +276,7 @@ namespace DeepDrill.Game
         /// <summary>A smaller line under the toast, for how the layer just entered works.</summary>
         public void ShowHint(string text, float seconds)
         {
+            if (Filming) return; // the trailer's title cards do the talking
             hintLabel.text = text;
             hintTime = seconds;
         }
@@ -293,6 +294,7 @@ namespace DeepDrill.Game
         /// <summary>Big outlined message at the bottom of the dig area; fades out by itself.</summary>
         public void ShowToast(string text, float seconds)
         {
+            if (Filming) return;
             toastLabel.text = text;
             // the big 16-pixel size holds about thirteen characters across the dig area; longer
             // messages drop to the 8-pixel size rather than spilling onto a second line
@@ -871,7 +873,7 @@ namespace DeepDrill.Game
         {
             bool locked = !sim.AutoDrillUnlocked;
             bool firstDrill = !locked && sim.State.BoughtOf(0) == 0;
-            guideLabel.gameObject.SetActive((locked && currentPage != PageTree) || (firstDrill && currentPage == PageHangar));
+            guideLabel.gameObject.SetActive(!Filming && ((locked && currentPage != PageTree) || (firstDrill && currentPage == PageHangar)));
             float pulse = Mathf.PingPong(Time.unscaledTime * 2f, 1f);
             double rootCost = sim.SkillCost(GameData.Skill(GameSim.RootSkill));
             bool earned = sim.State.coins >= rootCost;

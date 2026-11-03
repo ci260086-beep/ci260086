@@ -15,7 +15,9 @@ namespace DeepDrill.Game
     public sealed class TrailerDriver : MonoBehaviour
     {
         public const int Fps = 30;
-        private const float Tail = 0.5f; // each clip runs a little long so the edit can trim on the beat
+        private const float Tail = 0.5f;    // each clip runs a little long so the edit can trim on the beat
+        private const int LayersShown = 9;  // layers 2 to 10; the guardian of the tenth comes next
+        private const int BossLayer = 9;    // deeper than every layer shown, so its body is still there
 
         private GameRoot root;
         private string folder;
@@ -52,6 +54,7 @@ namespace DeepDrill.Game
         private IEnumerator Run()
         {
             var sim = root.Sim;
+            sim.State.autoDrills = sim.State.autoSkills = false; // nothing spends the scripted coins
             yield return new WaitForSeconds(1f);
 
             // 1. a fresh game: the player taps the drill and it bites into the topsoil
@@ -67,6 +70,7 @@ namespace DeepDrill.Game
             sim.State.coins = 1e6;
             sim.Buy(GameSim.RootSkill);
             for (int i = 0; i < 6; i++) sim.BuyDrill(0);
+            sim.State.coins = 120; // an early-game purse, not the million it took to set this up
             yield return new WaitForSeconds(2.5f);
             yield return Record("dig", 3.75f);
 
@@ -92,10 +96,10 @@ namespace DeepDrill.Game
             sim.FillFrenzy();
             sim.StartFrenzy();
             int shown = 0;
-            float beat = 7.5f / 11f;
+            float beat = 7.5f / LayersShown;
             yield return Record("layers", 7.5f, t =>
             {
-                int s = Mathf.Min(GameData.Layers.Count - 1, 1 + (int)(t / beat));
+                int s = Mathf.Min(LayersShown, 1 + (int)(t / beat));
                 if (s == shown) return;
                 shown = s;
                 var layer = GameData.Layers[s];
@@ -104,18 +108,19 @@ namespace DeepDrill.Game
                 sim.Teleport(mid, Balance.StartColumn);
                 root.SnapCamera();
                 if (s == 1) sim.World.CarveRect(16 * 16, (mid + 2) * 16, 24 * 16, (mid + 6) * 16); // sand pours
-                if (s == 7 || s == 9) sim.Detonate(mid + 3, Balance.StartColumn + 3);
+                if (s == 7 || s == 9) sim.Detonate(mid + 3, Balance.StartColumn + 3); // magma pockets go up
                 if (!sim.InFrenzy) { sim.FillFrenzy(); sim.StartFrenzy(); }
                 sim.PrimeCombo(150);
             });
 
-            // 6. a guardian: it arrives, winds up, and the swarm breaks through it
-            const int bossLayer = 3;
-            sim.State.bossesDefeated = bossLayer;
-            sim.Teleport(GameData.Layers[bossLayer].RowEnd - 1, Balance.StartColumn);
+            // 6. a guardian: it arrives, winds up, and the swarm breaks through it. It has to be
+            // deeper than anything shown before, as guardians above the drill are already gone.
+            sim.State.bossesDefeated = BossLayer;
+            sim.Teleport(GameData.Layers[BossLayer].RowEnd - 1, Balance.StartColumn);
             root.SnapCamera();
             float bossWait = Time.time + 4f;
             while (!sim.BossActive && Time.time < bossWait) yield return null;
+            Debug.Log($"[trailer] boss active={sim.BossActive}");
             bool hurried = false, beaten = false;
             yield return Record("boss", 5.6f, t =>
             {
@@ -123,11 +128,11 @@ namespace DeepDrill.Game
                 if (!beaten && t >= 3.4f && sim.BossActive) { beaten = true; sim.DefeatBossNow(); }
             });
 
-            // 7. deep down with a thousand drills, and the coin count runs away
-            const int deepLayer = 9;
+            // 7. past the guardian with a thousand drills, and the coin count runs away
+            int deepLayer = BossLayer + 1;
             sim.State.bossesDefeated = deepLayer;
             var deep = GameData.Layers[deepLayer];
-            sim.Teleport((deep.RowStart + deep.RowEnd) / 2, Balance.StartColumn);
+            sim.Teleport(deep.RowStart + 12, Balance.StartColumn);
             while (sim.State.drills.Count < 1000) sim.State.drills.Add(DrillCode.Make(sim.State.drills.Count % GameData.Families.Count, 6 + sim.State.drills.Count % 6));
             sim.SyncDrills();
             root.SnapCamera();
