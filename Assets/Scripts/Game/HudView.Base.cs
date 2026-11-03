@@ -192,6 +192,7 @@ namespace DeepDrill.Game
         private const float ItemBottom = Stage.Height - 2;
         private const float ItemGap = 2;
         private const int ItemIcon = 18; // a 9-pixel skill icon at twice its size
+        private const int ItemButtonWidth = 30; // two or three characters: 开始, 进入, 已完成
 
         /// <summary>
         /// A list card on a base tab: an accent bar, an icon, a bright title line, one or two soft
@@ -211,7 +212,10 @@ namespace DeepDrill.Game
             bar.raycastTarget = false;
             if (icon != null) Ui.Icon(frame.transform, icon, 5, (h - ItemIcon) / 2, ItemIcon);
             float textX = icon != null ? 7 + ItemIcon : 6;
-            float textW = w - textX - (buttonText != null ? BaseButtonWidth + 5 : 3);
+            // with a third line the button sits beside it, so the first two lines get the full width
+            bool buttonLow = third != null && buttonText != null;
+            float fullW = w - textX - 3;
+            float textW = buttonText != null && !buttonLow ? fullW - ItemButtonWidth - 2 : fullW;
             const float line = 11;
             int lines = third != null ? 3 : 2;
             float textY = Mathf.Max(0, (h - lines * line) / 2 - 1);
@@ -223,7 +227,7 @@ namespace DeepDrill.Game
             card.Note.color = new Color32(0xf3, 0xe9, 0xdc, 0xff);
             if (third != null)
             {
-                card.Foot = Ui.Label(frame.transform, Font, "", textX, textY + line * 2, textW, line, 6, TextAnchor.MiddleLeft);
+                card.Foot = Ui.Label(frame.transform, Font, "", textX, textY + line * 2, buttonLow ? fullW - ItemButtonWidth - 2 : textW, line, 6, TextAnchor.MiddleLeft);
                 card.Foot.color = SoftText;
             }
             if (progress != null)
@@ -238,7 +242,8 @@ namespace DeepDrill.Game
             if (buttonText != null)
             {
                 var row = new BaseRow { ButtonText = buttonText, Enabled = enabled };
-                row.Button = Ui.Button(frame.transform, Font, "", w - BaseButtonWidth - 3, (h - CardButtonHeight - 2) / 2, BaseButtonWidth, CardButtonHeight + 2, 6, CardBright, out row.ButtonLabel);
+                float by = buttonLow ? textY + line * 2 : (h - CardButtonHeight - 2) / 2;
+                row.Button = Ui.Button(frame.transform, Font, "", w - ItemButtonWidth - 3, by, ItemButtonWidth, CardButtonHeight, 6, CardBright, out row.ButtonLabel);
                 row.ButtonImage = row.Button.GetComponent<Image>();
                 row.Button.onClick.AddListener(() => click());
                 card.Buttons.Add(row);
@@ -407,8 +412,8 @@ namespace DeepDrill.Game
                 int index = i;
                 var trip = GameData.Expeditions[i];
                 AddBaseItem(i, 2, (count + 1) / 2, art.Get("sys_expedition"), accent,
-                    () => $"{trip.Name}　{FormatDuration(trip.Seconds)}",
-                    () => $"成功率 {trip.Success * 100:0}%　{trip.Shards} 碎片 {trip.Ores:0} 矿" + (trip.Crystals > 0 ? $" {trip.Crystals:0} 晶" : ""),
+                    () => $"{trip.Name}　{FormatDuration(trip.Seconds)}　成功 {trip.Success * 100:0}%",
+                    () => $"{trip.Shards} 碎片 {trip.Ores:0} 矿" + (trip.Crystals > 0 ? $" {trip.Crystals:0} 结晶" : ""),
                     () => TripsUnderway(index),
                     () => "出发", () => sim.SendExpedition(index), () => sim.CanSendExpedition(index));
             }
@@ -425,7 +430,7 @@ namespace DeepDrill.Game
                 teams++;
                 soonest = Math.Min(soonest, sim.State.expeditionLeft[i]);
             }
-            return teams == 0 ? "" : $"出发中 {teams} 队，最快 {FormatDuration(soonest)} 回来";
+            return teams == 0 ? "" : $"{teams} 队在外，{FormatDuration(soonest)}";
         }
 
         private void BuildChallengeTab()
@@ -442,8 +447,8 @@ namespace DeepDrill.Game
                 var def = GameData.Challenges[i];
                 AddBaseItem(i, 2, (count + 1) / 2, EffectIcon(def.Reward.Effect), accent,
                     () => def.Name,
-                    () => def.Desc,
-                    () => $"挖到 {GameData.FormatDepth(def.TargetRow)}：{def.Reward.Desc}",
+                    () => $"{def.Desc}·{GameData.FormatDepth(def.TargetRow)}",
+                    () => def.Reward.Desc,
                     () => sim.ChallengeDone(index) ? "已完成" : "进入", () => sim.StartChallenge(index), () => sim.CanStartChallenge(index));
             }
         }
