@@ -116,7 +116,9 @@ namespace DeepDrill.Game
             // 6. a guardian: it arrives, winds up, and the swarm breaks through it. It has to be
             // deeper than anything shown before, as guardians above the drill are already gone.
             sim.State.bossesDefeated = BossLayer;
-            sim.Teleport(GameData.Layers[BossLayer].RowEnd - 1, Balance.StartColumn);
+            while (sim.State.drills.Count < 1000) sim.State.drills.Add(DrillCode.Make(sim.State.drills.Count % GameData.Families.Count, 6 + sim.State.drills.Count % 6));
+            sim.SyncDrills();
+            sim.Teleport(GameData.Layers[BossLayer].RowEnd, Balance.StartColumn); // feet on the guardian's back
             root.SnapCamera();
             float bossWait = Time.time + 4f;
             while (!sim.BossActive && Time.time < bossWait) yield return null;
@@ -133,8 +135,6 @@ namespace DeepDrill.Game
             sim.State.bossesDefeated = deepLayer;
             var deep = GameData.Layers[deepLayer];
             sim.Teleport(deep.RowStart + 12, Balance.StartColumn);
-            while (sim.State.drills.Count < 1000) sim.State.drills.Add(DrillCode.Make(sim.State.drills.Count % GameData.Families.Count, 6 + sim.State.drills.Count % 6));
-            sim.SyncDrills();
             root.SnapCamera();
             sim.FillFrenzy();
             sim.StartFrenzy();
