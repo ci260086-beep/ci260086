@@ -100,11 +100,21 @@ namespace DeepDrill.Game
             return label;
         }
 
+        /// <summary>Raised by every button the interface makes; the sound bank answers with a click.</summary>
+        public static event System.Action Clicked;
+
+        /// <summary>Gives a button the shared click sound. Buttons from <see cref="Button"/> already have it.</summary>
+        public static Button WithClick(Button button)
+        {
+            button.onClick.AddListener(() => Clicked?.Invoke());
+            return button;
+        }
+
         public static Button Button(Transform parent, Font font, string text, float x, float y, float w, float h,
             int size, Color color, out Text label)
         {
             var image = Framed(Panel(parent, "button", x, y, w, h, color), FrameKind.Button);
-            var button = image.gameObject.AddComponent<Button>();
+            var button = WithClick(image.gameObject.AddComponent<Button>());
             button.targetGraphic = image;
             label = Label(image.transform, font, text, 0, 0, w, h, size, TextAnchor.MiddleCenter);
             return button;

@@ -265,6 +265,7 @@ namespace DeepDrill.Game
                     hud.Lights.AddFlash(CellStage(e.Row, e.Col), Stage.Width, 1.5f, BlastLightSeconds); // the whole view lights up
                     world.Shake(0.3f, 3f);
                     hud.ShowToast("雷击！连击清零", 1.5f);
+                    sound.Play("storm", 0.8f, 0, true);
                     break;
 
                 case SimEventKind.Explosion:
@@ -277,6 +278,7 @@ namespace DeepDrill.Game
 
                 case SimEventKind.FrenzyStarted:
                     hud.ShowToast("狂热模式！", 1.5f);
+                    sound.Play("frenzy", 0.6f, 0, true);
                     world.Shake(0.25f, 2f);
                     break;
 
@@ -291,23 +293,25 @@ namespace DeepDrill.Game
                 case SimEventKind.BossStarted:
                     hud.ShowToast($"{sim.CurrentBoss.BossName}！{sim.BossDuration:0} 秒内打穿它", 3f);
                     world.Shake(0.3f, 3f);
-                    sound.Play("boss", 0.8f, 0, true);
+                    sound.Play("boss_start", 0.8f, 0, true);
                     hud.ShowBossBanner(sim.CurrentBoss.BossName, $"第 {sim.CurrentBoss.Index + 1} 层守卫 · 招式：{sim.CurrentBossMove.Name}");
                     break;
 
                 case SimEventKind.BossFailed:
                     hud.ShowToast($"{sim.CurrentBoss.BossName}恢复了，升级后再来", 3f);
+                    sound.Play("boss_fail", 0.6f, 0, true);
                     break;
 
                 case SimEventKind.BossMoveWarned:
                     hud.ShowToast($"{sim.CurrentBoss.BossName}要放{sim.CurrentBossMove.Name}了！", 1.5f);
-                    sound.Play("boss", 0.4f, 0.3f, true);
+                    sound.Play("boss_warn", 0.5f, 0, true);
                     break;
 
                 case SimEventKind.BossMoveStruck:
                     hud.ShowToast(sim.CurrentBossMove.Desc, 2.5f);
                     world.Shake(0.3f, 4f);
                     world.ShowBossMove((int)e.Amount);
+                    sound.Play("boss_strike", 0.75f, 0, true);
                     break;
 
                 case SimEventKind.BossMoveEnded:
@@ -316,6 +320,7 @@ namespace DeepDrill.Game
 
                 case SimEventKind.BossArmorBroken:
                     hud.ShowToast("甲壳碎了！", 2f);
+                    sound.Play("boss_armor", 0.7f, 0, true);
                     world.Shake(0.3f, 4f);
                     break;
 
@@ -329,11 +334,13 @@ namespace DeepDrill.Game
 
                 case SimEventKind.Overheated:
                     hud.ShowToast("过热！开启狂热可以散热", 2f);
+                    sound.Play("overheat", 0.6f, 0, true);
                     break;
 
                 case SimEventKind.LayerEntered:
                     hud.ShowToast($"进入{GameData.Layers[(int)e.Amount].Name}", LayerHintSeconds);
                     hud.ShowHint(GameData.Layers[(int)e.Amount].Mechanic, LayerHintSeconds);
+                    sound.Play("layer", 0.6f, 0, true);
                     break;
 
                 case SimEventKind.BossDefeated:
@@ -345,7 +352,7 @@ namespace DeepDrill.Game
                     fx.Sparks(WorldView.CellCenter(e.Row, e.Col), LootFountain);
                     fx.Debris(WorldView.CellCenter(e.Row, e.Col), DirtBits, 60);
                     world.Shake(0.4f, 8f);
-                    sound.Play("blast", 0.9f, -0.2f, true);
+                    sound.Play("boss_defeat", 0.85f, 0, true);
                     slowMotion = SlowMotionSeconds;
                     Vector2 bossStage = CellStage(e.Row, e.Col);
                     for (int i = 0; i < LootFountain; i++)
@@ -358,14 +365,14 @@ namespace DeepDrill.Game
                     break;
 
                 case SimEventKind.DrillsMergedAll:
-                    sound.Play("merge", 0.7f);
+                    sound.Play("merge_all", 0.65f, 0, true);
                     OnMerged();
                     hud.ShowMergedAll((int)e.Amount, e.Row);
                     hud.ShowToast($"合成了 {e.Row} 次，最高 {HudView.KindName((int)e.Amount)}", 2.5f);
                     break;
 
                 case SimEventKind.DrillMerged:
-                    sound.Play("merge", 0.6f);
+                    sound.Play("merge", 0.6f, 0, true);
                     OnMerged();
                     hud.ShowMerged((int)e.Amount);
                     hud.ShowToast($"合成了{HudView.KindName((int)e.Amount)}", 2f);
@@ -373,42 +380,50 @@ namespace DeepDrill.Game
 
                 case SimEventKind.RareFound:
                     hud.ShowToast($"发现稀有物品：{GameData.Rares[(int)e.Amount].Name}", 4f);
+                    sound.Play("rare", 0.6f, 0, true);
                     break;
 
                 case SimEventKind.AchievementUnlocked:
                     hud.ShowToast($"成就：{GameData.Achievements[(int)e.Amount].Name}", 3f);
+                    sound.Play("achievement", 0.65f, 0, true);
                     break;
 
                 case SimEventKind.SurfaceEventAppeared:
-                    sound.Play("upgrade", 0.5f, 0.4f, true);
+                    sound.Play("event", 0.5f, 0, true);
                     break;
 
                 case SimEventKind.SurfaceEventClaimed:
-                    sound.Play("merge", 0.7f);
+                    sound.Play("claim", 0.6f, 0, true);
                     world.Shake(0.15f, 2f);
                     break;
 
                 case SimEventKind.SchoolCleared:
                     hud.ShowToast($"{GameData.Schools[(int)e.Amount].Name}通关：{GameData.Schools[(int)e.Amount].Reward.Desc}", 5f);
+                    sound.Play("milestone", 0.5f, 0, true);
                     break;
 
                 case SimEventKind.ResearchDone:
                     hud.ShowToast($"研究完成：{GameData.Research[(int)e.Amount].Name}", 4f);
+                    sound.Play("chime", 0.5f, 0, true);
                     break;
 
                 case SimEventKind.ExpeditionReturned:
                     hud.ShowToast($"{GameData.Expeditions[(int)e.Amount].Name}{(e.Row > 0 ? "成功归来" : "空手而归")}", 4f);
+                    sound.Play("chime", 0.5f, 0, true);
                     break;
 
                 case SimEventKind.ExplorerRescued:
                     hud.ShowToast("救出一名探险员", 4f);
+                    sound.Play("chime", 0.5f, 0, true);
                     break;
 
                 case SimEventKind.ChallengeFailed:
                     hud.ShowToast($"时间到：{GameData.Challenges[(int)e.Amount].Name}失败，可以再来", 5f);
+                    sound.Play("boss_fail", 0.4f, 0, true);
                     break;
                 case SimEventKind.ChallengeDone:
                     hud.ShowToast($"挑战完成：{GameData.Challenges[(int)e.Amount].Reward.Desc}", 5f);
+                    sound.Play("milestone", 0.5f, 0, true);
                     break;
 
                 case SimEventKind.RunRestarted:
@@ -420,19 +435,23 @@ namespace DeepDrill.Game
                 case SimEventKind.Warped:
                     hud.ShowPlanetCard((int)e.Amount);
                     hud.ShowToast($"星系跃迁：抵达{sim.Planet.Name}，获得 {e.Amount:0} 星点", 5f);
+                    sound.Play("warp", 0.6f, 0, true);
                     break;
 
                 case SimEventKind.MilestoneReached:
                     hud.ShowToast($"里程碑：{GameData.Milestones[(int)e.Amount][e.Row].Desc}", 3f);
+                    sound.Play("milestone", 0.5f, 0, true);
                     break;
 
                 case SimEventKind.MasteryUp:
                     hud.ShowToast($"{GameData.Layers[(int)e.Amount].Name}精通升到 {e.Row} 级", 3f);
+                    sound.Play("milestone", 0.5f, 0, true);
                     break;
 
                 case SimEventKind.Rebirth:
                     hud.ClearInFlight();
                     hud.ShowToast($"地核重铸：获得 {NumberFormat.Short(e.Amount)} 星核碎片", 4f);
+                    sound.Play("rebirth", 0.6f, 0, true);
                     world.SnapToDrill();
                     SaveNow();
                     break;
@@ -487,6 +506,7 @@ namespace DeepDrill.Game
             bool hard = e.Amount >= HardLandingSpeed;
             var feet = new Vector2(e.Col, -e.Row + 0.5f);
             fx.Debris(feet, DirtBits, hard ? 14 : 6);
+            if (e.Lead && hard) sound.Play("land", 0.5f);
             if (e.Lead) world.Shake(hard ? 0.28f : 0.12f, hard ? 4f : 2f);
         }
 
@@ -495,7 +515,7 @@ namespace DeepDrill.Game
             Vector2 center = WorldView.CellCenter(e.Row, e.Col);
             fx.Debris(center, BitsColor(e.Block), e.Block == BlockType.Chest ? 18 : 6);
             fx.Puff(center);
-            sound.Play(e.Block == BlockType.HardRock || e.Block == BlockType.SuperHard ? "hard" : "break", 0.35f);
+            sound.Play(e.Block == BlockType.HardRock || e.Block == BlockType.SuperHard ? "hard" : SfxSynth.BreakFor(GameData.LayerOfRow(e.Row)), 0.35f);
 
             if (e.FromClick && hitstopCooldown <= 0)
             {
@@ -511,7 +531,8 @@ namespace DeepDrill.Game
             {
                 var color = e.Block == BlockType.Ore ? OreTextColor(e.Ore) : CoinText;
                 fx.FloatText("+" + NumberFormat.Short(e.Amount), stage, color, e.Block == BlockType.Chest ? 11 : 8, FxView.Text3.Ore);
-                sound.Play("coin", 0.3f, Mathf.Min(0.6f, sim.Combo * 0.004f));
+                if (e.Block == BlockType.Chest) sound.Play("chest", 0.45f, 0, true);
+                else sound.Play("coin", 0.3f, Mathf.Min(0.6f, sim.Combo * 0.004f));
             }
 
             bool ore = e.Block == BlockType.Ore;

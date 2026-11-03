@@ -685,7 +685,7 @@ namespace DeepDrill.Game
             card.Name = Ui.Label(bg.transform, Font, family.Name, 15, 0, 30, FamilyCardHeight - 1, 8, TextAnchor.MiddleLeft);
             card.Price = Ui.Label(bg.transform, Font, "", 40, 0, Stage.PanelWidth - 6 - 42, FamilyCardHeight - 1, 8, TextAnchor.MiddleRight);
 
-            var button = bg.gameObject.AddComponent<Button>();
+            var button = Ui.WithClick(bg.gameObject.AddComponent<Button>());
             button.targetGraphic = bg;
             button.transition = Selectable.Transition.None;
             button.onClick.AddListener(() => sim.BuyDrills(family.Index, BulkCount(family.Index)));

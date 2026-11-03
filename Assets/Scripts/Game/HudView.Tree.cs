@@ -325,7 +325,7 @@ namespace DeepDrill.Game
                 node.Dots[i] = dot;
             }
 
-            var button = hit.gameObject.AddComponent<Button>();
+            var button = Ui.WithClick(hit.gameObject.AddComponent<Button>());
             button.targetGraphic = hit;
             button.transition = Selectable.Transition.None;
             button.onClick.AddListener(() =>

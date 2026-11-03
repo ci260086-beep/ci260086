@@ -23,7 +23,7 @@ namespace DeepDrill.Game
         {
             eventIcon = Ui.Icon(stageRoot, art.Get("sys_event"), 0, 0, EventIconSize);
             eventIcon.raycastTarget = true;
-            eventButton = eventIcon.gameObject.AddComponent<Button>();
+            eventButton = Ui.WithClick(eventIcon.gameObject.AddComponent<Button>());
             eventButton.targetGraphic = eventIcon;
             eventButton.transition = Selectable.Transition.None;
             eventButton.onClick.AddListener(OnEventClicked);
