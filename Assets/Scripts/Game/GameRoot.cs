@@ -156,6 +156,8 @@ namespace DeepDrill.Game
 
             string shots = CommandLine.Value("--shots");
             if (shots != null && !restarted) gameObject.AddComponent<DemoDriver>().Init(this, shots);
+            string trailer = CommandLine.Value("--trailer");
+            if (trailer != null && !restarted) gameObject.AddComponent<TrailerDriver>().Init(this, trailer);
         }
 
         private static Camera BuildCamera(RenderTexture target)

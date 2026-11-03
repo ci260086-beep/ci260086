@@ -320,6 +320,9 @@ namespace DeepDrill.Game
 
         public void ShowGalleryPage() => ShowPage(PageGallery);
 
+        /// <summary>While the trailer records: no version or frame rate in the corner.</summary>
+        public bool Filming { get; set; }
+
         /// <summary>Opens the gallery on its records tab, the leaderboard page.</summary>
         public void ShowRecordsPage()
         {
@@ -835,7 +838,7 @@ namespace DeepDrill.Game
                 depthLabel.text = $"{GameData.Layers[GameData.LayerOfRow(s.depth)].Name} {GameData.FormatDepth(s.depth)}";
                 clockLabel.text = sim.ChallengeSecondsLeft >= 0 ? $"剩余 {(int)sim.ChallengeSecondsLeft / 60}:{(int)sim.ChallengeSecondsLeft % 60:00}"
                     : sim.HasTide ? $"{(sim.TideHigh ? "涨潮" : "退潮")} {sim.TideSecondsLeft:0} 秒" : "";
-                versionLabel.text = $"v{Application.version}  {fpsAverage:0} FPS";
+                versionLabel.text = Filming ? "" : $"v{Application.version}  {fpsAverage:0} FPS";
                 UpdateCombo();
                 UpdateGuideCards();
                 if (currentPage == PageHangar) UpdateHangar();

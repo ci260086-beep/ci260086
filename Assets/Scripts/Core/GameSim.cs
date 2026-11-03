@@ -215,6 +215,13 @@ namespace DeepDrill.Core
 
         public int Combo { get; private set; }
 
+        /// <summary>Sets the chain to a count with a full window, for the trailer's scripted shots.</summary>
+        public void PrimeCombo(int combo)
+        {
+            Combo = Math.Max(0, combo);
+            comboClock = Balance.ComboWindowSeconds + Effect(SkillEffect.combo_window);
+        }
+
         /// <summary>How much of the combo window is left, 1 just after a hit and 0 when the chain breaks.</summary>
         public double ComboWindowShare =>
             Combo <= 0 ? 0 : Math.Max(0, Math.Min(1, comboClock / (Balance.ComboWindowSeconds + Effect(SkillEffect.combo_window))));
