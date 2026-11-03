@@ -229,7 +229,7 @@ def write_planets(ffmpeg, count, lines, beat_frames):
             frame = ImageEnhance.Brightness(frame.convert("RGB")).enhance(1.6 - 0.3 * i).convert("RGBA")
         t = title if i >= 2 else title.resize((int(title.width * 1.12), int(title.height * 1.12)), Image.NEAREST)
         shake = PX * (2 if i % 2 else -2) if i < 6 else 0
-        frame.alpha_composite(t, ((W - t.width) // 2 + shake, int(H * 0.2) - t.height // 2))
+        frame.alpha_composite(t, ((W - t.width) // 2 + shake, max(PX * 2, int(H * 0.24) - t.height // 2)))
         frames_out = frame.convert("RGB")
         ffmpeg.stdin.write(frames_out.tobytes())
     return frames_out
