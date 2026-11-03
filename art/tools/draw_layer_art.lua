@@ -121,8 +121,9 @@ for i, v in ipairs(LAYER_HUES) do
 end
 
 ---------------------------------------------------------------------------------------------------
--- Rock textures. Every layer gets the same three kinds so the ground reads the same way all the
--- way down: clumped specks, wavy strata and cracked plates. The layer adds its own glint.
+-- Rock textures. Every layer gets the same five kinds so the ground reads the same way all the
+-- way down: clumped specks, wavy strata, cracked plates, pebbles and pitted rock. The layer adds
+-- its own glint.
 ---------------------------------------------------------------------------------------------------
 -- a few bright pixels that belong to the layer: none, quartz, crystal, water, gold, mica, lava...
 local GLINTS = {
@@ -154,6 +155,49 @@ local function rock(layer, kind)
       g:wrap(x, a, r[3]); g:wrap(x, a + 1, r[3]); g:wrap(x, a - 1, r[5])
       g:wrap(x, b, r[2]); g:wrap(x, b - 1, r[5])
       if roll(x, 7, salt) < 0.3 then g:wrap(x, 7 + (x % 2), r[3]) end
+    end
+  elseif kind == 3 then
+    -- conglomerate: rounded pebbles set in the ground, lit from the upper left like everything
+    local placed = 0
+    for i = 0, 40 do
+      if placed >= 6 then break end
+      local cx = math.floor(roll(i, 1, salt) * 16)
+      local cy = math.floor(roll(i, 2, salt) * 16)
+      local rad = 1.2 + roll(i, 3, salt) * 1.3
+      local free = true
+      for dy = -3, 3 do for dx = -3, 3 do
+        if g:get((cx + dx) % 16, (cy + dy) % 16) ~= r[4] then free = false end
+      end end
+      if free then
+        placed = placed + 1
+        for dy = -3, 3 do for dx = -3, 3 do
+          local d = (dx * dx + dy * dy) / (rad * rad)
+          if d <= 1 then
+            local light = -dx - dy
+            local c = (light >= 2 and d > 0.25) and r[5] or ((light <= -2 and d > 0.3) and r[2] or r[3])
+            g:wrap(cx + dx, cy + dy, c)
+          end
+        end end
+        -- the shadow the pebble throws on the ground below and right of it
+        local sx, sy = cx + math.floor(rad + 0.5), cy + math.floor(rad + 0.5)
+        if g:get(sx % 16, sy % 16) == r[4] then g:wrap(sx, sy, r[3]) end
+      end
+    end
+  elseif kind == 4 then
+    -- porous rock: small pits whose top inside sits in shadow and whose lower lip catches light
+    for i = 0, 9 do
+      local x = math.floor(roll(i, 5, salt) * 16)
+      local y = math.floor(roll(i, 6, salt) * 16)
+      local wide = roll(i, 7, salt) < 0.5
+      g:wrap(x, y, r[1]); if wide then g:wrap(x + 1, y, r[1]) end
+      g:wrap(x, y + 1, r[2]); if wide then g:wrap(x + 1, y + 1, r[2]) end
+      g:wrap(x, y + 2, r[5]); if wide then g:wrap(x + 1, y + 2, r[5]) end
+      g:wrap(x - 1, y, r[3])
+    end
+    -- a hairline of finer grain running across
+    for x = 0, 15 do
+      local y = math.floor(8 + 2 * math.sin(x * math.pi / 8 + layer * 0.7) + 0.5)
+      if g:get(x, y % 16) == r[4] and roll(x, 9, salt) < 0.7 then g:wrap(x, y, r[3]) end
     end
   else
     -- plates split by dark cracks with a lit lower edge; hot layers glow in the cracks
@@ -438,7 +482,7 @@ local DECALS = {
 local rocks, decals = {}, {}
 for layer = 1, 12 do
   rocks[layer], decals[layer] = {}, {}
-  for kind = 0, 2 do
+  for kind = 0, 4 do
     local g = rock(layer, kind)
     save(g, "Layers/rock_layer_" .. (layer - 1) .. "_" .. kind)
     rocks[layer][kind] = g
@@ -452,10 +496,10 @@ for layer = 1, 12 do
   end
 end
 
--- preview: one row per layer, the three rock textures tiled 2x2, then each decoration on rock 0
+-- preview: one row per layer, the five rock textures tiled 2x2, then each decoration on rock 0
 if previewDir then
   local k = 4
-  local rowW = (32 * 3 + 16 * 4 + 7 * 2) * k
+  local rowW = (32 * 5 + 16 * 4 + 9 * 2) * k
   local img = Image(rowW + 4 * k, 12 * (32 + 2) * k + 2 * k, ColorMode.RGB)
   img:clear(hex("2a2630"))
   local function put(px, py, c)
@@ -463,12 +507,12 @@ if previewDir then
   end
   for layer = 1, 12 do
     local oy = 2 + (layer - 1) * 34
-    for kind = 0, 2 do
+    for kind = 0, 4 do
       local ox = 2 + kind * 34
       for y = 0, 31 do for x = 0, 31 do put(ox + x, oy + y, rocks[layer][kind]:get(x % 16, y % 16)) end end
     end
     for n = 1, 4 do
-      local ox = 2 + 3 * 34 + (n - 1) * 18
+      local ox = 2 + 5 * 34 + (n - 1) * 18
       for y = 0, 15 do
         for x = 0, 15 do
           local c = decals[layer][n]:get(x, y)

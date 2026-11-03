@@ -11,13 +11,20 @@ namespace DeepDrill.Game
     public static class PixelPainter
     {
         private const int DecalsPerLayer = 4;
-        private const int RocksPerLayer = 3;
+        private const int RocksPerLayer = 5;
         private const int DecalEveryTiles = 9;
         private const int RockPatchTiles = 4;
         private const int WobbleStretch = 3;
         private const int WobbleOffset = 41;
         private const int WobbleReach = 3;
         private const int WobbleSteps = 128;
+
+        // layer boundaries: the band where the next layer's ground creeps in, in pixels, and how far
+        // the noisy contour may wander from the straight line through the band
+        private const int BlendLeadPixels = 16;
+        private const float BlendNoise = 0.32f;
+        private const int BlendCellLarge = 11;
+        private const int BlendCellSmall = 4;
 
         private static readonly Color32 Clear = new Color32(0, 0, 0, 0);
         private static Color32[][] ramps;
@@ -145,6 +152,50 @@ namespace DeepDrill.Game
             return rocks[layer][patch % RocksPerLayer][ry * size + rx];
         }
 
+        // Smooth noise in [0, 1): bilinear between hashed corners of a grid of `cell` pixels.
+        private static float ValueNoise(int x, int y, int cell, int salt)
+        {
+            int gx = Mathf.FloorToInt(x / (float)cell), gy = Mathf.FloorToInt(y / (float)cell);
+            float fx = (x - gx * cell) / (float)cell, fy = (y - gy * cell) / (float)cell;
+            fx = fx * fx * (3 - 2 * fx);
+            fy = fy * fy * (3 - 2 * fy);
+            float a = Corner(gx, gy, salt), b = Corner(gx + 1, gy, salt);
+            float c = Corner(gx, gy + 1, salt), d = Corner(gx + 1, gy + 1, salt);
+            return Mathf.Lerp(Mathf.Lerp(a, b, fx), Mathf.Lerp(c, d, fx), fy);
+        }
+
+        private static float Corner(int x, int y, int salt) => (Mix(x + salt, y - salt * 3) & 0xffff) / 65536f;
+
+        /// <summary>
+        /// Which layer's look a ground pixel takes. Gameplay mixes layers tile by tile near the end
+        /// of a layer; the paint follows a noisy contour through the same band instead, so the
+        /// ground changes in organic tongues and pockets rather than in square tiles. Paint only:
+        /// what a tile is made of still comes from WorldGen.
+        /// </summary>
+        public static int PaintLayerAt(int seed, int x, int y, int tileLayer)
+        {
+            int row = y / PixelWorld.TileSize;
+            int layer = GameData.LayerOfRow(row);
+            int upper = layer, lower = layer + 1;
+            int size = PixelWorld.TileSize;
+            // just past a boundary the band continues a little into the new layer
+            if (layer > 0 && y < GameData.Layers[layer - 1].RowEnd * size + BlendLeadPixels)
+            {
+                upper = layer - 1;
+                lower = layer;
+            }
+            if (lower >= GameData.Layers.Count) return tileLayer;
+            int end = GameData.Layers[upper].RowEnd * size;
+            int start = end - Balance.TransitionRows * size;
+            if (y < start) return tileLayer;
+            float t = (y - start + 0.5f) / (end + BlendLeadPixels - start);
+            float n = ValueNoise(x, y, BlendCellLarge, seed) * 0.7f + ValueNoise(x, y, BlendCellSmall, seed + 17) * 0.3f;
+            float v = t + (n - 0.5f) * 2 * BlendNoise;
+            // a one pixel checker along the contour softens the step between the two textures
+            if (Mathf.Abs(v - 0.5f) < 0.025f) return ((x + y) & 1) == 0 ? lower : upper;
+            return v > 0.5f ? lower : upper;
+        }
+
         /// <summary>Repaints part of a chunk into its colour buffer.</summary>
         public static void Paint(PixelWorld world, int cx, int cy, PixelChunk chunk, Color32[] buffer, int seed,
             int minX, int minY, int maxX, int maxY)
@@ -153,7 +204,7 @@ namespace DeepDrill.Game
             int size = PixelChunk.Size;
             int last = size - 1;
             var mats = chunk.Mats;
-            int layer = 0, tileRow = -1, tileCol = -1;
+            int layer, tileLayer = 0, tileRow = -1, tileCol = -1;
             for (int ly = minY; ly <= maxY; ly++)
             {
                 int y = cy * size + ly;
@@ -173,8 +224,9 @@ namespace DeepDrill.Game
                     {
                         tileRow = row;
                         tileCol = col;
-                        layer = WorldGen.LayerAt(seed, row, col);
+                        tileLayer = WorldGen.LayerAt(seed, row, col);
                     }
+                    layer = PaintLayerAt(seed, x, y, tileLayer);
                     // neighbours inside the chunk are read directly; only its rim asks the world
                     bool up = ly > 0 ? mats[at - size] == Mat.Air : y > 0 && !world.Solid(x, y - 1);
                     bool down = ly < last ? mats[at + size] == Mat.Air : !world.Solid(x, y + 1);
