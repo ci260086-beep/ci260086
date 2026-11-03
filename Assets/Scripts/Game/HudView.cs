@@ -70,9 +70,9 @@ namespace DeepDrill.Game
         private static readonly Color SoftText = new Color32(0xc4, 0x9a, 0x6c, 0xff);
         private static readonly Color DimText = new Color32(0x8c, 0x5f, 0x3f, 0xff);
         private static readonly Color NotOwned = new Color(0.25f, 0.25f, 0.28f, 1f);
-        private static readonly Color[] ComboColors =
+        private static readonly Color[] ComboColors = // the multiplier's colour matches its flame
         {
-            Color.white, new Color32(0xff, 0xe2, 0x7a, 255), new Color32(0xff, 0x9a, 0x3c, 255), new Color32(0xff, 0x50, 0x70, 255),
+            new Color32(0xf5, 0xa8, 0x3a, 255), new Color32(0xf7, 0x96, 0x2a, 255), new Color32(0xfc, 0xd0, 0x40, 255), new Color32(0x68, 0xc4, 0xff, 255),
         };
 
         private static readonly Dictionary<string, Color32> BranchColors = new Dictionary<string, Color32>
@@ -171,6 +171,11 @@ namespace DeepDrill.Game
         private double oresInFlight;
         private float coinPulse;
         private float comboFlash;
+        private Image comboFlame;
+        private Sprite[][] comboFrames;
+        private float flameClock;
+        private const int FlameWidth = 16, FlameHeight = 24, FlameLevels = 4, FlameFrames = 4;
+        private const float FlameFps = 10f;
         private float textClock;
         private int lastComboTier;
         private int comboStep;
@@ -345,7 +350,19 @@ namespace DeepDrill.Game
             Ui.Icon(stageRoot, art.Get("icon_copper"), 4, 32, 8);
             oresLabel = Floating("0", 15, 31, 80, 10, 8, TextAnchor.MiddleLeft);
             drillsLabel = Floating("", 4, 42, 100, 10, 7, TextAnchor.MiddleLeft);
-            comboLabel = Floating("", 4, 53, 200, 18, 8, TextAnchor.MiddleLeft);
+            // the combo is a flame, not a sentence: it grows and changes colour as the bonus builds,
+            // and burns down as the chain's window runs out; only the multiplier is written beside it
+            comboFlame = Ui.Panel(stageRoot, "ComboFlame", 4 + FlameWidth / 2f, 52 + FlameHeight, FlameWidth, FlameHeight, Color.white);
+            comboFlame.raycastTarget = false;
+            comboFlame.rectTransform.pivot = new Vector2(0.5f, 0f); // grows up from its base
+            comboFlame.gameObject.SetActive(false);
+            comboFrames = new Sprite[FlameLevels][];
+            for (int l = 0; l < FlameLevels; l++)
+            {
+                comboFrames[l] = new Sprite[FlameFrames];
+                for (int f = 0; f < FlameFrames; f++) comboFrames[l][f] = art.Get($"flame_{l}_{f}");
+            }
+            comboLabel = Floating("", 4 + FlameWidth + 1, 52 + FlameHeight - 11, 40, 10, 8, TextAnchor.MiddleLeft);
 
             bossBar = Ui.Panel(stageRoot, "BossBar", (Stage.DigWidth - BossBarWidth) / 2f, 4, BossBarWidth, 7, PanelColor);
             bossBar.raycastTarget = false;
@@ -883,29 +900,37 @@ namespace DeepDrill.Game
                 : (currentPage == PageTree ? RailSelected : RailColor);
         }
 
-        // The count grows with the chain and changes colour, with a flash, at each milestone.
+        // The flame's heat follows the bonus: an ember before the first step, orange, then a tall
+        // yellow flame past half the cap, and blue at the cap. Each step makes it jump.
         private void UpdateCombo()
         {
             int combo = sim.Combo;
             if (combo < 2)
             {
                 comboLabel.text = "";
+                comboFlame.gameObject.SetActive(false);
                 lastComboTier = 0;
                 return;
             }
-            double bonus = (sim.ComboMultiplier - 1) * 100;
-            comboLabel.text = bonus > 0 ? $"{combo} 连击 +{bonus:0}%" : $"{combo} 连击";
-
-            int tier = combo >= 100 ? 3 : combo >= 50 ? 2 : combo >= 10 ? 1 : 0;
+            comboFlame.gameObject.SetActive(true);
+            double heat = sim.ComboHeat;
+            int tier = heat >= 0.999 ? 3 : heat >= 0.5 ? 2 : heat > 0 ? 1 : 0;
             if (tier != lastComboTier) comboFlash = 1f;
             if (combo / ComboFlashStep != comboStep) comboFlash = Mathf.Max(comboFlash, 0.6f);
             comboStep = combo / ComboFlashStep;
             lastComboTier = tier;
-
             comboFlash = Mathf.Max(0, comboFlash - Time.unscaledDeltaTime * 4f);
-            comboLabel.fontSize = Ui.PixelSize(8 + tier * 2);
+
+            flameClock += Time.unscaledDeltaTime * FlameFps * (1 + tier * 0.25f);
+            comboFlame.sprite = comboFrames[tier][(int)flameClock % FlameFrames];
+            // burns down to two thirds as the window closes, and pops on every step
+            float life = 0.66f + 0.34f * (float)sim.ComboWindowShare;
+            comboFlame.rectTransform.localScale = new Vector3(1 + comboFlash * 0.2f, life + comboFlash * 0.35f, 1);
+            comboFlame.color = Color.Lerp(Color.white, new Color(1, 1, 1, 0.55f), 1 - (float)sim.ComboWindowShare);
+
+            double multiplier = sim.ComboMultiplier;
+            comboLabel.text = multiplier > 1.0001 ? $"x{multiplier:0.0}" : "";
             comboLabel.color = Color.Lerp(ComboColors[tier], Color.white, comboFlash);
-            comboLabel.rectTransform.localScale = Vector3.one * (1 + comboFlash * 0.4f);
         }
 
         private void UpdateCoinPulse()

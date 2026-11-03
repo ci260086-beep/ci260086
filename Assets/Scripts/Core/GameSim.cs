@@ -214,6 +214,20 @@ namespace DeepDrill.Core
             && ShardsPerMinute < State.peakShardRate * Balance.RebirthAdviceRatio;
 
         public int Combo { get; private set; }
+
+        /// <summary>How much of the combo window is left, 1 just after a hit and 0 when the chain breaks.</summary>
+        public double ComboWindowShare =>
+            Combo <= 0 ? 0 : Math.Max(0, Math.Min(1, comboClock / (Balance.ComboWindowSeconds + Effect(SkillEffect.combo_window))));
+
+        /// <summary>The combo bonus as a share of its cap, 0 to 1.</summary>
+        public double ComboHeat
+        {
+            get
+            {
+                double cap = Balance.ComboBonusMax + (Effect(SkillEffect.combo_cap) + 10 * AchievementCount("combo_")) / 100;
+                return cap <= 0 ? 0 : Math.Min(1, (ComboMultiplier - 1) / cap);
+            }
+        }
         public double FrenzyEnergy { get; private set; }
         public double FrenzyTimeLeft { get; private set; }
         public bool InFrenzy => FrenzyTimeLeft > 0;

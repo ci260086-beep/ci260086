@@ -12,6 +12,9 @@ namespace DeepDrill.Game
         public double LeadDuty;   // pulse width of the lead, 0.125 to 0.5
         public double Brightness; // 0 dark to 1 bright: lead octave, hat level, arpeggio sparkle
         public bool Driving;      // boss fights: steadier kick, busier bass
+        public double LeadSoftness; // 0 a bright pulse lead, 1 a round triangle lead
+        public double Echo;         // a quiet repeat of the lead a dotted eighth later, for space
+        public bool Calm;           // sparser melody rhythms, softer drums
     }
 
     /// <summary>
@@ -42,12 +45,22 @@ namespace DeepDrill.Game
             "x--.x.x.x--.x.x.",
         };
 
+        // fewer, longer notes: the melody breathes instead of chattering
+        private static readonly string[] CalmRhythms =
+        {
+            "x---x-..x---x...",
+            "x-----x.x-x-----",
+            "x---..x-x---....",
+            "x-x-x---x-----..",
+        };
+
         public static float[] Render(Tune tune)
         {
             double stepSeconds = 60.0 / tune.Bpm / 4;
             int stepSamples = (int)Math.Round(stepSeconds * SampleRate);
             int steps = Bars * StepsPerBar;
             var mix = new float[steps * stepSamples];
+            var leadOnly = new float[mix.Length];
             var rng = new Random(tune.Seed);
             int[] scale = tune.Minor ? MinorScale : MajorScale;
             int[] progression = tune.Minor ? MinorProgression : MajorProgression;
@@ -69,9 +82,10 @@ namespace DeepDrill.Game
                 int[] arp = { chordRoot, third, fifth, chordRoot + 12 };
                 int arpNote = arp[inBar % 4] + (tune.Brightness > 0.5 ? 12 : 0);
 
-                bool kick = inBar % 4 == 0 || (tune.Driving && inBar % 4 == 2 && inBar != 2);
+                bool kick = tune.Calm ? inBar == 0 || inBar == 10 : inBar % 4 == 0 || (tune.Driving && inBar % 4 == 2 && inBar != 2);
                 bool snare = inBar == 4 || inBar == 12;
-                bool hat = inBar % 2 == 1 || (tune.Brightness > 0.6 && inBar % 4 == 2);
+                bool hat = tune.Calm ? inBar % 4 == 2 : inBar % 2 == 1 || (tune.Brightness > 0.6 && inBar % 4 == 2);
+                double drumLevel = tune.Calm ? 0.6 : 1;
 
                 for (int s = 0; s < stepSamples; s++)
                 {
@@ -87,7 +101,10 @@ namespace DeepDrill.Game
                         leadPhase += Hz(lead.Note) * (1 + vib) / SampleRate;
                         double env = lead.Release && stepT > 0.6 ? (1 - stepT) / 0.4 : 1;
                         env *= 0.85 + 0.15 * Math.Exp(-age * 8);
-                        sample += (float)(Pulse(leadPhase, tune.LeadDuty) * 0.16 * env);
+                        double tone = Pulse(leadPhase, tune.LeadDuty) * (1 - tune.LeadSoftness) + Triangle(leadPhase) * tune.LeadSoftness * 1.6;
+                        double leadOut = tone * (0.16 - 0.03 * tune.LeadSoftness) * env;
+                        sample += (float)leadOut;
+                        leadOnly[step * stepSamples + s] = (float)leadOut;
                     }
 
                     // bass: triangle, short gap at the end of each step so repeated notes still pluck
@@ -106,21 +123,28 @@ namespace DeepDrill.Game
                     if (kick)
                     {
                         double kHz = 120 * Math.Exp(-t * 30) + 45;
-                        sample += (float)(Math.Sin(2 * Math.PI * kHz * t) * 0.32 * Math.Exp(-t * 22));
+                        sample += (float)(Math.Sin(2 * Math.PI * kHz * t) * 0.32 * drumLevel * Math.Exp(-t * 22));
                     }
                     if (snare || hat)
                     {
                         noise ^= noise << 13; noise ^= noise >> 17; noise ^= noise << 5;
                         double white = (noise & 0xffff) / 32767.5 - 1;
-                        if (snare) sample += (float)(white * 0.14 * Math.Exp(-t * 20));
-                        if (hat) sample += (float)(white * 0.05 * (0.5 + 0.5 * tune.Brightness) * Math.Exp(-t * 90));
+                        if (snare) sample += (float)(white * 0.14 * drumLevel * Math.Exp(-t * (tune.Calm ? 30 : 20)));
+                        if (hat) sample += (float)(white * 0.05 * drumLevel * (0.5 + 0.5 * tune.Brightness) * Math.Exp(-t * 90));
                     }
 
                     mix[step * stepSamples + s] = sample;
                 }
             }
 
-            // soft clip so stacked voices never crack, and a few milliseconds of fade at the seam
+            // the echo wraps round the loop, so the seam stays seamless
+            if (tune.Echo > 0)
+            {
+                int delay = stepSamples * 3;
+                for (int i = 0; i < mix.Length; i++)
+                    mix[i] += leadOnly[(i - delay + mix.Length) % mix.Length] * (float)tune.Echo;
+            }
+            // soft clip so stacked voices never crack
             for (int i = 0; i < mix.Length; i++) mix[i] = (float)Math.Tanh(mix[i] * 1.2);
             return mix;
         }
@@ -140,7 +164,8 @@ namespace DeepDrill.Game
             var lead = new LeadStep[steps];
             int octave = tune.Brightness > 0.45 ? 12 : 0;
             var phrase = new int[4 * StepsPerBar];
-            string[] rhythm = { Rhythms[rng.Next(Rhythms.Length)], Rhythms[rng.Next(Rhythms.Length)] };
+            var pool = tune.Calm ? CalmRhythms : Rhythms;
+            string[] rhythm = { pool[rng.Next(pool.Length)], pool[rng.Next(pool.Length)] };
             int degree = 4;
 
             for (int bar = 0; bar < 4; bar++)
@@ -209,22 +234,46 @@ namespace DeepDrill.Game
             return p < 0.5 ? p * 4 - 1 : 3 - p * 4;
         }
 
-        /// <summary>The tune for a layer (zero based) or its guardian fight. Deeper layers sit lower and get more minor, but keep the tempo up.</summary>
-        public static Tune ForLayer(int layer, bool boss)
+        /// <summary>Which arrangement ForLayer uses: 0 the first bright one, 1 relaxed, 2 quiet.</summary>
+        public static int Style = 1;
+
+        /// <summary>The tune for a layer (zero based) or its guardian fight. Deeper layers sit lower and get more minor.</summary>
+        public static Tune ForLayer(int layer, bool boss) => ForLayer(layer, boss, Style);
+
+        public static Tune ForLayer(int layer, bool boss, int style)
         {
-            if (boss)
-                return new Tune { Root = 57 + layer % 3, Minor = true, Bpm = 150, Seed = 900 + layer, LeadDuty = 0.25, Brightness = 0.55, Driving = true };
-            // 0-3 bright major, 4-7 mixed, 8-11 minor; roots step down slowly with depth
             int[] roots = { 60, 62, 64, 65, 62, 60, 59, 57, 57, 55, 55, 53 };
-            bool minor = layer >= 8 || layer == 5 || layer == 7;
+            int root = roots[Math.Min(Math.Max(0, layer), roots.Length - 1)];
+            if (style == 0)
+            {
+                if (boss)
+                    return new Tune { Root = 57 + layer % 3, Minor = true, Bpm = 150, Seed = 900 + layer, LeadDuty = 0.25, Brightness = 0.55, Driving = true };
+                return new Tune
+                {
+                    Root = root, Minor = layer >= 8 || layer == 5 || layer == 7, Bpm = 132 - layer * 1.5, Seed = 100 + layer * 7,
+                    LeadDuty = layer < 4 ? 0.25 : layer < 8 ? 0.125 : 0.5, Brightness = Math.Max(0.15, 1 - layer * 0.08),
+                };
+            }
+            bool quiet = style == 2;
+            if (boss)
+                return new Tune
+                {
+                    Root = 57 + layer % 3, Minor = true, Bpm = quiet ? 124 : 138, Seed = 900 + layer, LeadDuty = 0.25,
+                    Brightness = 0.4, Driving = true, LeadSoftness = quiet ? 0.6 : 0.3, Echo = 0.2,
+                };
+            // a relaxed walk: unhurried tempo, a rounder lead with an echo, sparse drums; the
+            // surface keeps a major key, the deep layers turn minor
             return new Tune
             {
-                Root = roots[Math.Min(layer, roots.Length - 1)],
-                Minor = minor,
-                Bpm = 132 - layer * 1.5,
+                Root = root,
+                Minor = layer >= 6 || layer == 3,
+                Bpm = (quiet ? 92 : 108) - layer * 1.0,
                 Seed = 100 + layer * 7,
-                LeadDuty = layer < 4 ? 0.25 : layer < 8 ? 0.125 : 0.5,
-                Brightness = Math.Max(0.15, 1 - layer * 0.08),
+                LeadDuty = 0.25,
+                Brightness = Math.Max(0.1, (quiet ? 0.35 : 0.5) - layer * 0.03),
+                LeadSoftness = quiet ? 1 : 0.6,
+                Echo = quiet ? 0.35 : 0.25,
+                Calm = true,
             };
         }
     }
